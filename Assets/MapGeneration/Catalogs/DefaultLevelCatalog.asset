@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 679c8bd215c29db45bbeeead7c0ac433, type: 3}
+  m_Name: DefaultLevelCatalog
+  m_EditorClassIdentifier: Assembly-CSharp::RoyaltyBoat.MapGeneration.LevelChunkCatalog
+  openingChunk: {fileID: 11400000, guid: 7c41f8468cb67734d96280acd06e2fbd, type: 2}
+  cooldownChunk: {fileID: 11400000, guid: ff1f91b2112c9d74e8b8c0d53a451962, type: 2}
+  hazardChunks:
+  - {fileID: 11400000, guid: 05f449a7a53567649b3ddd2b7beb91a1, type: 2}
+  - {fileID: 11400000, guid: c5170904d6f3d1a41979c770fa8c5a11, type: 2}
+  - {fileID: 11400000, guid: d6b5f13f44e8d67418380d0b4b90bd3c, type: 2}
+  - {fileID: 11400000, guid: ffc44e6f6d491f749a2618667ba94161, type: 2}
+  - {fileID: 11400000, guid: 54fcc76f05c9756479508151352b14b9, type: 2}
+  - {fileID: 11400000, guid: 893ca237faba21746b328828ea2a58a1, type: 2}

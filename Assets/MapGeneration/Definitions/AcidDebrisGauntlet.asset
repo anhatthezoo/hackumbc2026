@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c13bbb0cebca264594420b76d731b3a, type: 3}
+  m_Name: AcidDebrisGauntlet
+  m_EditorClassIdentifier: Assembly-CSharp::RoyaltyBoat.MapGeneration.LevelChunkDefinition
+  prefab: {fileID: 5103713304905476030, guid: 2517da82cb1b7694faa48bf9246e088b, type: 3}
+  selectionWeight: 1.4
+  difficultyCost: 4
+  minimumLevel: 3
+  maximumLevel: 99
+  repetitionCooldown: 2
