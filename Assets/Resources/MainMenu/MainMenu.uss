@@ -1,0 +1,331 @@
+.screen {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    color: rgb(248, 232, 180);
+}
+
+.is-hidden {
+    display: none;
+}
+
+.main-screen {
+    background-color: rgba(15, 47, 82, 0.14);
+}
+
+.title-area {
+    position: absolute;
+    left: 20%;
+    right: 16%;
+    top: 4%;
+    height: 41%;
+    align-items: center;
+}
+
+.crown {
+    height: 92px;
+    color: rgb(255, 190, 47);
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
+    -unity-text-align: middle-center;
+    font-size: 92px;
+    rotate: -3deg;
+    margin-bottom: -16px;
+}
+
+.title-stack {
+    width: 100%;
+    height: 155px;
+    align-items: center;
+    justify-content: center;
+}
+
+.game-title {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 155px;
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
+    -unity-text-align: middle-center;
+    font-size: 116px;
+    letter-spacing: 7px;
+    white-space: nowrap;
+}
+
+.title-shadow {
+    left: 8px;
+    top: 10px;
+    color: rgb(190, 57, 47);
+}
+
+.title-face {
+    color: rgb(255, 195, 63);
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgb(255, 225, 139);
+}
+
+.tagline {
+    margin-top: -13px;
+    padding-left: 20px;
+    padding-right: 20px;
+    height: 40px;
+    color: rgb(255, 238, 189);
+    background-color: rgba(29, 69, 108, 0.8);
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    border-bottom-left-radius: 20px;
+    border-bottom-right-radius: 20px;
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
+    -unity-text-align: middle-center;
+    font-size: 23px;
+    letter-spacing: 4px;
+}
+
+.menu-panel {
+    position: absolute;
+    left: 3.5%;
+    bottom: 7%;
+    width: 350px;
+    padding: 18px;
+    background-color: rgba(24, 62, 99, 0.77);
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: rgba(255, 228, 153, 0.4);
+    border-right-color: rgba(255, 228, 153, 0.4);
+    border-top-color: rgba(255, 228, 153, 0.4);
+    border-bottom-color: rgba(255, 228, 153, 0.4);
+    border-top-left-radius: 18px;
+    border-top-right-radius: 18px;
+    border-bottom-left-radius: 18px;
+    border-bottom-right-radius: 18px;
+}
+
+.menu-kicker {
+    margin-bottom: 8px;
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/PatrickHand-Regular.ttf");
+    -unity-text-align: middle-center;
+    font-size: 24px;
+    letter-spacing: 4px;
+}
+
+.menu-button,
+.back-button {
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 7px;
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+    border-bottom-left-radius: 15px;
+    border-bottom-right-radius: 15px;
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
+    -unity-text-align: middle-center;
+    letter-spacing: 3px;
+    transition-property: scale, translate, background-color;
+    transition-duration: 0.08s;
+}
+
+.menu-button {
+    height: 76px;
+    margin-top: 8px;
+    font-size: 38px;
+}
+
+.primary-button {
+    color: rgb(28, 48, 78);
+    background-color: rgb(249, 229, 167);
+    border-bottom-color: rgb(188, 133, 62);
+}
+
+.secondary-button {
+    color: rgb(251, 229, 169);
+    background-color: rgb(67, 101, 139);
+    border-bottom-color: rgb(38, 65, 97);
+}
+
+.menu-button:hover,
+.back-button:hover {
+    scale: 1.025 1.025;
+    translate: 0 -2px;
+}
+
+.menu-button:active,
+.back-button:active {
+    scale: 0.98 0.98;
+    translate: 0 3px;
+}
+
+.primary-button:hover {
+    background-color: rgb(255, 241, 191);
+}
+
+.secondary-button:hover {
+    background-color: rgb(82, 119, 159);
+}
+
+.menu-button:focus,
+.back-button:focus {
+    border-left-width: 3px;
+    border-right-width: 3px;
+    border-top-width: 3px;
+    border-left-color: rgb(238, 75, 53);
+    border-right-color: rgb(238, 75, 53);
+    border-top-color: rgb(238, 75, 53);
+}
+
+.crew-preview {
+    position: absolute;
+    right: 4%;
+    bottom: 7%;
+    width: 230px;
+    padding: 16px 20px 18px 20px;
+    background-color: rgba(20, 50, 83, 0.7);
+    border-top-left-radius: 14px;
+    border-top-right-radius: 14px;
+    border-bottom-left-radius: 14px;
+    border-bottom-right-radius: 14px;
+}
+
+.crew-heading {
+    color: rgb(255, 226, 143);
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
+    -unity-text-align: middle-center;
+    font-size: 25px;
+    letter-spacing: 2px;
+}
+
+.crew-name {
+    margin-top: 5px;
+    color: rgb(255, 245, 210);
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/PatrickHand-Regular.ttf");
+    -unity-text-align: middle-center;
+    font-size: 20px;
+}
+
+.credits-screen {
+    align-items: center;
+    background-color: rgba(12, 43, 76, 0.7);
+}
+
+.back-button {
+    position: absolute;
+    left: 3%;
+    top: 4%;
+    width: 225px;
+    height: 68px;
+    color: rgb(28, 48, 78);
+    background-color: rgb(249, 229, 167);
+    border-bottom-color: rgb(188, 133, 62);
+    font-size: 31px;
+}
+
+.credits-title-area {
+    margin-top: 4%;
+    align-items: center;
+}
+
+.credits-crown {
+    height: 58px;
+    color: rgb(255, 191, 45);
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
+    -unity-text-align: middle-center;
+    font-size: 61px;
+}
+
+.credits-title {
+    height: 100px;
+    color: rgb(255, 194, 59);
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
+    -unity-text-outline-width: 3px;
+    -unity-text-outline-color: rgb(181, 54, 46);
+    -unity-text-align: middle-center;
+    font-size: 78px;
+    letter-spacing: 7px;
+}
+
+.credits-subtitle {
+    margin-top: -7px;
+    color: rgb(255, 239, 190);
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/PatrickHand-Regular.ttf");
+    -unity-text-align: middle-center;
+    font-size: 27px;
+    letter-spacing: 4px;
+}
+
+.credits-card {
+    width: 680px;
+    margin-top: 22px;
+    padding: 22px 34px;
+    background-color: rgba(249, 232, 179, 0.96);
+    border-left-width: 3px;
+    border-right-width: 3px;
+    border-top-width: 3px;
+    border-bottom-width: 8px;
+    border-left-color: rgb(231, 84, 53);
+    border-right-color: rgb(231, 84, 53);
+    border-top-color: rgb(231, 84, 53);
+    border-bottom-color: rgb(174, 58, 46);
+    border-top-left-radius: 19px;
+    border-top-right-radius: 19px;
+    border-bottom-left-radius: 19px;
+    border-bottom-right-radius: 19px;
+}
+
+.credit-row {
+    height: 72px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.credit-name {
+    color: rgb(29, 48, 77);
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
+    font-size: 31px;
+    letter-spacing: 2px;
+}
+
+.credit-role {
+    color: rgb(69, 103, 139);
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/PatrickHand-Regular.ttf");
+    font-size: 24px;
+}
+
+.credit-divider {
+    height: 2px;
+    background-color: rgba(180, 141, 83, 0.36);
+}
+
+.made-with {
+    margin-top: 16px;
+    color: rgb(255, 239, 190);
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
+    font-size: 19px;
+    letter-spacing: 3px;
+}
+
+.main-screen.is-compact .title-area {
+    left: 10%;
+    right: 10%;
+}
+
+.main-screen.is-compact .game-title {
+    font-size: 75px;
+}
+
+.main-screen.is-compact .menu-panel {
+    width: 300px;
+}
+
+.main-screen.is-compact .crew-preview {
+    display: none;
+}
+
+.credits-screen.is-compact .credits-card {
+    width: 72%;
+    min-width: 520px;
+}

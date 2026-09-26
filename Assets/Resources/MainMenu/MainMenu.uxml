@@ -1,0 +1,63 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="project://database/Assets/Resources/MainMenu/MainMenu.uss" />
+
+    <ui:VisualElement name="main-screen" class="screen main-screen">
+        <ui:VisualElement class="title-area" picking-mode="Ignore">
+            <ui:Label text="♛" class="crown" />
+            <ui:VisualElement class="title-stack">
+                <ui:Label text="GAME NAME" class="game-title title-shadow" />
+                <ui:Label text="GAME NAME" class="game-title title-face" />
+            </ui:VisualElement>
+            <ui:Label text="A ROYAL OCEAN ADVENTURE" class="tagline" />
+        </ui:VisualElement>
+
+        <ui:VisualElement class="menu-panel">
+            <ui:Label text="SET SAIL" class="menu-kicker" />
+            <ui:Button name="start-button" text="START" class="menu-button primary-button" />
+            <ui:Button name="credits-button" text="CREDITS" class="menu-button secondary-button" />
+            <ui:Button name="quit-button" text="QUIT" class="menu-button secondary-button" />
+        </ui:VisualElement>
+
+        <ui:VisualElement class="crew-preview" picking-mode="Ignore">
+            <ui:Label text="THE CREW" class="crew-heading" />
+            <ui:Label text="Dylan S" class="crew-name" />
+            <ui:Label text="Jacob H" class="crew-name" />
+            <ui:Label text="Anh P" class="crew-name" />
+            <ui:Label text="David G" class="crew-name" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+
+    <ui:VisualElement name="credits-screen" class="screen credits-screen is-hidden">
+        <ui:Button name="back-button" text="‹  BACK" class="back-button" />
+
+        <ui:VisualElement class="credits-title-area" picking-mode="Ignore">
+            <ui:Label text="♛" class="credits-crown" />
+            <ui:Label text="CREDITS" class="credits-title" />
+            <ui:Label text="THE CREW BEHIND THE VOYAGE" class="credits-subtitle" />
+        </ui:VisualElement>
+
+        <ui:VisualElement class="credits-card">
+            <ui:VisualElement class="credit-row">
+                <ui:Label text="DYLAN S" class="credit-name" />
+                <ui:Label text="ROLE / DISCIPLINE" class="credit-role" />
+            </ui:VisualElement>
+            <ui:VisualElement class="credit-divider" />
+            <ui:VisualElement class="credit-row">
+                <ui:Label text="JACOB H" class="credit-name" />
+                <ui:Label text="ROLE / DISCIPLINE" class="credit-role" />
+            </ui:VisualElement>
+            <ui:VisualElement class="credit-divider" />
+            <ui:VisualElement class="credit-row">
+                <ui:Label text="ANH P" class="credit-name" />
+                <ui:Label text="ROLE / DISCIPLINE" class="credit-role" />
+            </ui:VisualElement>
+            <ui:VisualElement class="credit-divider" />
+            <ui:VisualElement class="credit-row">
+                <ui:Label text="DAVID G" class="credit-name" />
+                <ui:Label text="ROLE / DISCIPLINE" class="credit-role" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:Label text="MADE WITH UNITY" class="made-with" />
+    </ui:VisualElement>
+</ui:UXML>
