@@ -90,7 +90,7 @@ namespace RoyaltyBoat.Economy
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void EnsureServiceExists()
         {
-            if (Instance != null || FindFirstObjectByType<EconomyService>() != null)
+            if (Instance != null || FindAnyObjectByType<EconomyService>() != null)
             {
                 return;
             }

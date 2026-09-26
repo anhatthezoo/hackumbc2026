@@ -1,0 +1,17 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="project://database/Assets/UI/DeathScreen/DeathScreen.uss" />
+    <ui:VisualElement name="death-screen" class="death-screen">
+        <ui:VisualElement class="death-content">
+            <ui:VisualElement name="crown-host" class="crown-host" picking-mode="Ignore" />
+            <ui:VisualElement class="title-stack" picking-mode="Ignore">
+                <ui:Label text="THE KING IS DEAD!" class="death-title death-title-shadow" />
+                <ui:Label text="THE KING IS DEAD!" class="death-title death-title-face" />
+            </ui:VisualElement>
+            <ui:Label name="subtitle" text="Your royal voyage has come to an end..." class="death-subtitle" />
+            <ui:VisualElement class="button-stack">
+                <ui:Button name="try-again-button" text="TRY AGAIN" class="death-button death-button-primary" />
+                <ui:Button name="return-to-dock-button" text="RETURN TO DOCK" class="death-button death-button-secondary" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
