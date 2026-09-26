@@ -1,0 +1,178 @@
+.death-screen {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.death-screen.is-hidden {
+    display: none;
+}
+
+.death-content {
+    width: 76%;
+    max-width: 1080px;
+    min-width: 620px;
+    height: 88%;
+    min-height: 650px;
+    align-items: center;
+    justify-content: flex-start;
+    padding-top: 2%;
+}
+
+.crown-host {
+    width: 190px;
+    height: 138px;
+    margin-bottom: -16px;
+}
+
+.title-stack {
+    width: 100%;
+    height: 122px;
+    align-items: center;
+    justify-content: center;
+}
+
+.death-title {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 122px;
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
+    -unity-font-style: normal;
+    -unity-text-align: middle-center;
+    font-size: 86px;
+    letter-spacing: 4px;
+    white-space: nowrap;
+}
+
+.death-title-shadow {
+    left: 5px;
+    top: 7px;
+    color: rgba(91, 40, 45, 0.72);
+}
+
+.death-title-face {
+    color: rgb(246, 83, 64);
+}
+
+.death-subtitle {
+    width: 100%;
+    margin-top: -2px;
+    color: rgb(247, 228, 172);
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/PatrickHand-Regular.ttf");
+    -unity-text-align: middle-center;
+    font-size: 39px;
+    letter-spacing: 2px;
+    white-space: nowrap;
+}
+
+.button-stack {
+    width: 620px;
+    margin-top: auto;
+    margin-bottom: 3%;
+    align-items: stretch;
+}
+
+.death-button {
+    height: 94px;
+    margin-top: 14px;
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    border-top-left-radius: 14px;
+    border-top-right-radius: 14px;
+    border-bottom-left-radius: 14px;
+    border-bottom-right-radius: 14px;
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
+    -unity-font-style: normal;
+    font-size: 49px;
+    letter-spacing: 4px;
+    -unity-text-align: middle-center;
+    transition-property: scale, translate, background-color;
+    transition-duration: 0.08s;
+}
+
+.death-button-primary {
+    color: rgb(31, 41, 66);
+    background-color: rgb(247, 232, 178);
+    border-bottom-width: 7px;
+    border-bottom-color: rgb(203, 180, 121);
+    rotate: -0.35deg;
+}
+
+.death-button-secondary {
+    color: rgb(247, 232, 178);
+    background-color: rgb(75, 101, 130);
+    border-bottom-width: 7px;
+    border-bottom-color: rgb(49, 68, 94);
+    rotate: 0.3deg;
+}
+
+.death-button:hover {
+    scale: 1.025 1.025;
+    translate: 0 -2px;
+}
+
+.death-button:active {
+    scale: 0.985 0.985;
+    translate: 0 3px;
+}
+
+.death-button-primary:hover {
+    background-color: rgb(255, 241, 191);
+}
+
+.death-button-secondary:hover {
+    background-color: rgb(87, 116, 148);
+}
+
+.death-button:focus {
+    border-left-width: 4px;
+    border-right-width: 4px;
+    border-top-width: 4px;
+    border-left-color: rgb(246, 83, 64);
+    border-right-color: rgb(246, 83, 64);
+    border-top-color: rgb(246, 83, 64);
+}
+
+.death-screen.is-compact .death-content {
+    width: 92%;
+    min-width: 0;
+    min-height: 520px;
+}
+
+.death-screen.is-compact .crown-host {
+    width: 145px;
+    height: 106px;
+}
+
+.death-screen.is-compact .title-stack {
+    height: 90px;
+}
+
+.death-screen.is-compact .death-title {
+    height: 90px;
+    font-size: 58px;
+    letter-spacing: 2px;
+}
+
+.death-screen.is-compact .death-subtitle {
+    font-size: 30px;
+}
+
+.death-screen.is-compact .button-stack {
+    width: 78%;
+    min-width: 420px;
+}
+
+.death-screen.is-compact .death-button {
+    height: 76px;
+    font-size: 38px;
+}
