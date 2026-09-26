@@ -31,25 +31,41 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _PreviousDisplacementArray:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _PreviousNormalFoamArray:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
+    - _Cascade0Blend: 1
+    - _Cascade1Blend: 1
+    - _Cascade2Blend: 1
+    - _Cascade3Blend: 1
+    - _Cascade4Blend: 1
+    - _Cascade5Blend: 1
+    - _Cascade6Blend: 1
+    - _Cascade7Blend: 1
     - _CascadeCount: 0
-    - _CrestFoamStrength: 1.56
+    - _CrestFoamStrength: 0
     - _CrestTransparency: 0.18
     - _DisplacementFadeRate: 0.007
     - _DisplacementFadeStart: 150
     - _DistantNormalStrength: 0.015
-    - _EnvironmentReflectionStrength: 2
-    - _FoamBrightness: 0.93
+    - _EnvironmentReflectionStrength: 1.5
+    - _FoamBrightness: 1
     - _FoamFadeRate: 0.0075
-    - _FoamStrength: 1.33
+    - _FoamStrength: 0.75
     - _NormalFadeRate: 0.0175
-    - _NormalStrength: 1.28
+    - _NormalStrength: 1
     - _Opacity: 0.82
-    - _Reflectance: 0.065
-    - _Roughness: 0.16
-    - _SubsurfaceStrength: 1.09
-    - _TransmissionStrength: 1.13
+    - _Reflectance: 0.02
+    - _Roughness: 0.65
+    - _SubsurfaceStrength: 1
+    - _TransmissionStrength: 0
     m_Colors:
     - _Cascade0Scale: {r: 0.0113636, g: 0.0113636, b: 1, a: 1}
     - _Cascade1Scale: {r: 0.0175439, g: 0.0175439, b: 0.75, a: 1}
@@ -59,8 +75,8 @@ Material:
     - _Cascade5Scale: {r: 0.01, g: 0.01, b: 0, a: 0}
     - _Cascade6Scale: {r: 0.01, g: 0.01, b: 0, a: 0}
     - _Cascade7Scale: {r: 0.01, g: 0.01, b: 0, a: 0}
-    - _FoamColor: {r: 0.92, g: 0.82, b: 0.68, a: 1}
+    - _FoamColor: {r: 0.73, g: 0.67, b: 0.62, a: 1}
     - _TransmissionColor: {r: 0.025, g: 0.24, b: 0.27, a: 1}
-    - _WaterColor: {r: 0.22176167, g: 0.41663647, b: 0.509434, a: 1}
+    - _WaterColor: {r: 0.2, g: 0.28, b: 0.31, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

@@ -23,6 +23,8 @@ Shader "Ocean/Godot Ocean Water URP"
         [Header(FFT Cascade Textures)]
         [NoScaleOffset] _DisplacementArray ("Displacement Array", 2DArray) = "" {}
         [NoScaleOffset] _NormalFoamArray ("Normal / Foam Array", 2DArray) = "" {}
+        [NoScaleOffset] _PreviousDisplacementArray ("Previous Displacement Array", 2DArray) = "" {}
+        [NoScaleOffset] _PreviousNormalFoamArray ("Previous Normal / Foam Array", 2DArray) = "" {}
         _CascadeCount ("Cascade Count", Int) = 0
 
         [Header(Cascade Scales)]
@@ -34,6 +36,15 @@ Shader "Ocean/Godot Ocean Water URP"
         _Cascade5Scale ("Cascade 5 (UV XY, Displacement, Normal)", Vector) = (0.01, 0.01, 0.0, 0.0)
         _Cascade6Scale ("Cascade 6 (UV XY, Displacement, Normal)", Vector) = (0.01, 0.01, 0.0, 0.0)
         _Cascade7Scale ("Cascade 7 (UV XY, Displacement, Normal)", Vector) = (0.01, 0.01, 0.0, 0.0)
+
+        [HideInInspector] _Cascade0Blend ("Cascade 0 Blend", Range(0.0, 1.0)) = 1.0
+        [HideInInspector] _Cascade1Blend ("Cascade 1 Blend", Range(0.0, 1.0)) = 1.0
+        [HideInInspector] _Cascade2Blend ("Cascade 2 Blend", Range(0.0, 1.0)) = 1.0
+        [HideInInspector] _Cascade3Blend ("Cascade 3 Blend", Range(0.0, 1.0)) = 1.0
+        [HideInInspector] _Cascade4Blend ("Cascade 4 Blend", Range(0.0, 1.0)) = 1.0
+        [HideInInspector] _Cascade5Blend ("Cascade 5 Blend", Range(0.0, 1.0)) = 1.0
+        [HideInInspector] _Cascade6Blend ("Cascade 6 Blend", Range(0.0, 1.0)) = 1.0
+        [HideInInspector] _Cascade7Blend ("Cascade 7 Blend", Range(0.0, 1.0)) = 1.0
 
         [Header(Distance Fades)]
         _DisplacementFadeStart ("Displacement Fade Start", Float) = 150.0
@@ -69,6 +80,10 @@ Shader "Ocean/Godot Ocean Water URP"
         SAMPLER(sampler_DisplacementArray);
         TEXTURE2D_ARRAY(_NormalFoamArray);
         SAMPLER(sampler_NormalFoamArray);
+        TEXTURE2D_ARRAY(_PreviousDisplacementArray);
+        SAMPLER(sampler_PreviousDisplacementArray);
+        TEXTURE2D_ARRAY(_PreviousNormalFoamArray);
+        SAMPLER(sampler_PreviousNormalFoamArray);
 
         CBUFFER_START(UnityPerMaterial)
             half4 _WaterColor;
@@ -92,6 +107,14 @@ Shader "Ocean/Godot Ocean Water URP"
             float4 _Cascade5Scale;
             float4 _Cascade6Scale;
             float4 _Cascade7Scale;
+            float _Cascade0Blend;
+            float _Cascade1Blend;
+            float _Cascade2Blend;
+            float _Cascade3Blend;
+            float _Cascade4Blend;
+            float _Cascade5Blend;
+            float _Cascade6Blend;
+            float _Cascade7Blend;
             float _DisplacementFadeStart;
             float _DisplacementFadeRate;
             float _FoamFadeRate;
@@ -131,6 +154,21 @@ Shader "Ocean/Godot Ocean Water URP"
             }
         }
 
+        float GetCascadeBlend(int index)
+        {
+            switch (index)
+            {
+                case 0: return _Cascade0Blend;
+                case 1: return _Cascade1Blend;
+                case 2: return _Cascade2Blend;
+                case 3: return _Cascade3Blend;
+                case 4: return _Cascade4Blend;
+                case 5: return _Cascade5Blend;
+                case 6: return _Cascade6Blend;
+                default: return _Cascade7Blend;
+            }
+        }
+
         float3 SampleDisplacement(float2 waterUV)
         {
             float3 displacement = 0.0;
@@ -140,12 +178,22 @@ Shader "Ocean/Godot Ocean Water URP"
             for (int cascade = 0; cascade < cascadeCount; ++cascade)
             {
                 float4 scale = GetCascadeScale(cascade);
-                displacement += SAMPLE_TEXTURE2D_ARRAY_LOD(
+                float3 previousDisplacement = SAMPLE_TEXTURE2D_ARRAY_LOD(
+                    _PreviousDisplacementArray,
+                    sampler_PreviousDisplacementArray,
+                    waterUV * scale.xy,
+                    cascade,
+                    0.0).xyz;
+                float3 currentDisplacement = SAMPLE_TEXTURE2D_ARRAY_LOD(
                     _DisplacementArray,
                     sampler_DisplacementArray,
                     waterUV * scale.xy,
                     cascade,
-                    0.0).xyz * scale.z;
+                    0.0).xyz;
+                displacement += lerp(
+                    previousDisplacement,
+                    currentDisplacement,
+                    GetCascadeBlend(cascade)) * scale.z;
             }
             return displacement;
         }
@@ -256,6 +304,39 @@ Shader "Ocean/Godot Ocean Water URP"
                 blend.y);
         }
 
+        float4 SamplePreviousNormalFoamBicubic(float2 uv, int layer, float2 dimensions)
+        {
+            float2 inverseDimensions = rcp(dimensions);
+            float2 texelPosition = uv * dimensions + 0.5;
+            float2 fractional = frac(texelPosition);
+            float4 weightX = CubicWeights(fractional.x);
+            float4 weightY = CubicWeights(fractional.y);
+            float4 pairWeights = float4(
+                weightX.x + weightX.y,
+                weightX.z + weightX.w,
+                weightY.x + weightY.y,
+                weightY.z + weightY.w);
+            float4 samplePosition =
+                (float4(weightX.y, weightX.w, weightY.y, weightY.w) / pairWeights
+                + float4(-1.5, 0.5, -1.5, 0.5)
+                + floor(texelPosition).xxyy) * inverseDimensions.xxyy;
+            float2 blend = pairWeights.xz / (pairWeights.xz + pairWeights.yw);
+
+            float4 bottomLeft = SAMPLE_TEXTURE2D_ARRAY(
+                _PreviousNormalFoamArray, sampler_PreviousNormalFoamArray, samplePosition.yw, layer);
+            float4 bottomRight = SAMPLE_TEXTURE2D_ARRAY(
+                _PreviousNormalFoamArray, sampler_PreviousNormalFoamArray, samplePosition.xw, layer);
+            float4 topLeft = SAMPLE_TEXTURE2D_ARRAY(
+                _PreviousNormalFoamArray, sampler_PreviousNormalFoamArray, samplePosition.yz, layer);
+            float4 topRight = SAMPLE_TEXTURE2D_ARRAY(
+                _PreviousNormalFoamArray, sampler_PreviousNormalFoamArray, samplePosition.xz, layer);
+
+            return lerp(
+                lerp(bottomLeft, bottomRight, blend.x),
+                lerp(topLeft, topRight, blend.x),
+                blend.y);
+        }
+
         float3 SampleGradientAndFoam(float2 waterUV)
         {
             uint width;
@@ -278,7 +359,20 @@ Shader "Ocean/Godot Ocean Water URP"
                 float4 bicubic = SampleNormalFoamBicubic(uv, cascade, dimensions);
                 float4 bilinear = SAMPLE_TEXTURE2D_ARRAY(
                     _NormalFoamArray, sampler_NormalFoamArray, uv, cascade);
-                float4 packed = lerp(bicubic, bilinear, bilinearWeight);
+                float4 currentPacked = lerp(bicubic, bilinear, bilinearWeight);
+                float4 previousBicubic = SamplePreviousNormalFoamBicubic(
+                    uv, cascade, dimensions);
+                float4 previousBilinear = SAMPLE_TEXTURE2D_ARRAY(
+                    _PreviousNormalFoamArray,
+                    sampler_PreviousNormalFoamArray,
+                    uv,
+                    cascade);
+                float4 previousPacked = lerp(
+                    previousBicubic, previousBilinear, bilinearWeight);
+                float4 packed = lerp(
+                    previousPacked,
+                    currentPacked,
+                    GetCascadeBlend(cascade));
                 gradientAndFoam += packed.xyw * float3(scale.ww, 1.0);
             }
             return gradientAndFoam;
@@ -390,32 +484,14 @@ Shader "Ocean/Godot Ocean Water URP"
                 0.0,
                 1.0,
                 gradientAndFoam.z * _FoamStrength);
-            float crestSteepness = saturate(length(gradientAndFoam.xy) * 0.45);
-            float crestHeight = smoothstep(0.15, 2.25, input.waveHeight);
-            float crestFoam = crestSteepness * crestSteepness
-                * crestHeight * crestHeight
-                * _CrestFoamStrength;
-            float foamFactor = saturate(max(accumulatedFoam, crestFoam))
-                * foamDistanceFade;
-            float2 foamAdvection = input.waterUV
-                + float2(0.9397, 0.3420) * _Time.y * 0.35;
-            float foamCoverageNoise = ValueNoise(foamAdvection * 0.78) * 0.65
-                + ValueNoise(foamAdvection * 2.5 + 13.1) * 0.35;
-            foamFactor *= lerp(0.5, 1.0, foamCoverageNoise);
-            float heightTint = smoothstep(-2.5, 2.5, input.waveHeight);
-            half3 waterAlbedo = lerp(
-                _WaterColor.rgb * 0.72,
-                _WaterColor.rgb + _TransmissionColor.rgb * 0.2,
-                heightTint);
-            half3 albedo = lerp(waterAlbedo, _FoamColor.rgb, foamFactor);
+            float foamFactor = accumulatedFoam * foamDistanceFade;
+            half3 albedo = lerp(_WaterColor.rgb, _FoamColor.rgb, foamFactor);
 
             float normalStrength = lerp(
                 _DistantNormalStrength,
                 _NormalStrength,
                 exp(-horizontalDistance * _NormalFadeRate));
-            float detailFade = exp(-horizontalDistance * 0.009);
-            float2 surfaceGradient = gradientAndFoam.xy
-                + MicroWaveGradient(input.waterUV) * detailFade * 0.85;
+            float2 surfaceGradient = gradientAndFoam.xy;
             float3 normalWS = normalize(float3(
                 -surfaceGradient.x * normalStrength,
                 1.0,
@@ -437,40 +513,22 @@ Shader "Ocean/Godot Ocean Water URP"
                 * (fresnel + _Reflectance * 0.8)
                 * _EnvironmentReflectionStrength;
 
+            // Godot's environment and custom light path keep a readable
+            // blue-green body tone even when the low sun does not directly
+            // illuminate a trough. Reconstruct that in-scattering explicitly
+            // because URP's hand-written pass does not supply it for us.
+            float heightScatter = smoothstep(-2.5, 2.5, input.waveHeight);
+            float bodyScatter = _SubsurfaceStrength
+                * lerp(0.18, 0.58, heightScatter)
+                * (1.0 - fresnel)
+                * (1.0 - foamFactor);
+            color += _WaterColor.rgb * bodyScatter;
+
             float4 shadowCoord = TransformWorldToShadowCoord(input.positionWS);
             Light mainLight = GetMainLight(shadowCoord);
             color += EvaluateOceanLight(
                 mainLight, normalWS, viewDirectionWS, albedo,
                 input.waveHeight, foamFactor, fresnel);
-
-            // Approximate light transmitted through thinner, elevated wave crests.
-            // This keeps troughs deep blue while preventing the surface from
-            // collapsing to black when indirect lighting is weak.
-            float crestFactor = crestHeight
-                * saturate(0.2 + crestSteepness);
-            float forwardScatter = pow(
-                saturate(dot(mainLight.direction, -viewDirectionWS)),
-                2.0);
-            float transmission = _TransmissionStrength
-                * (0.08 + 0.95 * crestFactor + 0.45 * forwardScatter)
-                * (1.0 - fresnel)
-                * (1.0 - foamFactor);
-            color += _TransmissionColor.rgb
-                * transmission
-                * mainLight.color
-                * mainLight.distanceAttenuation;
-
-            // Water in the source is never unlit black: elevated and
-            // edge-facing facets retain a blue-green in-scattered body tone.
-            // Keep this independent of the direct-light direction so troughs
-            // remain legible under a bright sky.
-            float heightScatter = smoothstep(-2.5, 2.5, input.waveHeight);
-            float grazingScatter = pow(1.0 - normalDotView, 2.0);
-            float ambientTransmission = _TransmissionStrength
-                * (0.035 + 0.48 * heightScatter + 0.16 * grazingScatter)
-                * (1.0 - foamFactor)
-                * (1.0 - 0.45 * fresnel);
-            color += _TransmissionColor.rgb * ambientTransmission;
 
             #if defined(_ADDITIONAL_LIGHTS)
             uint additionalLightCount = GetAdditionalLightsCount();
@@ -484,15 +542,13 @@ Shader "Ocean/Godot Ocean Water URP"
             }
             #endif
 
-            // White water receives strong diffuse skylight even when the sun
-            // is grazing the surface; without this floor it reads as gray mud.
-            float foamLight = 0.68
-                + 0.62 * saturate(dot(normalWS, mainLight.direction));
-            foamLight *= lerp(0.72, 1.18, foamCoverageNoise);
-            half3 shadedFoam = _FoamColor.rgb
-                * foamLight
-                * _FoamBrightness;
-            color += shadedFoam * foamFactor * 0.48;
+            // The source's custom light path leaves white water strongly
+            // sky-lit. URP otherwise darkens foam twice (albedo and diffuse),
+            // so restore that diffuse skylight without adding synthetic foam.
+            half3 foamSkylight = _FoamColor.rgb
+                * (0.52 + 0.28 * saturate(normalWS.y));
+            color = lerp(color, max(color, foamSkylight), foamFactor * 0.82);
+
             color = MixFog(color, input.fogFactor);
             return half4(color, 1.0);
         }

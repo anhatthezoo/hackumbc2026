@@ -2,6 +2,7 @@
 // See Assets/Water/LICENSE-GodotOceanWaves.txt.
 
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
@@ -42,15 +43,21 @@ public sealed class OceanWaveGenerator : MonoBehaviour
     [SerializeField] private MeshRenderer _waterRenderer;
 
     [Header("Simulation")]
-    [SerializeField, Range(1f, 60f)] private float _updatesPerSecond = 30f;
+    [SerializeField, Range(1f, 60f)] private float _updatesPerSecond = 60f;
     [SerializeField, Min(0.1f)] private float _waterDepth = 20f;
     [SerializeField] private CascadeSettings[] _cascades = CreateDefaultCascades();
 
     private RenderTexture _initialSpectrum;
     private RenderTexture _displacement;
     private RenderTexture _normalFoam;
+    private RenderTexture _previousDisplacement;
+    private RenderTexture _previousNormalFoam;
     private ComputeBuffer _fftBuffer;
     private MaterialPropertyBlock _propertyBlock;
+    private readonly List<MeshRenderer> _waterRenderers = new List<MeshRenderer>();
+    private double[] _cascadeBlendStartTimes;
+    private double[] _cascadeBlendDurations;
+    private bool _rendererCacheDirty = true;
 
     private int _clearKernel;
     private int _generateSpectrumKernel;
@@ -66,6 +73,10 @@ public sealed class OceanWaveGenerator : MonoBehaviour
 
     private static readonly int DisplacementArrayId = Shader.PropertyToID("_DisplacementArray");
     private static readonly int NormalFoamArrayId = Shader.PropertyToID("_NormalFoamArray");
+    private static readonly int PreviousDisplacementArrayId =
+        Shader.PropertyToID("_PreviousDisplacementArray");
+    private static readonly int PreviousNormalFoamArrayId =
+        Shader.PropertyToID("_PreviousNormalFoamArray");
     private static readonly int CascadeCountId = Shader.PropertyToID("_CascadeCount");
 
     private static readonly int[] CascadeScaleIds =
@@ -78,6 +89,18 @@ public sealed class OceanWaveGenerator : MonoBehaviour
         Shader.PropertyToID("_Cascade5Scale"),
         Shader.PropertyToID("_Cascade6Scale"),
         Shader.PropertyToID("_Cascade7Scale")
+    };
+
+    private static readonly int[] CascadeBlendIds =
+    {
+        Shader.PropertyToID("_Cascade0Blend"),
+        Shader.PropertyToID("_Cascade1Blend"),
+        Shader.PropertyToID("_Cascade2Blend"),
+        Shader.PropertyToID("_Cascade3Blend"),
+        Shader.PropertyToID("_Cascade4Blend"),
+        Shader.PropertyToID("_Cascade5Blend"),
+        Shader.PropertyToID("_Cascade6Blend"),
+        Shader.PropertyToID("_Cascade7Blend")
     };
 
     private static CascadeSettings[] CreateDefaultCascades()
@@ -128,6 +151,36 @@ public sealed class OceanWaveGenerator : MonoBehaviour
                 whitecap = 0.25f,
                 foamAmount = 3f,
                 seed = new Vector2Int(6229, 4103)
+            },
+            new CascadeSettings
+            {
+                tileLength = new Vector2(8f, 8f),
+                displacementScale = 0f,
+                normalScale = 0.16f,
+                windSpeed = 12f,
+                windDirection = 18f,
+                fetchLengthKm = 80f,
+                swell = 0.6f,
+                spread = 0.5f,
+                detail = 1f,
+                whitecap = 0.25f,
+                foamAmount = 1.5f,
+                seed = new Vector2Int(-8147, 2551)
+            },
+            new CascadeSettings
+            {
+                tileLength = new Vector2(4f, 4f),
+                displacementScale = 0f,
+                normalScale = 0.08f,
+                windSpeed = 8f,
+                windDirection = 25f,
+                fetchLengthKm = 30f,
+                swell = 0.4f,
+                spread = 0.65f,
+                detail = 1f,
+                whitecap = 0.2f,
+                foamAmount = 0.5f,
+                seed = new Vector2Int(3419, -6073)
             }
         };
     }
@@ -152,6 +205,7 @@ public sealed class OceanWaveGenerator : MonoBehaviour
 
         _needsRebuild = true;
         _lastTickTime = 0.0;
+        _rendererCacheDirty = true;
 
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.update -= EditorTick;
@@ -202,6 +256,12 @@ public sealed class OceanWaveGenerator : MonoBehaviour
         }
 
         _needsRebuild = true;
+        _rendererCacheDirty = true;
+    }
+
+    private void OnTransformChildrenChanged()
+    {
+        _rendererCacheDirty = true;
     }
 
     private void Update()
@@ -235,12 +295,14 @@ public sealed class OceanWaveGenerator : MonoBehaviour
         {
             RebuildResources();
             _lastTickTime = currentTime;
+            ApplyInterpolationProperties(currentTime);
             return;
         }
 
         double interval = 1.0 / _updatesPerSecond;
         if (currentTime - _lastTickTime < interval)
         {
+            ApplyInterpolationProperties(currentTime);
             return;
         }
 
@@ -253,8 +315,19 @@ public sealed class OceanWaveGenerator : MonoBehaviour
             return;
         }
 
+        double previousUpdateTime = _cascadeBlendStartTimes[_nextCascade];
+        if (previousUpdateTime > 0.0)
+        {
+            _cascadeBlendDurations[_nextCascade] = Math.Max(
+                currentTime - previousUpdateTime,
+                1.0 / 240.0);
+        }
+
+        CopyCurrentToPrevious(_nextCascade);
         UpdateCascade(_nextCascade, deltaTime * cascadeCount);
+        _cascadeBlendStartTimes[_nextCascade] = currentTime;
         _nextCascade = (_nextCascade + 1) % cascadeCount;
+        ApplyInterpolationProperties(currentTime);
 
 #if UNITY_EDITOR
         if (!Application.isPlaying)
@@ -305,6 +378,16 @@ public sealed class OceanWaveGenerator : MonoBehaviour
             "Ocean Normal Foam",
             GraphicsFormat.R16G16B16A16_SFloat,
             cascadeCount);
+        _previousDisplacement = CreateTextureArray(
+            "Ocean Previous Displacement",
+            GraphicsFormat.R16G16B16A16_SFloat,
+            cascadeCount);
+        _previousNormalFoam = CreateTextureArray(
+            "Ocean Previous Normal Foam",
+            GraphicsFormat.R16G16B16A16_SFloat,
+            cascadeCount);
+        _cascadeBlendStartTimes = new double[cascadeCount];
+        _cascadeBlendDurations = new double[cascadeCount];
 
         int complexValueCount = cascadeCount
             * MapSize
@@ -325,6 +408,8 @@ public sealed class OceanWaveGenerator : MonoBehaviour
             cascade.simulationTime = 120f + Mathf.PI * cascadeIndex;
             GenerateSpectrum(cascadeIndex);
             UpdateCascade(cascadeIndex, 1f / _updatesPerSecond);
+            CopyCurrentToPrevious(cascadeIndex);
+            _cascadeBlendDurations[cascadeIndex] = cascadeCount / _updatesPerSecond;
         }
 
         _nextCascade = 0;
@@ -505,41 +590,127 @@ public sealed class OceanWaveGenerator : MonoBehaviour
 
     private void ApplyRendererProperties()
     {
-        if (_waterRenderer == null)
+        RefreshWaterRenderersIfNeeded();
+        if (_waterRenderers.Count == 0)
         {
             return;
         }
 
         _propertyBlock ??= new MaterialPropertyBlock();
-        _waterRenderer.GetPropertyBlock(_propertyBlock);
-        _propertyBlock.SetTexture(DisplacementArrayId, _displacement);
-        _propertyBlock.SetTexture(NormalFoamArrayId, _normalFoam);
-        _propertyBlock.SetInt(CascadeCountId, _resourcesReady ? ActiveCascadeCount : 0);
-
-        for (int cascadeIndex = 0; cascadeIndex < MaxCascades; ++cascadeIndex)
+        foreach (MeshRenderer renderer in _waterRenderers)
         {
-            Vector4 scale = Vector4.zero;
-            if (cascadeIndex < ActiveCascadeCount)
+            if (renderer == null)
             {
-                CascadeSettings cascade = _cascades[cascadeIndex];
-                scale = new Vector4(
-                    1f / cascade.tileLength.x,
-                    1f / cascade.tileLength.y,
-                    cascade.displacementScale,
-                    cascade.normalScale);
+                continue;
             }
 
-            _propertyBlock.SetVector(CascadeScaleIds[cascadeIndex], scale);
+            renderer.GetPropertyBlock(_propertyBlock);
+            _propertyBlock.SetTexture(DisplacementArrayId, _displacement);
+            _propertyBlock.SetTexture(NormalFoamArrayId, _normalFoam);
+            _propertyBlock.SetTexture(PreviousDisplacementArrayId, _previousDisplacement);
+            _propertyBlock.SetTexture(PreviousNormalFoamArrayId, _previousNormalFoam);
+            _propertyBlock.SetInt(CascadeCountId, _resourcesReady ? ActiveCascadeCount : 0);
+
+            for (int cascadeIndex = 0; cascadeIndex < MaxCascades; ++cascadeIndex)
+            {
+                Vector4 scale = Vector4.zero;
+                if (cascadeIndex < ActiveCascadeCount)
+                {
+                    CascadeSettings cascade = _cascades[cascadeIndex];
+                    scale = new Vector4(
+                        1f / cascade.tileLength.x,
+                        1f / cascade.tileLength.y,
+                        cascade.displacementScale,
+                        cascade.normalScale);
+                }
+
+                _propertyBlock.SetVector(CascadeScaleIds[cascadeIndex], scale);
+            }
+
+            renderer.SetPropertyBlock(_propertyBlock);
+        }
+    }
+
+    private void ApplyInterpolationProperties(double currentTime)
+    {
+        if (!_resourcesReady)
+        {
+            return;
         }
 
-        _waterRenderer.SetPropertyBlock(_propertyBlock);
+        RefreshWaterRenderersIfNeeded();
+        _propertyBlock ??= new MaterialPropertyBlock();
+        foreach (MeshRenderer renderer in _waterRenderers)
+        {
+            if (renderer == null)
+            {
+                continue;
+            }
+
+            renderer.GetPropertyBlock(_propertyBlock);
+            for (int cascadeIndex = 0; cascadeIndex < MaxCascades; ++cascadeIndex)
+            {
+                float blend = 1f;
+                if (cascadeIndex < ActiveCascadeCount
+                    && _cascadeBlendStartTimes != null
+                    && _cascadeBlendDurations != null)
+                {
+                    double duration = Math.Max(
+                        _cascadeBlendDurations[cascadeIndex],
+                        1.0 / 240.0);
+                    blend = Mathf.Clamp01((float)(
+                        (currentTime - _cascadeBlendStartTimes[cascadeIndex]) / duration));
+                }
+
+                _propertyBlock.SetFloat(CascadeBlendIds[cascadeIndex], blend);
+            }
+
+            renderer.SetPropertyBlock(_propertyBlock);
+        }
+    }
+
+    private void RefreshWaterRenderersIfNeeded()
+    {
+        if (!_rendererCacheDirty)
+        {
+            return;
+        }
+
+        _waterRenderers.Clear();
+        GetComponentsInChildren(true, _waterRenderers);
+        if (_waterRenderer != null && !_waterRenderers.Contains(_waterRenderer))
+        {
+            _waterRenderers.Add(_waterRenderer);
+        }
+
+        _rendererCacheDirty = false;
+    }
+
+    private void CopyCurrentToPrevious(int cascadeIndex)
+    {
+        if (_displacement == null || _normalFoam == null
+            || _previousDisplacement == null || _previousNormalFoam == null)
+        {
+            return;
+        }
+
+        Graphics.CopyTexture(
+            _displacement, cascadeIndex, 0,
+            _previousDisplacement, cascadeIndex, 0);
+        Graphics.CopyTexture(
+            _normalFoam, cascadeIndex, 0,
+            _previousNormalFoam, cascadeIndex, 0);
     }
 
     private void ClearRendererProperties()
     {
-        if (_waterRenderer != null)
+        RefreshWaterRenderersIfNeeded();
+        foreach (MeshRenderer renderer in _waterRenderers)
         {
-            _waterRenderer.SetPropertyBlock(null);
+            if (renderer != null)
+            {
+                renderer.SetPropertyBlock(null);
+            }
         }
     }
 
@@ -556,6 +727,10 @@ public sealed class OceanWaveGenerator : MonoBehaviour
         ReleaseTexture(ref _initialSpectrum);
         ReleaseTexture(ref _displacement);
         ReleaseTexture(ref _normalFoam);
+        ReleaseTexture(ref _previousDisplacement);
+        ReleaseTexture(ref _previousNormalFoam);
+        _cascadeBlendStartTimes = null;
+        _cascadeBlendDurations = null;
     }
 
     private static void ReleaseTexture(ref RenderTexture texture)
