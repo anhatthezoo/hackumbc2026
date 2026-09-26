@@ -95,7 +95,9 @@ namespace RoyaltyBoat.Water
             for (int index = 0; index < SampleCount; ++index)
             {
                 Vector3 worldPoint = transform.TransformPoint(localBuoyancyPoints[index]);
-                float surfaceHeight = hasOceanSamples ? sampledHeights[index] : 0f;
+                float surfaceHeight = hasOceanSamples && IsFinite(sampledHeights[index])
+                    ? sampledHeights[index]
+                    : 0f;
                 float submersion = Mathf.Clamp(
                     (surfaceHeight - worldPoint.y) / floatDepth,
                     0f,
@@ -106,6 +108,11 @@ namespace RoyaltyBoat.Water
                 }
 
                 Vector3 pointVelocity = body.GetPointVelocity(worldPoint);
+                if (!IsFinite(pointVelocity))
+                {
+                    continue;
+                }
+
                 Vector3 lift = -gravity * (buoyancyMultiplier * submersion * pointShare);
                 Vector3 damping = -pointVelocity * (waterDrag * submersion * pointShare);
                 Vector3 acceleration = lift + damping;
@@ -156,7 +163,8 @@ namespace RoyaltyBoat.Water
                 var samples = request.GetData<Vector4>();
                 for (int index = 0; index < Mathf.Min(samples.Length, SampleCount); ++index)
                 {
-                    sampledHeights[index] = samples[index].y;
+                    float sampledHeight = samples[index].y;
+                    sampledHeights[index] = IsFinite(sampledHeight) ? sampledHeight : 0f;
                 }
 
                 hasOceanSamples = true;
@@ -204,6 +212,16 @@ namespace RoyaltyBoat.Water
             localBuoyancyPoints[1] = new Vector3(maximum.x - insetX, bottom, minimum.z + insetZ);
             localBuoyancyPoints[2] = new Vector3(minimum.x + insetX, bottom, maximum.z - insetZ);
             localBuoyancyPoints[3] = new Vector3(maximum.x - insetX, bottom, maximum.z - insetZ);
+        }
+
+        private static bool IsFinite(float value)
+        {
+            return !float.IsNaN(value) && !float.IsInfinity(value);
+        }
+
+        private static bool IsFinite(Vector3 value)
+        {
+            return IsFinite(value.x) && IsFinite(value.y) && IsFinite(value.z);
         }
     }
 }

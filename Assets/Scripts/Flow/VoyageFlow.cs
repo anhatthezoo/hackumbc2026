@@ -86,6 +86,7 @@ namespace RoyaltyBoat.Flow
             }
 
             Transform shipTransform = builtShip.transform;
+            shipTransform.localScale = Vector3.one * 2.5f;
             shipTransform.SetPositionAndRotation(new Vector3(0f, 0.5f, 0f), Quaternion.identity);
 
             Rigidbody body = builtShip.GetComponent<Rigidbody>();
@@ -112,7 +113,22 @@ namespace RoyaltyBoat.Flow
             if (body != null)
             {
                 body.constraints = RigidbodyConstraints.FreezeRotationY;
+
+                BoatMovementController movement = builtShip.GetComponent<BoatMovementController>();
+                if (movement == null)
+                {
+                    builtShip.gameObject.AddComponent<BoatMovementController>();
+                }
             }
+
+            VoyageShipPresentation presentation =
+                builtShip.GetComponent<VoyageShipPresentation>();
+            if (presentation == null)
+            {
+                presentation = builtShip.gameObject.AddComponent<VoyageShipPresentation>();
+            }
+
+            presentation.Configure(builtShip);
 
             Camera gameplayCamera = Camera.main;
             if (gameplayCamera == null)

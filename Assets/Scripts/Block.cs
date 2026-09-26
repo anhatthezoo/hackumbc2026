@@ -25,22 +25,18 @@ public class Block : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        if (!collision.gameObject.CompareTag("Obstacle"))
-        {
-            return;
-        }
+        TryTakeObstacleDamage(collision.collider);
+    }
 
-        ObstacleDamage obstacle = collision.gameObject.GetComponent<ObstacleDamage>();
+    private void OnTriggerEnter(Collider other)
+    {
+        TryTakeObstacleDamage(other);
+    }
 
-        if (obstacle == null)
-        {
-            obstacle = collision.gameObject.GetComponentInParent<ObstacleDamage>();
-        }
-
-        if (obstacle != null)
-        {
-            TakeDamage(obstacle.Damage);
-        }
+    private void TryTakeObstacleDamage(Collider obstacleCollider)
+    {
+        ObstacleDamage obstacle = obstacleCollider.GetComponentInParent<ObstacleDamage>();
+        obstacle?.TryDamage(this);
     }
 
     public void TakeDamage(int amount)

@@ -1,0 +1,217 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace RoyaltyBoat.Gameplay
+{
+    [DisallowMultipleComponent]
+    public sealed class VoyageShipPresentation : MonoBehaviour
+    {
+        private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+        private static readonly int ColorId = Shader.PropertyToID("_Color");
+
+        private static readonly Color[] BlockColors =
+        {
+            new Color(0.95f, 0.22f, 0.12f),
+            new Color(1f, 0.67f, 0.08f),
+            new Color(0.08f, 0.55f, 0.95f),
+            new Color(0.2f, 0.82f, 0.45f)
+        };
+
+        private MaterialPropertyBlock propertyBlock;
+        private List<Block> displayedBlocks;
+
+        private Ship ship;
+        private GUIStyle instructionStyle;
+        private GUIStyle panelStyle;
+        private GUIStyle headingStyle;
+        private GUIStyle labelStyle;
+        private GUIStyle valueStyle;
+
+        public void Configure(Ship targetShip)
+        {
+            ship = targetShip;
+            EnsureCollisionBoxes();
+            ApplyVoyageColors();
+        }
+
+        private void Awake()
+        {
+            ship = GetComponent<Ship>();
+            EnsureRuntimeState();
+        }
+
+        private void Start()
+        {
+            Configure(ship);
+        }
+
+        private void EnsureCollisionBoxes()
+        {
+            if (ship == null)
+            {
+                return;
+            }
+
+            foreach (Block block in ship.GetComponentsInChildren<Block>(true))
+            {
+                Collider collisionBox = block.GetComponent<Collider>();
+                if (collisionBox == null)
+                {
+                    collisionBox = block.gameObject.AddComponent<BoxCollider>();
+                }
+
+                collisionBox.enabled = true;
+                collisionBox.isTrigger = false;
+            }
+        }
+
+        private void ApplyVoyageColors()
+        {
+            if (ship == null)
+            {
+                return;
+            }
+
+            EnsureRuntimeState();
+            Block[] blocks = ship.GetComponentsInChildren<Block>(true);
+            Dictionary<Block, Color> colors = new Dictionary<Block, Color>();
+            for (int index = 0; index < blocks.Length; ++index)
+            {
+                colors[blocks[index]] = BlockColors[index % BlockColors.Length];
+            }
+
+            foreach (Renderer shipRenderer in ship.GetComponentsInChildren<Renderer>(true))
+            {
+                Block owner = shipRenderer.GetComponentInParent<Block>();
+                if (owner == null || !colors.TryGetValue(owner, out Color color))
+                {
+                    continue;
+                }
+
+                shipRenderer.GetPropertyBlock(propertyBlock);
+                propertyBlock.SetColor(BaseColorId, color);
+                propertyBlock.SetColor(ColorId, color);
+                shipRenderer.SetPropertyBlock(propertyBlock);
+            }
+        }
+
+        private void OnGUI()
+        {
+            if (ship == null)
+            {
+                return;
+            }
+
+            BuildStyles();
+            DrawSteeringInstructions();
+            DrawHealthPanel();
+        }
+
+        private void BuildStyles()
+        {
+            if (instructionStyle != null)
+            {
+                return;
+            }
+
+            instructionStyle = new GUIStyle(GUI.skin.box)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 22,
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = new Color(1f, 0.84f, 0.34f) }
+            };
+
+            panelStyle = new GUIStyle(GUI.skin.box);
+            headingStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 18,
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = Color.white }
+            };
+            labelStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 14,
+                normal = { textColor = Color.white }
+            };
+            valueStyle = new GUIStyle(labelStyle)
+            {
+                alignment = TextAnchor.MiddleRight,
+                fontStyle = FontStyle.Bold
+            };
+        }
+
+        private void DrawSteeringInstructions()
+        {
+            const float width = 260f;
+            Rect instructions = new Rect((Screen.width - width) * 0.5f, 24f, width, 54f);
+            GUI.Box(instructions, "STEER  ↑  ↓", instructionStyle);
+        }
+
+        private void DrawHealthPanel()
+        {
+            EnsureRuntimeState();
+            displayedBlocks.Clear();
+            foreach (Block block in ship.Blocks)
+            {
+                if (block != null)
+                {
+                    displayedBlocks.Add(block);
+                }
+            }
+
+            float panelHeight = 58f + displayedBlocks.Count * 34f;
+            Rect panel = new Rect(24f, 24f, 280f, panelHeight);
+            GUI.Box(panel, GUIContent.none, panelStyle);
+            GUI.Label(new Rect(42f, 34f, 240f, 28f), "SHIP INTEGRITY", headingStyle);
+
+            for (int index = 0; index < displayedBlocks.Count; ++index)
+            {
+                Block block = displayedBlocks[index];
+                float normalizedHealth = block.MaxHealth <= 0
+                    ? 0f
+                    : Mathf.Clamp01((float)block.Health / block.MaxHealth);
+                float y = 68f + index * 34f;
+
+                GUI.Label(new Rect(42f, y, 72f, 24f), $"BLOCK {index + 1}", labelStyle);
+                Rect background = new Rect(116f, y + 4f, 120f, 16f);
+                DrawSolidRect(background, new Color(0.08f, 0.1f, 0.14f, 0.92f));
+                DrawSolidRect(
+                    new Rect(background.x + 2f, background.y + 2f,
+                        (background.width - 4f) * normalizedHealth, background.height - 4f),
+                    HealthColor(normalizedHealth));
+                GUI.Label(new Rect(238f, y, 48f, 24f),
+                    $"{block.Health}", valueStyle);
+            }
+        }
+
+        private void EnsureRuntimeState()
+        {
+            propertyBlock ??= new MaterialPropertyBlock();
+            displayedBlocks ??= new List<Block>();
+        }
+
+        private static void DrawSolidRect(Rect rect, Color color)
+        {
+            Color previous = GUI.color;
+            GUI.color = color;
+            GUI.DrawTexture(rect, Texture2D.whiteTexture);
+            GUI.color = previous;
+        }
+
+        private static Color HealthColor(float normalizedHealth)
+        {
+            if (normalizedHealth > 0.6f)
+            {
+                return new Color(0.18f, 0.9f, 0.34f);
+            }
+
+            if (normalizedHealth > 0.3f)
+            {
+                return new Color(1f, 0.72f, 0.12f);
+            }
+
+            return new Color(0.95f, 0.16f, 0.12f);
+        }
+    }
+}

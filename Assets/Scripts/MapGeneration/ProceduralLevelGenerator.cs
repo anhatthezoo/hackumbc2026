@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using RoyaltyBoat.Obstacles;
 using UnityEngine;
 
 namespace RoyaltyBoat.MapGeneration
@@ -235,11 +236,43 @@ namespace RoyaltyBoat.MapGeneration
             chunkObject.name = $"{index:00} - {authoring.ChunkId}";
             chunkObject.transform.localPosition = new Vector3(cursor, 0f, 0f);
             chunkObject.transform.localRotation = Quaternion.identity;
+            ConfigureNonBlockingObstacles(chunkObject);
 
             LevelChunkAuthoring instance = chunkObject.GetComponent<LevelChunkAuthoring>();
             float start = cursor;
             cursor += instance.Length;
             generatedChunks.Add(new GeneratedChunkInstance(index, start, cursor, definition, instance));
+        }
+
+        private static void ConfigureNonBlockingObstacles(GameObject chunkObject)
+        {
+            foreach (ObstacleDescriptor descriptor in
+                chunkObject.GetComponentsInChildren<ObstacleDescriptor>(true))
+            {
+                if (descriptor.Kind == ObstacleKind.AcidicWater)
+                {
+                    continue;
+                }
+
+                ObstacleDamage obstacleDamage = descriptor.GetComponent<ObstacleDamage>();
+                if (obstacleDamage == null)
+                {
+                    obstacleDamage = descriptor.gameObject.AddComponent<ObstacleDamage>();
+                }
+
+                obstacleDamage.Configure(GetContactDamage(descriptor.Kind), true);
+            }
+        }
+
+        private static int GetContactDamage(ObstacleKind kind)
+        {
+            return kind switch
+            {
+                ObstacleKind.Iceberg => 35,
+                ObstacleKind.FloatingDebris => 15,
+                ObstacleKind.GhostShip => 25,
+                _ => 10
+            };
         }
 
         private static int CombineSeed(int runSeed, int levelNumber)
