@@ -7,11 +7,17 @@
 #pragma kernel InverseFftRows
 #pragma kernel Transpose
 #pragma kernel Unpack
+#pragma multi_compile OCEAN_MAP_SIZE_512 OCEAN_MAP_SIZE_1024
 
 #define PI 3.14159265358979323846
 #define GRAVITY 9.81
-#define MAP_SIZE 1024
-#define FFT_STAGES 10
+#if defined(OCEAN_MAP_SIZE_512)
+    #define MAP_SIZE 512
+    #define FFT_STAGES 9
+#else
+    #define MAP_SIZE 1024
+    #define FFT_STAGES 10
+#endif
 #define NUM_SPECTRA 4
 #define TRANSPOSE_TILE 16
 
@@ -163,9 +169,7 @@ float2 SpectrumAmplitude(int2 pixel)
 uint FftIndex(uint bufferIndex, uint spectrum, uint2 pixel)
 {
     const uint planeSize = MAP_SIZE * MAP_SIZE;
-    const uint cascadeStride = planeSize * NUM_SPECTRA * 2;
-    return (uint)_CascadeIndex * cascadeStride
-        + bufferIndex * planeSize * NUM_SPECTRA
+    return bufferIndex * planeSize * NUM_SPECTRA
         + spectrum * planeSize
         + pixel.y * MAP_SIZE
         + pixel.x;

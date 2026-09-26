@@ -345,7 +345,6 @@ Shader "Ocean/Godot Ocean Water URP"
             uint mipCount;
             _NormalFoamArray.GetDimensions(0, width, height, layers, mipCount);
 
-            float2 dimensions = max(float2(width, height), 1.0);
             float3 gradientAndFoam = 0.0;
             int cascadeCount = min(clamp(_CascadeCount, 0, MAX_CASCADES), (int)layers);
 
@@ -354,21 +353,16 @@ Shader "Ocean/Godot Ocean Water URP"
             {
                 float4 scale = GetCascadeScale(cascade);
                 float2 uv = waterUV * scale.xy;
-                float pixelsPerMeter = dimensions.x * min(scale.x, scale.y);
-                float bilinearWeight = saturate(pixelsPerMeter * 0.1);
-                float4 bicubic = SampleNormalFoamBicubic(uv, cascade, dimensions);
-                float4 bilinear = SAMPLE_TEXTURE2D_ARRAY(
+                // Hardware bilinear filtering is sufficient at the active FFT
+                // densities. The previous path evaluated bicubic and bilinear
+                // samples together, then discarded most or all bicubic work.
+                float4 currentPacked = SAMPLE_TEXTURE2D_ARRAY(
                     _NormalFoamArray, sampler_NormalFoamArray, uv, cascade);
-                float4 currentPacked = lerp(bicubic, bilinear, bilinearWeight);
-                float4 previousBicubic = SamplePreviousNormalFoamBicubic(
-                    uv, cascade, dimensions);
-                float4 previousBilinear = SAMPLE_TEXTURE2D_ARRAY(
+                float4 previousPacked = SAMPLE_TEXTURE2D_ARRAY(
                     _PreviousNormalFoamArray,
                     sampler_PreviousNormalFoamArray,
                     uv,
                     cascade);
-                float4 previousPacked = lerp(
-                    previousBicubic, previousBilinear, bilinearWeight);
                 float4 packed = lerp(
                     previousPacked,
                     currentPacked,

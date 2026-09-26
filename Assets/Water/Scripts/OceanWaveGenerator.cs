@@ -12,12 +12,15 @@ using UnityEngine.Rendering;
 [RequireComponent(typeof(MeshRenderer))]
 public sealed class OceanWaveGenerator : MonoBehaviour
 {
-    // Match the reference project's high-quality simulation setting. The
-    // lower 256 setting erased most of the small whitecaps and normal detail.
-    private const int MapSize = 1024;
     private const int SpectrumCount = 4;
     private const int MaxCascades = 8;
     private const float Gravity = 9.81f;
+
+    public enum QualityPreset
+    {
+        Balanced512,
+        High1024
+    }
 
     [Serializable]
     public sealed class CascadeSettings
@@ -43,7 +46,8 @@ public sealed class OceanWaveGenerator : MonoBehaviour
     [SerializeField] private MeshRenderer _waterRenderer;
 
     [Header("Simulation")]
-    [SerializeField, Range(1f, 60f)] private float _updatesPerSecond = 60f;
+    [SerializeField] private QualityPreset _qualityPreset = QualityPreset.Balanced512;
+    [SerializeField, Range(1f, 60f)] private float _updatesPerSecond = 30f;
     [SerializeField, Min(0.1f)] private float _waterDepth = 20f;
     [SerializeField] private CascadeSettings[] _cascades = CreateDefaultCascades();
 
@@ -102,6 +106,24 @@ public sealed class OceanWaveGenerator : MonoBehaviour
         Shader.PropertyToID("_Cascade6Blend"),
         Shader.PropertyToID("_Cascade7Blend")
     };
+
+    public QualityPreset Quality => _qualityPreset;
+    public int SimulationResolution => MapSize;
+
+    public void SetQuality(QualityPreset qualityPreset)
+    {
+        if (_qualityPreset == qualityPreset)
+        {
+            return;
+        }
+
+        _qualityPreset = qualityPreset;
+        _needsRebuild = true;
+    }
+
+    private int MapSize => _qualityPreset == QualityPreset.High1024 ? 1024 : 512;
+
+    private int QualityCascadeLimit => _qualityPreset == QualityPreset.High1024 ? MaxCascades : 4;
 
     private static CascadeSettings[] CreateDefaultCascades()
     {
@@ -343,13 +365,15 @@ public sealed class OceanWaveGenerator : MonoBehaviour
         {
             return _cascades == null
                 ? 0
-                : Mathf.Clamp(_cascades.Length, 0, MaxCascades);
+                : Mathf.Clamp(_cascades.Length, 0, QualityCascadeLimit);
         }
     }
 
     private void RebuildResources()
     {
         ReleaseResources();
+
+        ConfigureComputeQualityKeyword();
 
         int cascadeCount = ActiveCascadeCount;
         if (cascadeCount == 0)
@@ -389,8 +413,9 @@ public sealed class OceanWaveGenerator : MonoBehaviour
         _cascadeBlendStartTimes = new double[cascadeCount];
         _cascadeBlendDurations = new double[cascadeCount];
 
-        int complexValueCount = cascadeCount
-            * MapSize
+        // Cascades update sequentially, so one FFT workspace can be reused by
+        // every cascade instead of reserving a full workspace for each one.
+        int complexValueCount = MapSize
             * MapSize
             * SpectrumCount
             * 2;
@@ -416,6 +441,16 @@ public sealed class OceanWaveGenerator : MonoBehaviour
         _resourcesReady = true;
         _needsRebuild = false;
         ApplyRendererProperties();
+    }
+
+    private void ConfigureComputeQualityKeyword()
+    {
+        _compute.DisableKeyword("OCEAN_MAP_SIZE_512");
+        _compute.DisableKeyword("OCEAN_MAP_SIZE_1024");
+        _compute.EnableKeyword(
+            _qualityPreset == QualityPreset.High1024
+                ? "OCEAN_MAP_SIZE_1024"
+                : "OCEAN_MAP_SIZE_512");
     }
 
     private RenderTexture CreateTextureArray(
