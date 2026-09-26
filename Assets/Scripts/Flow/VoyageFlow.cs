@@ -49,6 +49,7 @@ namespace RoyaltyBoat.Flow
 
             generator.GenerateLevel(runSeed, 1);
             PlaceBuiltShipOnWater();
+            CreateFinishPoint(generator);
         }
 
         public static void OpenShipBuilder()
@@ -144,6 +145,28 @@ namespace RoyaltyBoat.Flow
             }
 
             cameraController.SetTarget(shipTransform);
+        }
+
+        private static void CreateFinishPoint(ProceduralLevelGenerator generator)
+        {
+            if (builtShip == null || generator.GeneratedRoot == null ||
+                generator.GeneratedChunks.Count == 0)
+            {
+                Debug.LogError("Cannot place the finish point without a generated course and ship.");
+                return;
+            }
+
+            GeneratedChunkInstance cooldown =
+                generator.GeneratedChunks[generator.GeneratedChunks.Count - 1];
+            float finishX = Mathf.Lerp(cooldown.StartX, cooldown.EndX, 0.75f);
+
+            GameObject finishObject = new GameObject("Royal Finish Gate");
+            finishObject.transform.SetParent(generator.GeneratedRoot, false);
+            finishObject.transform.localPosition = new Vector3(finishX, 0f, 0f);
+
+            finishObject.AddComponent<BoxCollider>();
+            VoyageFinishPoint finishPoint = finishObject.AddComponent<VoyageFinishPoint>();
+            finishPoint.Configure(builtShip, generator.ActiveLevelNumber);
         }
     }
 }

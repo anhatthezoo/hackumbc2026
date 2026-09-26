@@ -1,3 +1,4 @@
+using RoyaltyBoat.Economy;
 using RoyaltyBoat.Flow;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -9,6 +10,8 @@ namespace RoyaltyBoat.UI
     public sealed class ShipBuildingFlowController : MonoBehaviour
     {
         private Button setSailButton;
+        private Label moneyBalance;
+        private IEconomyService economy;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void RegisterSceneLoadedHandler()
@@ -43,7 +46,12 @@ namespace RoyaltyBoat.UI
 
         private void OnEnable()
         {
-            setSailButton = GetComponent<UIDocument>().rootVisualElement.Q<Button>("set-sail-button");
+            VisualElement root = GetComponent<UIDocument>().rootVisualElement;
+            setSailButton = root.Q<Button>("set-sail-button");
+            moneyBalance = root.Q<Label>("money-balance");
+            EconomyAccess.ServiceChanged += HandleEconomyServiceChanged;
+            BindEconomy(EconomyAccess.Current);
+
             if (setSailButton == null)
             {
                 Debug.LogError("Ship-building UI is missing set-sail-button.", this);
@@ -56,9 +64,49 @@ namespace RoyaltyBoat.UI
 
         private void OnDisable()
         {
+            EconomyAccess.ServiceChanged -= HandleEconomyServiceChanged;
+            if (economy != null)
+            {
+                economy.BalanceChanged -= HandleBalanceChanged;
+                economy = null;
+            }
+
             if (setSailButton != null)
             {
                 setSailButton.clicked -= HandleSetSailClicked;
+            }
+        }
+
+        private void HandleEconomyServiceChanged(IEconomyService service)
+        {
+            BindEconomy(service);
+        }
+
+        private void BindEconomy(IEconomyService service)
+        {
+            if (economy != null)
+            {
+                economy.BalanceChanged -= HandleBalanceChanged;
+            }
+
+            economy = service;
+            if (economy != null)
+            {
+                economy.BalanceChanged += HandleBalanceChanged;
+                UpdateMoneyBalance(economy.Balance);
+            }
+        }
+
+        private void HandleBalanceChanged(int previousBalance, int currentBalance)
+        {
+            UpdateMoneyBalance(currentBalance);
+        }
+
+        private void UpdateMoneyBalance(int balance)
+        {
+            if (moneyBalance != null)
+            {
+                moneyBalance.text = $"COINS  {balance}";
             }
         }
 

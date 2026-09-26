@@ -87,7 +87,7 @@ namespace RoyaltyBoat.Economy
             BalanceChanged?.Invoke(previous, Balance);
         }
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void EnsureServiceExists()
         {
             if (Instance != null || FindAnyObjectByType<EconomyService>() != null)

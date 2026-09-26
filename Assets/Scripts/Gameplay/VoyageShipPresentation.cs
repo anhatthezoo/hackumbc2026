@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using RoyaltyBoat.Economy;
 using UnityEngine;
 
 namespace RoyaltyBoat.Gameplay
@@ -22,16 +23,33 @@ namespace RoyaltyBoat.Gameplay
 
         private Ship ship;
         private GUIStyle instructionStyle;
+        private GUIStyle balanceStyle;
         private GUIStyle panelStyle;
         private GUIStyle headingStyle;
         private GUIStyle labelStyle;
         private GUIStyle valueStyle;
+
+        private bool levelCompleteVisible;
+        private int completedLevel;
+        private float completionKingHealth;
+        private LevelRewardResult completionReward;
 
         public void Configure(Ship targetShip)
         {
             ship = targetShip;
             EnsureCollisionBoxes();
             ApplyVoyageColors();
+        }
+
+        public void ShowLevelComplete(
+            int level,
+            float normalizedKingHealth,
+            LevelRewardResult reward)
+        {
+            completedLevel = Mathf.Max(1, level);
+            completionKingHealth = Mathf.Clamp01(normalizedKingHealth);
+            completionReward = reward;
+            levelCompleteVisible = true;
         }
 
         private void Awake()
@@ -103,8 +121,14 @@ namespace RoyaltyBoat.Gameplay
             }
 
             BuildStyles();
+            DrawBalance();
             DrawSteeringInstructions();
             DrawHealthPanel();
+
+            if (levelCompleteVisible)
+            {
+                DrawCompletionPanel();
+            }
         }
 
         private void BuildStyles()
@@ -117,21 +141,27 @@ namespace RoyaltyBoat.Gameplay
             instructionStyle = new GUIStyle(GUI.skin.box)
             {
                 alignment = TextAnchor.MiddleCenter,
-                fontSize = 22,
+                fontSize = 25,
                 fontStyle = FontStyle.Bold,
                 normal = { textColor = new Color(1f, 0.84f, 0.34f) }
+            };
+
+            balanceStyle = new GUIStyle(instructionStyle)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 23
             };
 
             panelStyle = new GUIStyle(GUI.skin.box);
             headingStyle = new GUIStyle(GUI.skin.label)
             {
-                fontSize = 18,
+                fontSize = 21,
                 fontStyle = FontStyle.Bold,
                 normal = { textColor = Color.white }
             };
             labelStyle = new GUIStyle(GUI.skin.label)
             {
-                fontSize = 14,
+                fontSize = 16,
                 normal = { textColor = Color.white }
             };
             valueStyle = new GUIStyle(labelStyle)
@@ -139,6 +169,13 @@ namespace RoyaltyBoat.Gameplay
                 alignment = TextAnchor.MiddleRight,
                 fontStyle = FontStyle.Bold
             };
+        }
+
+        private void DrawBalance()
+        {
+            const float width = 190f;
+            Rect balance = new Rect(Screen.width - width - 24f, 24f, width, 54f);
+            GUI.Box(balance, $"COINS  {EconomyAccess.Balance}", balanceStyle);
         }
 
         private void DrawSteeringInstructions()
@@ -183,6 +220,52 @@ namespace RoyaltyBoat.Gameplay
                 GUI.Label(new Rect(238f, y, 48f, 24f),
                     $"{block.Health}", valueStyle);
             }
+        }
+
+        private void DrawCompletionPanel()
+        {
+            const float width = 430f;
+            const float height = 286f;
+            Rect panel = new Rect(
+                (Screen.width - width) * 0.5f,
+                (Screen.height - height) * 0.5f,
+                width,
+                height);
+
+            GUI.Box(panel, GUIContent.none, panelStyle);
+
+            GUIStyle centeredHeading = new GUIStyle(headingStyle)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 32,
+                normal = { textColor = new Color(1f, 0.84f, 0.34f) }
+            };
+            GUIStyle centeredLabel = new GUIStyle(labelStyle)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 20
+            };
+            GUIStyle totalStyle = new GUIStyle(centeredLabel)
+            {
+                fontSize = 25,
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = new Color(1f, 0.84f, 0.34f) }
+            };
+
+            GUI.Label(new Rect(panel.x + 20f, panel.y + 18f, width - 40f, 40f),
+                $"LEVEL {completedLevel} COMPLETE", centeredHeading);
+            GUI.Label(new Rect(panel.x + 20f, panel.y + 67f, width - 40f, 28f),
+                $"KING HEALTH  {completionKingHealth:P0}", centeredLabel);
+            GUI.Label(new Rect(panel.x + 45f, panel.y + 108f, width - 90f, 26f),
+                $"Completion pay                  +{completionReward.CompletionPay}", labelStyle);
+            GUI.Label(new Rect(panel.x + 45f, panel.y + 141f, width - 90f, 26f),
+                $"King health bonus             +{completionReward.HealthBonus}", labelStyle);
+            DrawSolidRect(new Rect(panel.x + 40f, panel.y + 176f, width - 80f, 2f),
+                new Color(1f, 0.84f, 0.34f, 0.7f));
+            GUI.Label(new Rect(panel.x + 20f, panel.y + 188f, width - 40f, 34f),
+                $"+{completionReward.TotalReward} COINS", totalStyle);
+            GUI.Label(new Rect(panel.x + 20f, panel.y + 232f, width - 40f, 28f),
+                $"NEW BALANCE  {EconomyAccess.Balance}", centeredLabel);
         }
 
         private void EnsureRuntimeState()

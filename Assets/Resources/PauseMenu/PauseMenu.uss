@@ -36,7 +36,7 @@
     -unity-text-align: middle-center;
     -unity-text-outline-width: 2px;
     -unity-text-outline-color: rgb(205, 108, 29);
-    font-size: 58px;
+    font-size: 64px;
     letter-spacing: 4px;
 }
 
@@ -44,7 +44,7 @@
     margin-top: -8px;
     color: rgb(255, 239, 197);
     -unity-font-definition: url("project://database/Assets/UI/Fonts/PatrickHand-Regular.ttf");
-    font-size: 23px;
+    font-size: 26px;
     letter-spacing: 4px;
 }
 
@@ -68,7 +68,7 @@
     border-bottom-left-radius: 20px;
     border-bottom-right-radius: 20px;
     -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
-    font-size: 31px;
+    font-size: 35px;
     letter-spacing: 3px;
 }
 
@@ -101,7 +101,7 @@
     margin-top: 7px;
     color: rgba(255, 239, 197, 0.72);
     -unity-font-definition: url("project://database/Assets/UI/Fonts/PatrickHand-Regular.ttf");
-    font-size: 18px;
+    font-size: 21px;
     letter-spacing: 3px;
 }
 

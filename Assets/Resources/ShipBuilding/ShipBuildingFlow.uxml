@@ -2,6 +2,7 @@
     <Style src="project://database/Assets/Resources/ShipBuilding/ShipBuildingFlow.uss" />
 
     <ui:VisualElement class="ship-building-overlay" picking-mode="Ignore">
+        <ui:Label name="money-balance" text="COINS  0" class="money-balance" />
         <ui:VisualElement class="ship-building-card">
             <ui:Label text="ROYAL SHIPYARD" class="ship-building-title" />
             <ui:Label text="DRAG BLOCKS ONTO YOUR SHIP, THEN LAUNCH" class="ship-building-hint" />
