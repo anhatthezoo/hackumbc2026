@@ -59,6 +59,8 @@ public sealed class OceanWaveGenerator : MonoBehaviour
     private ComputeBuffer _fftBuffer;
     private MaterialPropertyBlock _propertyBlock;
     private readonly List<MeshRenderer> _waterRenderers = new List<MeshRenderer>();
+    private readonly Vector4[] _physicsCascadeScales = new Vector4[MaxCascades];
+    private readonly float[] _physicsCascadeBlends = new float[MaxCascades];
     private double[] _cascadeBlendStartTimes;
     private double[] _cascadeBlendDurations;
     private bool _rendererCacheDirty = true;
@@ -119,6 +121,54 @@ public sealed class OceanWaveGenerator : MonoBehaviour
 
         _qualityPreset = qualityPreset;
         _needsRebuild = true;
+    }
+
+    public bool BindPhysicsSamplingResources(ComputeShader sampler, int kernel)
+    {
+        if (!_resourcesReady || sampler == null || _displacement == null ||
+            _previousDisplacement == null)
+        {
+            return false;
+        }
+
+        double currentTime = Application.isPlaying
+            ? Time.realtimeSinceStartupAsDouble
+            : 0.0;
+
+        for (int cascadeIndex = 0; cascadeIndex < MaxCascades; ++cascadeIndex)
+        {
+            Vector4 scale = Vector4.zero;
+            float blend = 1f;
+
+            if (cascadeIndex < ActiveCascadeCount)
+            {
+                CascadeSettings cascade = _cascades[cascadeIndex];
+                scale = new Vector4(
+                    1f / cascade.tileLength.x,
+                    1f / cascade.tileLength.y,
+                    cascade.displacementScale,
+                    cascade.normalScale);
+
+                if (_cascadeBlendStartTimes != null && _cascadeBlendDurations != null)
+                {
+                    double duration = Math.Max(
+                        _cascadeBlendDurations[cascadeIndex],
+                        1.0 / 240.0);
+                    blend = Mathf.Clamp01((float)(
+                        (currentTime - _cascadeBlendStartTimes[cascadeIndex]) / duration));
+                }
+            }
+
+            _physicsCascadeScales[cascadeIndex] = scale;
+            _physicsCascadeBlends[cascadeIndex] = blend;
+        }
+
+        sampler.SetTexture(kernel, "_DisplacementArray", _displacement);
+        sampler.SetTexture(kernel, "_PreviousDisplacementArray", _previousDisplacement);
+        sampler.SetInt("_CascadeCount", ActiveCascadeCount);
+        sampler.SetVectorArray("_CascadeScales", _physicsCascadeScales);
+        sampler.SetFloats("_CascadeBlends", _physicsCascadeBlends);
+        return true;
     }
 
     private int MapSize => _qualityPreset == QualityPreset.High1024 ? 1024 : 512;

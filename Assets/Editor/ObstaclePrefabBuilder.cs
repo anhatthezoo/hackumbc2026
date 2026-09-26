@@ -24,16 +24,20 @@ public static class ObstaclePrefabBuilder
         Material metal = CreateLitMaterial("DebrisMetal", new Color(0.18f, 0.22f, 0.24f), 0.45f, 0.18f);
         Material acid = CreateTransparentMaterial("AcidSurface", new Color(0.38f, 0.95f, 0.08f, 0.68f), new Color(0.16f, 0.8f, 0.02f));
         Material acidBubble = CreateLitMaterial("AcidBubble", new Color(0.6f, 1f, 0.1f), 0f, 0.35f, new Color(0.25f, 1f, 0.02f));
+        Material ghostWood = CreateTransparentMaterial("GhostShip", new Color(0.2f, 0.85f, 0.78f, 0.62f), new Color(0.05f, 0.6f, 0.5f));
+        Material cannonballMaterial = CreateLitMaterial("GhostCannonball", new Color(0.08f, 0.12f, 0.14f), 0.6f, 0.25f);
 
         Mesh icebergMesh = CreateIcebergMesh();
+        GhostShipCannonball cannonball = BuildGhostShipCannonball(cannonballMaterial);
         BuildIceberg(icebergMesh, ice, snow);
         BuildFloatingLog(wood, darkWood);
         BuildDebrisCluster(wood, darkWood, metal);
         BuildAcidWater(acid, acidBubble);
+        BuildGhostShip(ghostWood, cannonball);
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log("Built iceberg, floating log, debris cluster, and acidic water prefabs.");
+        Debug.Log("Built iceberg, floating log, debris cluster, acidic water, and ghost ship prefabs.");
     }
 
     public static void BuildAndValidate()
@@ -68,7 +72,89 @@ public static class ObstaclePrefabBuilder
             throw new System.InvalidOperationException("AcidicWater collider must remain a trigger.");
         }
 
+        GameObject cannonball = RequirePrefab("GhostShipCannonball");
+        RequireComponent<GhostShipCannonball>(cannonball);
+        Rigidbody cannonballBody = RequireComponent<Rigidbody>(cannonball);
+        if (cannonballBody.useGravity)
+        {
+            throw new System.InvalidOperationException("GhostShipCannonball must not use gravity.");
+        }
+
+        GameObject ghostShip = RequirePrefab("GhostShip");
+        RequireComponent<ObstacleDescriptor>(ghostShip);
+        RequireComponent<GhostShipHazard>(ghostShip);
+        Rigidbody ghostBody = RequireComponent<Rigidbody>(ghostShip);
+        if (!ghostBody.isKinematic)
+        {
+            throw new System.InvalidOperationException("GhostShip must use a kinematic Rigidbody.");
+        }
+
         Debug.Log("Validated all obstacle prefab structures successfully.");
+    }
+
+    private static GhostShipCannonball BuildGhostShipCannonball(Material material)
+    {
+        GameObject root = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        root.name = "Ghost Ship Cannonball";
+        try
+        {
+            root.tag = "Obstacle";
+            root.transform.localScale = Vector3.one * 0.65f;
+            root.GetComponent<MeshRenderer>().sharedMaterial = material;
+
+            Rigidbody body = root.AddComponent<Rigidbody>();
+            body.mass = 4f;
+            body.useGravity = false;
+            body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+
+            GhostShipCannonball cannonball = root.AddComponent<GhostShipCannonball>();
+            cannonball.Configure(25, 8f);
+
+            GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, PrefabFolder + "/GhostShipCannonball.prefab");
+            return prefab.GetComponent<GhostShipCannonball>();
+        }
+        finally
+        {
+            Object.DestroyImmediate(root);
+        }
+    }
+
+    private static void BuildGhostShip(Material material, GhostShipCannonball cannonballPrefab)
+    {
+        GameObject root = new GameObject("Ghost Ship");
+        try
+        {
+            root.tag = "Obstacle";
+            root.AddComponent<ObstacleDescriptor>().Configure("ghost-ship", ObstacleKind.GhostShip, 4.5f, new Vector2(12f, 7f));
+
+            Rigidbody body = root.AddComponent<Rigidbody>();
+            body.mass = 500f;
+            body.useGravity = false;
+            body.isKinematic = true;
+            body.interpolation = RigidbodyInterpolation.Interpolate;
+
+            BoxCollider collider = root.AddComponent<BoxCollider>();
+            collider.center = new Vector3(0f, 1.25f, 0f);
+            collider.size = new Vector3(10f, 2.5f, 5f);
+
+            GhostShipHazard hazard = root.AddComponent<GhostShipHazard>();
+            hazard.Configure(cannonballPrefab, new Vector3(24f, 0f, 0f), 4f, 2.5f, 18f);
+
+            AddVisualPrimitive(
+                root.transform,
+                PrimitiveType.Cube,
+                "Primitive Ghost Ship",
+                new Vector3(0f, 1.25f, 0f),
+                new Vector3(10f, 2.5f, 5f),
+                Quaternion.identity,
+                material);
+
+            PrefabUtility.SaveAsPrefabAsset(root, PrefabFolder + "/GhostShip.prefab");
+        }
+        finally
+        {
+            Object.DestroyImmediate(root);
+        }
     }
 
     private static void BuildIceberg(Mesh mesh, Material ice, Material snow)

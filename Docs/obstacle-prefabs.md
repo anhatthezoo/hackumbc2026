@@ -7,6 +7,7 @@ These prefabs are authored building blocks for the future seeded map generator. 
 - `Iceberg.prefab` is a static, faceted collision obstacle. Place its root at the average water height (`Y = 0`).
 - `FloatingLog.prefab` and `DebrisCluster.prefab` are physical obstacles with lightweight two-point buoyancy. Their `SimpleBuoyantBody.WaterHeight` defaults to `0` and can later be updated by a CPU water-surface service.
 - `AcidicWater.prefab` is an 18 x 18 meter trigger region. Its collider spans from `Y = -3.5` to `Y = 0.5`, so modest visual waves do not create gaps in hazard detection.
+- `GhostShip.prefab` is the MVP skeleton/ghost-ship encounter. Its current art is a translucent cube primitive; it patrols beside the course and fires primitive sphere cannonballs at the nearest living player ship.
 
 Every prefab includes `ObstacleDescriptor`, which gives map generation a stable ID, kind, difficulty cost, and X/Z footprint without coupling the prefab to one generator implementation.
 
@@ -24,6 +25,8 @@ public interface IHazardDamageReceiver
 The volume groups colliders by their attached Rigidbody or transform root, so a multi-collider boat receives one damage tick instead of one tick per collider. When a target implements `IHazardDamageReceiver`, that receiver owns distribution of damage across its modules.
 
 Iceberg and debris damage remains impact-driven. The current King already converts collision speed into damage through `KingCollisionDamage`; future boat modules can use the same relative-impact approach.
+
+Ghost cannonballs deal 25 direct damage to the first `Block` or `KingHealth` they hit and then despawn. The ghost ship follows a short deterministic patrol rather than using navigation or enemy boat AI.
 
 ## Rebuilding
 

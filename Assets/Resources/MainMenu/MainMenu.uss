@@ -224,16 +224,8 @@
 }
 
 .credits-title-area {
-    margin-top: 4%;
+    margin-top: 5%;
     align-items: center;
-}
-
-.credits-crown {
-    height: 58px;
-    color: rgb(255, 191, 45);
-    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
-    -unity-text-align: middle-center;
-    font-size: 61px;
 }
 
 .credits-title {
@@ -301,11 +293,51 @@
 }
 
 .made-with {
-    margin-top: 16px;
+    margin-top: 8px;
     color: rgb(255, 239, 190);
     -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
     font-size: 19px;
     letter-spacing: 3px;
+}
+
+.technology-credit {
+    margin-top: 14px;
+    align-items: center;
+}
+
+.technology-heading {
+    color: rgb(255, 226, 143);
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
+    -unity-text-align: middle-center;
+    font-size: 18px;
+    letter-spacing: 3px;
+}
+
+.technology-link {
+    height: 34px;
+    margin-top: 2px;
+    padding-left: 14px;
+    padding-right: 14px;
+    color: rgb(255, 245, 210);
+    background-color: rgba(31, 70, 107, 0.82);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 2px;
+    border-bottom-color: rgb(232, 83, 53);
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/PatrickHand-Regular.ttf");
+    font-size: 19px;
+    transition-property: scale, background-color;
+    transition-duration: 0.08s;
+}
+
+.technology-link:hover {
+    scale: 1.02 1.02;
+    background-color: rgb(67, 101, 139);
 }
 
 .main-screen.is-compact .title-area {

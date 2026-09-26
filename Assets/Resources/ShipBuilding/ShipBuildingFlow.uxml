@@ -1,0 +1,11 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="project://database/Assets/Resources/ShipBuilding/ShipBuildingFlow.uss" />
+
+    <ui:VisualElement class="ship-building-overlay" picking-mode="Ignore">
+        <ui:VisualElement class="ship-building-card">
+            <ui:Label text="ROYAL SHIPYARD" class="ship-building-title" />
+            <ui:Label text="DRAG BLOCKS ONTO YOUR SHIP, THEN LAUNCH" class="ship-building-hint" />
+            <ui:Button name="set-sail-button" text="SET SAIL" class="set-sail-button" picking-mode="Position" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
