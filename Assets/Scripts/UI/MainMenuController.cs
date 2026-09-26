@@ -15,6 +15,7 @@ namespace RoyaltyBoat.UI
         private Button creditsButton;
         private Button quitButton;
         private Button backButton;
+        private Button oceanCreditButton;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()
@@ -56,11 +57,13 @@ namespace RoyaltyBoat.UI
             creditsButton = root.Q<Button>("credits-button");
             quitButton = root.Q<Button>("quit-button");
             backButton = root.Q<Button>("back-button");
+            oceanCreditButton = root.Q<Button>("ocean-credit-button");
 
             startButton.clicked += StartGame;
             creditsButton.clicked += ShowCredits;
             quitButton.clicked += QuitGame;
             backButton.clicked += ShowMainMenu;
+            oceanCreditButton.clicked += OpenOceanCredit;
             root.RegisterCallback<KeyDownEvent>(HandleKeyDown);
             root.RegisterCallback<GeometryChangedEvent>(HandleGeometryChanged);
 
@@ -73,6 +76,7 @@ namespace RoyaltyBoat.UI
             if (creditsButton != null) creditsButton.clicked -= ShowCredits;
             if (quitButton != null) quitButton.clicked -= QuitGame;
             if (backButton != null) backButton.clicked -= ShowMainMenu;
+            if (oceanCreditButton != null) oceanCreditButton.clicked -= OpenOceanCredit;
             VisualElement root = document != null ? document.rootVisualElement : null;
             if (root != null)
             {
@@ -123,6 +127,11 @@ namespace RoyaltyBoat.UI
 #else
             Application.Quit();
 #endif
+        }
+
+        private static void OpenOceanCredit()
+        {
+            Application.OpenURL("https://github.com/2Retr0/GodotOceanWaves/");
         }
     }
 }

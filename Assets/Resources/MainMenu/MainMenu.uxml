@@ -31,7 +31,6 @@
         <ui:Button name="back-button" text="‹  BACK" class="back-button" />
 
         <ui:VisualElement class="credits-title-area" picking-mode="Ignore">
-            <ui:Label text="♛" class="credits-crown" />
             <ui:Label text="CREDITS" class="credits-title" />
             <ui:Label text="THE CREW BEHIND THE VOYAGE" class="credits-subtitle" />
         </ui:VisualElement>
@@ -58,6 +57,10 @@
             </ui:VisualElement>
         </ui:VisualElement>
 
+        <ui:VisualElement class="technology-credit">
+            <ui:Label text="OCEAN TECHNOLOGY" class="technology-heading" />
+            <ui:Button name="ocean-credit-button" text="GodotOceanWaves by Ethan Truong / 2Retr0 — MIT License  ↗" class="technology-link" />
+        </ui:VisualElement>
         <ui:Label text="MADE WITH UNITY" class="made-with" />
     </ui:VisualElement>
 </ui:UXML>
