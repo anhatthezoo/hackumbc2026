@@ -12,13 +12,13 @@ namespace RoyaltyBoat.MapGeneration
         [SerializeField] private Transform generatedContentParent;
 
         [Header("Length")]
-        [SerializeField, Min(1)] private int baseHazardChunkCount = 6;
-        [SerializeField, Min(1)] private int levelsPerExtraChunk = 2;
-        [SerializeField, Min(1)] private int maximumHazardChunkCount = 10;
+        [SerializeField, Min(1)] private int baseHazardChunkCount = MapGenerationDefaults.BaseHazardChunkCount;
+        [SerializeField, Min(1)] private int levelsPerExtraChunk = MapGenerationDefaults.LevelsPerExtraChunk;
+        [SerializeField, Min(1)] private int maximumHazardChunkCount = MapGenerationDefaults.MaximumHazardChunkCount;
 
         [Header("Difficulty")]
-        [SerializeField, Min(0f)] private float baseDifficultyBudget = 10f;
-        [SerializeField, Min(0f)] private float difficultyPerLevel = 3f;
+        [SerializeField, Min(0f)] private float baseDifficultyBudget = MapGenerationDefaults.BaseDifficultyBudget;
+        [SerializeField, Min(0f)] private float difficultyPerLevel = MapGenerationDefaults.DifficultyPerLevel;
 
         [Header("Optional Preview")]
         [SerializeField] private bool generateOnStart;
@@ -36,6 +36,14 @@ namespace RoyaltyBoat.MapGeneration
 
         public event Action<int, int, float> CourseGenerated;
         public event Action CourseCleared;
+
+        public int GetHazardChunkCount(int levelNumber)
+        {
+            int safeLevel = Mathf.Max(1, levelNumber);
+            return Mathf.Min(
+                maximumHazardChunkCount,
+                baseHazardChunkCount + (safeLevel - 1) / levelsPerExtraChunk);
+        }
 
         private void Start()
         {
@@ -74,9 +82,7 @@ namespace RoyaltyBoat.MapGeneration
 
             int combinedSeed = CombineSeed(runSeed, ActiveLevelNumber);
             var random = new System.Random(combinedSeed);
-            int hazardCount = Mathf.Min(
-                maximumHazardChunkCount,
-                baseHazardChunkCount + (ActiveLevelNumber - 1) / levelsPerExtraChunk);
+            int hazardCount = GetHazardChunkCount(ActiveLevelNumber);
             float remainingDifficulty = baseDifficultyBudget + (ActiveLevelNumber - 1) * difficultyPerLevel;
             float cursor = 0f;
             LaneMask availableLanes = LaneMask.All;

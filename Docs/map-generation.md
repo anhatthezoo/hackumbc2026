@@ -22,7 +22,7 @@ Every course contains:
 2. Six weighted hazard chunks at level 1, increasing to ten at higher levels.
 3. One open-water cooldown chunk for the future finish dock.
 
-The initial hazard library includes iceberg slaloms, a debris field, an acid route with a safe right lane, a narrow iceberg passage, combined ice and debris, and an acid/debris gauntlet. Each prefab stores a visible authoring route used to verify that at least one reasonable path exists through the arrangement.
+The initial hazard library includes iceberg slaloms, a debris field, an acid route with a safe right lane, a narrow iceberg passage, combined ice and debris, an acid/debris gauntlet, and a low-weight ghost ship encounter from level 3 onward. Each prefab stores a visible authoring route used to verify that at least one reasonable path exists through the arrangement.
 
 Difficulty rises through a larger per-level budget, additional chunks every two levels, minimum-level gates for combined hazards, and selection weights. Repetition cooldowns avoid immediate duplicate chunks. Lane masks prevent incompatible authored entrances and exits from being joined.
 
@@ -32,4 +32,4 @@ Create a prefab with `LevelChunkAuthoring`, keep its root at the chunk entrance,
 
 Obstacle content should remain within the 54-meter course width and leave transition areas near local `X = 0` and `X = 80` open. Add currents, whirlpools, or enemy encounters as chunk-local gameplay components without adding another ocean renderer.
 
-The generated content can be rebuilt or validated from Unity under `Tools > Royalty Boat`.
+The generated content can be rebuilt or validated from Unity under `Tools > Royalty Boat`. Runtime generation, editor builders, and validation share `MapGenerationDefaults`; change course dimensions or default scaling there so the generated assets and validation expectations cannot drift apart.

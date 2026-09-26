@@ -1,8 +1,12 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class Ship : MonoBehaviour
 {
+    public const float DefaultAttachmentGridSize = 1f;
+    public const float DefaultAttachmentSnapDistance = 0.6f;
+
     [Header("Required Blocks")]
     [SerializeField] private Block coreBlock;
     [SerializeField] private Block kingBlock;
@@ -10,9 +14,10 @@ public class Ship : MonoBehaviour
     [Header("Ship Structure")]
     [SerializeField] private List<Block> blocks = new List<Block>();
     [SerializeField] private int blockCount;
-    [SerializeField, Min(0.01f)] private float attachmentGridSize = 1f;
+    [SerializeField, Min(0.01f)] private float attachmentGridSize = DefaultAttachmentGridSize;
     [Tooltip("How close a released block must be to a valid neighboring tile.")]
-    [SerializeField, Min(0f)] private float attachmentSnapDistance = 0.6f;
+    [FormerlySerializedAs("attachmentTolerance")]
+    [SerializeField, Min(0f)] private float attachmentSnapDistance = DefaultAttachmentSnapDistance;
 
     public Block CoreBlock => coreBlock;
     public Block KingBlock => kingBlock;

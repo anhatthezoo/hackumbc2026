@@ -6,7 +6,8 @@ namespace RoyaltyBoat.Obstacles
     {
         Iceberg,
         FloatingDebris,
-        AcidicWater
+        AcidicWater,
+        GhostShip
     }
 
     /// <summary>

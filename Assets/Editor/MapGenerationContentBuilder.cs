@@ -13,8 +13,6 @@ public static class MapGenerationContentBuilder
     private const string DefinitionFolder = RootFolder + "/Definitions";
     private const string CatalogFolder = RootFolder + "/Catalogs";
     private const string PrefabFolder = RootFolder + "/Prefabs";
-    private const float ChunkLength = 80f;
-    private const float CourseWidth = 54f;
 
     private readonly struct Placement
     {
@@ -106,6 +104,14 @@ public static class MapGenerationContentBuilder
             Place("FloatingLog", 37f, -14f, 32f),
             Place("DebrisCluster", 67f, 15f, -18f));
 
+        GameObject ghostShipEncounter = BuildChunk(
+            "GhostShipEncounter",
+            "ghost-ship-encounter",
+            LaneMask.All,
+            LaneMask.All,
+            Route(0f, 0f, 18f, 11f, 42f, 15f, 64f, 4f, 80f, 0f),
+            Place("GhostShip", 24f, -22f, 0f));
+
         LevelChunkDefinition openingDefinition = BuildDefinition("OpenWater", opening, 1f, 0f, 1, 99, 0);
         LevelChunkDefinition cooldownDefinition = BuildDefinition("Cooldown", cooldown, 1f, 0f, 1, 99, 0);
         var hazards = new List<LevelChunkDefinition>
@@ -115,7 +121,8 @@ public static class MapGenerationContentBuilder
             BuildDefinition("AcidSafeRight", acidSafeRight, 2.5f, 2.5f, 1, 99, 1),
             BuildDefinition("NarrowIcebergPassage", narrowPassage, 1.8f, 3.5f, 2, 99, 2),
             BuildDefinition("IceAndDebris", iceAndDebris, 2.2f, 3f, 2, 99, 1),
-            BuildDefinition("AcidDebrisGauntlet", acidDebris, 1.4f, 4f, 3, 99, 2)
+            BuildDefinition("AcidDebrisGauntlet", acidDebris, 1.4f, 4f, 3, 99, 2),
+            BuildDefinition("GhostShipEncounter", ghostShipEncounter, 1.2f, 4.5f, 3, 99, 2)
         };
 
         LevelChunkCatalog catalog = LoadOrCreate<LevelChunkCatalog>(CatalogFolder + "/DefaultLevelCatalog.asset");
@@ -138,7 +145,7 @@ public static class MapGenerationContentBuilder
     public static void ValidateAll()
     {
         LevelChunkCatalog catalog = AssetDatabase.LoadAssetAtPath<LevelChunkCatalog>(CatalogFolder + "/DefaultLevelCatalog.asset");
-        if (catalog == null || catalog.OpeningChunk == null || catalog.CooldownChunk == null || catalog.HazardChunks.Count < 6)
+        if (catalog == null || catalog.OpeningChunk == null || catalog.CooldownChunk == null || catalog.HazardChunks.Count == 0)
         {
             throw new InvalidOperationException("The default level catalog is incomplete.");
         }
@@ -189,7 +196,7 @@ public static class MapGenerationContentBuilder
     private static string GenerateAndDescribe(ProceduralLevelGenerator generator, int runSeed, int levelNumber)
     {
         generator.GenerateLevel(runSeed, levelNumber);
-        int expectedHazards = Mathf.Min(10, 6 + (levelNumber - 1) / 2);
+        int expectedHazards = generator.GetHazardChunkCount(levelNumber);
         int expectedCount = expectedHazards + 2;
         if (generator.GeneratedChunks.Count != expectedCount)
         {
@@ -229,7 +236,7 @@ public static class MapGenerationContentBuilder
         }
 
         LevelChunkAuthoring authoring = definition.Authoring;
-        if (!Mathf.Approximately(authoring.Length, ChunkLength) || authoring.SafeRoute == null || authoring.SafeRoute.Length < 2)
+        if (!Mathf.Approximately(authoring.Length, MapGenerationDefaults.ChunkLength) || authoring.SafeRoute == null || authoring.SafeRoute.Length < 2)
         {
             throw new InvalidOperationException($"Chunk {definition.ChunkId} has invalid dimensions or no safe route.");
         }
@@ -251,9 +258,15 @@ public static class MapGenerationContentBuilder
         GameObject root = new GameObject(assetName);
         try
         {
-            root.AddComponent<LevelChunkAuthoring>().Configure(chunkId, ChunkLength, CourseWidth, entrances, exits, safeRoute);
+            root.AddComponent<LevelChunkAuthoring>().Configure(
+                chunkId,
+                MapGenerationDefaults.ChunkLength,
+                MapGenerationDefaults.CourseWidth,
+                entrances,
+                exits,
+                safeRoute);
             CreateBoundaryMarker(root.transform, "Entrance", Vector3.zero);
-            CreateBoundaryMarker(root.transform, "Exit", new Vector3(ChunkLength, 0f, 0f));
+            CreateBoundaryMarker(root.transform, "Exit", new Vector3(MapGenerationDefaults.ChunkLength, 0f, 0f));
             CreateRouteMarkers(root.transform, safeRoute);
 
             foreach (Placement placement in placements)

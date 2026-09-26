@@ -6,7 +6,7 @@ public class BlockDragController : MonoBehaviour
 {
     [Header("Drag Settings")]
     [SerializeField] private bool draggingEnabled = true;
-    [SerializeField, Min(0.01f)] private float gridSize = 1f;
+    [SerializeField, Min(0.01f)] private float gridSize = Ship.DefaultAttachmentGridSize;
     [SerializeField, Min(0.1f)] private float raycastDistance = 100f;
     [SerializeField] private LayerMask draggableLayers = ~0;
 

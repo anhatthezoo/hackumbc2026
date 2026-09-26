@@ -6,11 +6,15 @@ namespace RoyaltyBoat.MapGeneration
     public sealed class LevelChunkAuthoring : MonoBehaviour
     {
         [SerializeField] private string chunkId = "chunk";
-        [SerializeField, Min(1f)] private float length = 80f;
-        [SerializeField, Min(1f)] private float courseWidth = 54f;
+        [SerializeField, Min(1f)] private float length = MapGenerationDefaults.ChunkLength;
+        [SerializeField, Min(1f)] private float courseWidth = MapGenerationDefaults.CourseWidth;
         [SerializeField] private LaneMask entranceLanes = LaneMask.All;
         [SerializeField] private LaneMask exitLanes = LaneMask.All;
-        [SerializeField] private Vector3[] safeRoute = { Vector3.zero, new Vector3(80f, 0f, 0f) };
+        [SerializeField] private Vector3[] safeRoute =
+        {
+            Vector3.zero,
+            new Vector3(MapGenerationDefaults.ChunkLength, 0f, 0f)
+        };
 
         public string ChunkId => chunkId;
         public float Length => length;
