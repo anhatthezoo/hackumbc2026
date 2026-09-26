@@ -2,6 +2,7 @@ using System;
 using RoyaltyBoat.Gameplay;
 using RoyaltyBoat.MapGeneration;
 using RoyaltyBoat.Obstacles;
+using RoyaltyBoat.Water;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -96,13 +97,22 @@ namespace RoyaltyBoat.Flow
                 body.useGravity = true;
             }
 
-            SimpleBuoyantBody buoyancy = builtShip.GetComponent<SimpleBuoyantBody>();
-            if (buoyancy == null)
+            SimpleBuoyantBody flatWaterBuoyancy = builtShip.GetComponent<SimpleBuoyantBody>();
+            if (flatWaterBuoyancy != null)
             {
-                buoyancy = builtShip.gameObject.AddComponent<SimpleBuoyantBody>();
+                UnityEngine.Object.Destroy(flatWaterBuoyancy);
             }
 
-            buoyancy.WaterHeight = 0f;
+            OceanWaveBuoyancy buoyancy = builtShip.GetComponent<OceanWaveBuoyancy>();
+            if (buoyancy == null)
+            {
+                buoyancy = builtShip.gameObject.AddComponent<OceanWaveBuoyancy>();
+            }
+
+            if (body != null)
+            {
+                body.constraints = RigidbodyConstraints.FreezeRotationY;
+            }
 
             Camera gameplayCamera = Camera.main;
             if (gameplayCamera == null)

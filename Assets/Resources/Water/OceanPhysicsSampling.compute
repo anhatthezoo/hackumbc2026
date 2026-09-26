@@ -1,0 +1,50 @@
+#pragma kernel SampleOcean
+
+#define MAX_CASCADES 8
+
+Texture2DArray<float4> _DisplacementArray;
+SamplerState sampler_DisplacementArray;
+Texture2DArray<float4> _PreviousDisplacementArray;
+SamplerState sampler_PreviousDisplacementArray;
+
+StructuredBuffer<float2> _SamplePositions;
+RWStructuredBuffer<float4> _SampleResults;
+
+int _SampleCount;
+int _CascadeCount;
+float4 _CascadeScales[MAX_CASCADES];
+float _CascadeBlends[MAX_CASCADES];
+
+[numthreads(8, 1, 1)]
+void SampleOcean(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)_SampleCount)
+    {
+        return;
+    }
+
+    float2 worldXZ = _SamplePositions[id.x];
+    float3 displacement = 0.0;
+    int cascadeCount = clamp(_CascadeCount, 0, MAX_CASCADES);
+
+    [loop]
+    for (int cascade = 0; cascade < cascadeCount; ++cascade)
+    {
+        float4 scale = _CascadeScales[cascade];
+        float2 uv = worldXZ * scale.xy;
+        float3 previousDisplacement = _PreviousDisplacementArray.SampleLevel(
+            sampler_PreviousDisplacementArray,
+            float3(uv, cascade),
+            0.0).xyz;
+        float3 currentDisplacement = _DisplacementArray.SampleLevel(
+            sampler_DisplacementArray,
+            float3(uv, cascade),
+            0.0).xyz;
+        displacement += lerp(
+            previousDisplacement,
+            currentDisplacement,
+            _CascadeBlends[cascade]) * scale.z;
+    }
+
+    _SampleResults[id.x] = float4(displacement, 1.0);
+}
