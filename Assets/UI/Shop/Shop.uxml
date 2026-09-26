@@ -1,0 +1,73 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI/Shop/Shop.uss?fileID=7433441132597879392&amp;guid=da7c32ccae02af64ca74305683b15e45&amp;type=3#Shop"/>
+    <ui:VisualElement name="shop-screen" picking-mode="Ignore" class="shop-screen" style="top: -2px; bottom: 3px; right: 0; left: 0;">
+        <ui:VisualElement name="inventory-panel" class="shop-panel" style="height: 282px; top: 485px; left: 3px;">
+            <ui:Label text="Inventory" class="shop-title"/>
+            <ui:VisualElement class="title-rule"/>
+            <ui:ScrollView style="height: 162px;">
+                <ui:VisualElement name="BlockSpot" class="shop-item">
+                    <ui:VisualElement class="block-preview">
+                        <ui:VisualElement class="block-top"/>
+                        <ui:VisualElement class="block-front">
+                            <ui:Label text="BLOCK" class="block-label"/>
+                        </ui:VisualElement>
+                        <ui:VisualElement class="block-side"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="item-details">
+                        <ui:Label text="Basic Block" class="item-name"/>
+                        <ui:Label text="$10" class="item-price"/>
+                        <ui:Button name="place-block-button" text="PLACE" class="buy-button"/>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:VisualElement name="BlockSpot" class="shop-item">
+                    <ui:VisualElement class="block-preview">
+                        <ui:VisualElement class="block-top"/>
+                        <ui:VisualElement class="block-front">
+                            <ui:Label text="BLOCK" class="block-label"/>
+                        </ui:VisualElement>
+                        <ui:VisualElement class="block-side"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="item-details">
+                        <ui:Label text="Basic Block" class="item-name"/>
+                        <ui:Label text="$10" class="item-price"/>
+                        <ui:Button name="place-block-button" text="PLACE" class="buy-button"/>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:ScrollView>
+        </ui:VisualElement>
+        <ui:VisualElement name="shop-panel" class="shop-panel" style="height: 282px; top: 181px; left: 3px;">
+            <ui:Label text="Shop" class="shop-title"/>
+            <ui:VisualElement class="title-rule"/>
+            <ui:ScrollView style="height: 162px;">
+                <ui:VisualElement name="BlockSpot" class="shop-item">
+                    <ui:VisualElement class="block-preview">
+                        <ui:VisualElement class="block-top"/>
+                        <ui:VisualElement class="block-front">
+                            <ui:Label text="BLOCK" class="block-label"/>
+                        </ui:VisualElement>
+                        <ui:VisualElement class="block-side"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="item-details">
+                        <ui:Label text="Basic Block" class="item-name"/>
+                        <ui:Label text="$10" class="item-price"/>
+                        <ui:Button name="buy-block-button" text="BUY" class="buy-button"/>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:VisualElement name="BlockSpot" class="shop-item">
+                    <ui:VisualElement class="block-preview">
+                        <ui:VisualElement class="block-top"/>
+                        <ui:VisualElement class="block-front">
+                            <ui:Label text="BLOCK" class="block-label"/>
+                        </ui:VisualElement>
+                        <ui:VisualElement class="block-side"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="item-details">
+                        <ui:Label text="Basic Block" class="item-name"/>
+                        <ui:Label text="$10" class="item-price"/>
+                        <ui:Button name="buy-block-button" text="BUY" class="buy-button"/>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:ScrollView>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

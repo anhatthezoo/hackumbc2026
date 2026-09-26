@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -10,6 +11,14 @@ public class BlockDragController : MonoBehaviour
     [SerializeField, Min(0.1f)] private float raycastDistance = 100f;
     [SerializeField] private LayerMask draggableLayers = ~0;
 
+    [Header("Placement Bounds")]
+    [SerializeField] private Transform placementCenter;
+    [SerializeField, Min(0f)] private float maximumPlacementDistance = 9f;
+
+    [Header("Drag Highlight")]
+    [SerializeField] private Color dragHighlightColor = new Color(0.1f, 1f, 0.2f, 1f);
+    [SerializeField, Min(0.001f)] private float dragHighlightWidth = 0.045f;
+
     private Camera dragCamera;
     private Transform draggedBlock;
     private Block draggedBlockComponent;
@@ -20,6 +29,8 @@ public class BlockDragController : MonoBehaviour
     private Vector3 pointerOffset;
     private bool previousKinematic;
     private bool previousUseGravity;
+    private readonly List<BlockDragOutline> activeHighlights =
+        new List<BlockDragOutline>();
 
     public bool DraggingEnabled
     {
@@ -145,6 +156,7 @@ public class BlockDragController : MonoBehaviour
         }
 
         Drag(pointerPosition);
+        ShowDragHighlights();
     }
 
     private void Drag(Vector2 pointerPosition)
@@ -186,7 +198,9 @@ public class BlockDragController : MonoBehaviour
                 + Mathf.Round((targetPosition.z - gridOrigin.z) / activeGridSize)
                 * activeGridSize);
 
-        draggedBlock.position = snappedPosition;
+        draggedBlock.position = ConstrainToPlacementBounds(
+            snappedPosition,
+            activeGridSize);
     }
 
     private bool TryGetSurfacePlacement(Ray ray, out Vector3 placementPosition)
@@ -232,7 +246,8 @@ public class BlockDragController : MonoBehaviour
             Vector3 possiblePosition = targetBlock.transform.position
                 + faceDirection * targetShip.AttachmentGridSize;
 
-            if (!targetShip.IsAttachmentPositionAvailable(
+            if (!IsWithinPlacementBounds(possiblePosition)
+                || !targetShip.IsAttachmentPositionAvailable(
                     possiblePosition,
                     draggedBlockComponent))
             {
@@ -285,6 +300,8 @@ public class BlockDragController : MonoBehaviour
 
     private void EndDrag()
     {
+        HideDragHighlights();
+
         if (draggedBody != null)
         {
             draggedBody.isKinematic = previousKinematic;
@@ -324,6 +341,86 @@ public class BlockDragController : MonoBehaviour
         draggedShip = null;
         snappingShip = null;
         draggedBody = null;
+    }
+
+    private bool IsWithinPlacementBounds(Vector3 position)
+    {
+        if (placementCenter == null || maximumPlacementDistance <= 0f)
+        {
+            return true;
+        }
+
+        Vector2 horizontalOffset = new Vector2(
+            position.x - placementCenter.position.x,
+            position.z - placementCenter.position.z);
+
+        return horizontalOffset.sqrMagnitude
+            <= maximumPlacementDistance * maximumPlacementDistance;
+    }
+
+    private Vector3 ConstrainToPlacementBounds(Vector3 position, float snapSize)
+    {
+        if (placementCenter == null
+            || maximumPlacementDistance <= 0f
+            || IsWithinPlacementBounds(position))
+        {
+            return position;
+        }
+
+        Vector3 center = placementCenter.position;
+        Vector3 constrainedPosition = position;
+
+        for (int step = 0; step < 64 && !IsWithinPlacementBounds(constrainedPosition); step++)
+        {
+            float offsetX = constrainedPosition.x - center.x;
+            float offsetZ = constrainedPosition.z - center.z;
+
+            if (Mathf.Abs(offsetX) >= Mathf.Abs(offsetZ))
+            {
+                constrainedPosition.x -= Mathf.Sign(offsetX) * snapSize;
+            }
+            else
+            {
+                constrainedPosition.z -= Mathf.Sign(offsetZ) * snapSize;
+            }
+        }
+
+        return constrainedPosition;
+    }
+
+    private void ShowDragHighlights()
+    {
+        HideDragHighlights();
+
+        Block[] highlightedBlocks = draggedShip != null
+            ? draggedShip.GetComponentsInChildren<Block>(true)
+            : new[] { draggedBlockComponent };
+
+        foreach (Block block in highlightedBlocks)
+        {
+            if (block == null)
+            {
+                continue;
+            }
+
+            BlockDragOutline outline =
+                block.gameObject.AddComponent<BlockDragOutline>();
+            outline.Configure(dragHighlightColor, dragHighlightWidth);
+            activeHighlights.Add(outline);
+        }
+    }
+
+    private void HideDragHighlights()
+    {
+        foreach (BlockDragOutline outline in activeHighlights)
+        {
+            if (outline != null)
+            {
+                Destroy(outline);
+            }
+        }
+
+        activeHighlights.Clear();
     }
 
     private Ship FindClosestShip(Vector3 position)

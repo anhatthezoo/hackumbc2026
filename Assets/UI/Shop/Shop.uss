@@ -1,0 +1,138 @@
+.shop-screen {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.shop-panel {
+    position: absolute;
+    left: 24px;
+    top: 50%;
+    translate: 0 -50%;
+    width: 340px;
+    min-height: 250px;
+    padding: 20px;
+    background-color: rgba(31, 35, 40, 0.94);
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: rgb(116, 122, 128);
+    border-right-color: rgb(116, 122, 128);
+    border-top-color: rgb(116, 122, 128);
+    border-bottom-color: rgb(116, 122, 128);
+}
+
+.shop-title {
+    color: white;
+    font-size: 30px;
+    -unity-font-style: bold;
+    margin-bottom: 8px;
+}
+
+.title-rule {
+    height: 2px;
+    margin-bottom: 18px;
+    background-color: rgb(116, 122, 128);
+}
+
+.shop-item {
+    flex-direction: row;
+    align-items: center;
+    padding: 14px;
+    background-color: rgb(52, 57, 63);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgb(93, 99, 105);
+    border-right-color: rgb(93, 99, 105);
+    border-top-color: rgb(93, 99, 105);
+    border-bottom-color: rgb(93, 99, 105);
+}
+
+.block-preview {
+    position: relative;
+    width: 112px;
+    height: 112px;
+    margin-right: 18px;
+    background-color: rgb(40, 44, 49);
+}
+
+.block-front {
+    position: absolute;
+    left: 22px;
+    top: 28px;
+    width: 66px;
+    height: 66px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgb(151, 157, 163);
+    border-left-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: rgb(91, 96, 101);
+    border-bottom-color: rgb(91, 96, 101);
+}
+
+.block-top {
+    position: absolute;
+    left: 22px;
+    top: 18px;
+    width: 66px;
+    height: 10px;
+    background-color: rgb(196, 201, 206);
+}
+
+.block-side {
+    position: absolute;
+    left: 88px;
+    top: 28px;
+    width: 10px;
+    height: 66px;
+    background-color: rgb(99, 104, 110);
+}
+
+.block-label {
+    color: rgb(43, 47, 51);
+    font-size: 11px;
+    -unity-font-style: bold;
+}
+
+.item-details {
+    flex-grow: 1;
+}
+
+.item-name {
+    color: white;
+    font-size: 18px;
+    -unity-font-style: bold;
+    margin-bottom: 7px;
+}
+
+.item-price {
+    color: rgb(214, 218, 221);
+    font-size: 17px;
+    margin-bottom: 15px;
+}
+
+.buy-button {
+    height: 38px;
+    color: white;
+    font-size: 15px;
+    -unity-font-style: bold;
+    background-color: rgb(78, 84, 91);
+    border-left-color: rgb(155, 161, 167);
+    border-right-color: rgb(155, 161, 167);
+    border-top-color: rgb(155, 161, 167);
+    border-bottom-color: rgb(155, 161, 167);
+}
+
+.buy-button:hover {
+    background-color: rgb(98, 105, 112);
+}
+
+.buy-button:active {
+    background-color: rgb(61, 66, 72);
+}
