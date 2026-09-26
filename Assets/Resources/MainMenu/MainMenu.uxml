@@ -13,7 +13,7 @@
 
         <ui:VisualElement class="menu-panel">
             <ui:Label text="SET SAIL" class="menu-kicker" />
-            <ui:Button name="start-button" text="START" class="menu-button primary-button" />
+            <ui:Button name="start-button" text="PLAY" class="menu-button primary-button" />
             <ui:Button name="credits-button" text="CREDITS" class="menu-button secondary-button" />
             <ui:Button name="quit-button" text="QUIT" class="menu-button secondary-button" />
         </ui:VisualElement>

@@ -1,3 +1,4 @@
+using RoyaltyBoat.Flow;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
@@ -7,8 +8,6 @@ namespace RoyaltyBoat.UI
     [RequireComponent(typeof(UIDocument))]
     public sealed class MainMenuController : MonoBehaviour
     {
-        private const string GameplaySceneName = "SampleScene";
-
         private UIDocument document;
         private VisualElement mainScreen;
         private VisualElement creditsScreen;
@@ -20,7 +19,8 @@ namespace RoyaltyBoat.UI
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()
         {
-            if (SceneManager.GetActiveScene().name != GameplaySceneName ||
+            if (SceneManager.GetActiveScene().name != VoyageFlow.GameplaySceneName ||
+                VoyageFlow.IsVoyageActive ||
                 FindAnyObjectByType<MainMenuController>() != null)
             {
                 return;
@@ -83,8 +83,7 @@ namespace RoyaltyBoat.UI
 
         private void StartGame()
         {
-            document.rootVisualElement.style.display = DisplayStyle.None;
-            enabled = false;
+            VoyageFlow.OpenShipBuilder();
         }
 
         private void ShowCredits()
