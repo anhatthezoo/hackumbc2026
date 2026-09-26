@@ -1,0 +1,357 @@
+// Adapted from GodotOceanWaves by Ethan Truong (MIT).
+// See Assets/Water/LICENSE-GodotOceanWaves.txt.
+
+#pragma kernel ClearOutputs
+#pragma kernel GenerateSpectrum
+#pragma kernel UpdateSpectrum
+#pragma kernel InverseFftRows
+#pragma kernel Transpose
+#pragma kernel Unpack
+
+#define PI 3.14159265358979323846
+#define GRAVITY 9.81
+#define MAP_SIZE 1024
+#define FFT_STAGES 10
+#define NUM_SPECTRA 4
+#define TRANSPOSE_TILE 16
+
+RWTexture2DArray<float4> _InitialSpectrum;
+RWTexture2DArray<float4> _DisplacementArray;
+RWTexture2DArray<float4> _NormalFoamArray;
+RWStructuredBuffer<float2> _FftBuffer;
+
+int _CascadeIndex;
+int _CascadeCount;
+int2 _SpectrumSeed;
+float4 _TileLength;
+float _Alpha;
+float _PeakFrequency;
+float _WindSpeed;
+float _WindAngle;
+float _Depth;
+float _Swell;
+float _Detail;
+float _Spread;
+float _SimulationTime;
+float _Whitecap;
+float _FoamGrowRate;
+float _FoamDecayRate;
+
+groupshared float2 _FftShared[MAP_SIZE * 2];
+groupshared float2 _TransposeShared[TRANSPOSE_TILE * (TRANSPOSE_TILE + 1)];
+
+float2 ComplexExp(float value)
+{
+    float sineValue;
+    float cosineValue;
+    sincos(value, sineValue, cosineValue);
+    return float2(cosineValue, sineValue);
+}
+
+float2 ComplexMultiply(float2 a, float2 b)
+{
+    return float2(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x);
+}
+
+float2 ComplexConjugate(float2 value)
+{
+    return float2(value.x, -value.y);
+}
+
+float2 SanitizeComplex(float2 value)
+{
+    return all(value == value) && all(abs(value) < 1e20) ? value : 0.0;
+}
+
+float2 Hash(uint2 value)
+{
+    uint hashValue = value.y + 374761393u + value.x * 3266489917u;
+    hashValue = 2246822519u * (hashValue ^ (hashValue >> 15));
+    hashValue = 3266489917u * (hashValue ^ (hashValue >> 13));
+    uint result = hashValue ^ (hashValue >> 16);
+    uint2 pair = uint2(result, result * 48271u);
+    return float2((pair >> 1) & 0x7fffffffu) / float(0x7fffffffu);
+}
+
+float2 Gaussian(float2 uniformSample)
+{
+    float radius = sqrt(-2.0 * log(max(uniformSample.x, 1e-6)));
+    float angle = 2.0 * PI * uniformSample.y;
+    float sineValue;
+    float cosineValue;
+    sincos(angle, sineValue, cosineValue);
+    return radius * float2(cosineValue, sineValue);
+}
+
+float2 DispersionAndDerivative(float waveNumber)
+{
+    float scaledDepth = waveNumber * _Depth;
+    float tanhDepth = tanh(scaledDepth);
+    float dispersion = sqrt(GRAVITY * waveNumber * tanhDepth);
+    float derivative = 0.5 * GRAVITY
+        * (tanhDepth + scaledDepth * (1.0 - tanhDepth * tanhDepth))
+        / max(dispersion, 1e-6);
+    return float2(dispersion, derivative);
+}
+
+float LonguetHigginsNormalization(float shaping)
+{
+    float root = sqrt(max(shaping, 1e-6));
+    return shaping < 0.4
+        ? (0.5 / PI) + shaping * (0.220636 + shaping * (-0.109 + shaping * 0.090))
+        : rsqrt(PI) * (root * 0.5 + 0.0625 / root);
+}
+
+float LonguetHiggins(float shaping, float angle)
+{
+    return LonguetHigginsNormalization(shaping)
+        * pow(abs(cos(angle * 0.5)), 2.0 * shaping);
+}
+
+float HasselmannDirectionalSpread(float frequency, float peakFrequency, float angle)
+{
+    float ratio = frequency / peakFrequency;
+    float shaping = frequency <= peakFrequency
+        ? 6.97 * pow(abs(ratio), 4.06)
+        : 9.77 * pow(abs(ratio), -2.33 - 1.45 * (_WindSpeed * peakFrequency / GRAVITY - 1.17));
+    float swellShaping = 16.0 * tanh(peakFrequency / frequency) * _Swell * _Swell;
+    return LonguetHiggins(shaping + swellShaping, angle - _WindAngle);
+}
+
+float TmaSpectrum(float frequency)
+{
+    const float beta = 1.25;
+    const float gamma = 3.3;
+    float sigma = frequency <= _PeakFrequency ? 0.07 : 0.09;
+    float difference = frequency - _PeakFrequency;
+    float peakShape = exp(-(difference * difference)
+        / (2.0 * sigma * sigma * _PeakFrequency * _PeakFrequency));
+    float jonswap = (_Alpha * GRAVITY * GRAVITY)
+        / pow(frequency, 5.0)
+        * exp(-beta * pow(_PeakFrequency / frequency, 4.0))
+        * pow(gamma, peakShape);
+
+    float shallowFrequency = min(frequency * sqrt(_Depth / GRAVITY), 2.0);
+    float depthAttenuation = shallowFrequency <= 1.0
+        ? 0.5 * shallowFrequency * shallowFrequency
+        : 1.0 - 0.5 * (2.0 - shallowFrequency) * (2.0 - shallowFrequency);
+    return jonswap * depthAttenuation;
+}
+
+float2 SpectrumAmplitude(int2 pixel)
+{
+    float2 deltaWaveNumber = 2.0 * PI / _TileLength.xy;
+    float2 waveVector = (float2(pixel) - MAP_SIZE * 0.5) * deltaWaveNumber;
+    float waveNumber = length(waveVector) + 1e-6;
+    float direction = atan2(waveVector.x, waveVector.y);
+    float2 dispersion = DispersionAndDerivative(waveNumber);
+    float frequency = dispersion.x;
+    float normalization = dispersion.y / waveNumber
+        * deltaWaveNumber.x * deltaWaveNumber.y;
+    float spectrum = TmaSpectrum(frequency);
+    float directional = lerp(
+        0.5 / PI,
+        HasselmannDirectionalSpread(frequency, _PeakFrequency, direction),
+        1.0 - _Spread);
+    float detailSuppression = exp(
+        -(1.0 - _Detail) * (1.0 - _Detail) * waveNumber * waveNumber);
+    uint2 randomCoordinate = uint2(pixel + _SpectrumSeed);
+    return Gaussian(Hash(randomCoordinate))
+        * sqrt(max(2.0 * spectrum * directional * detailSuppression * normalization, 0.0));
+}
+
+uint FftIndex(uint bufferIndex, uint spectrum, uint2 pixel)
+{
+    const uint planeSize = MAP_SIZE * MAP_SIZE;
+    const uint cascadeStride = planeSize * NUM_SPECTRA * 2;
+    return (uint)_CascadeIndex * cascadeStride
+        + bufferIndex * planeSize * NUM_SPECTRA
+        + spectrum * planeSize
+        + pixel.y * MAP_SIZE
+        + pixel.x;
+}
+
+[numthreads(8, 8, 1)]
+void ClearOutputs(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= MAP_SIZE || id.y >= MAP_SIZE || id.z >= (uint)_CascadeCount)
+    {
+        return;
+    }
+
+    _DisplacementArray[id] = 0.0;
+    _NormalFoamArray[id] = 0.0;
+}
+
+[numthreads(8, 8, 1)]
+void GenerateSpectrum(uint3 dispatchId : SV_DispatchThreadID)
+{
+    if (dispatchId.x >= MAP_SIZE || dispatchId.y >= MAP_SIZE)
+    {
+        return;
+    }
+
+    int2 pixel = int2(dispatchId.xy);
+    int2 mirrored = int2(
+        (MAP_SIZE - pixel.x) % MAP_SIZE,
+        (MAP_SIZE - pixel.y) % MAP_SIZE);
+    float2 positive = SpectrumAmplitude(pixel);
+    float2 negative = ComplexConjugate(SpectrumAmplitude(mirrored));
+    _InitialSpectrum[int3(pixel, _CascadeIndex)] = float4(positive, negative);
+}
+
+[numthreads(8, 8, 1)]
+void UpdateSpectrum(uint3 dispatchId : SV_DispatchThreadID)
+{
+    if (dispatchId.x >= MAP_SIZE || dispatchId.y >= MAP_SIZE)
+    {
+        return;
+    }
+
+    uint2 pixel = dispatchId.xy;
+    float2 tileLength = max(abs(_TileLength.xy), 1e-3);
+    float2 waveVector = SanitizeComplex(
+        (float2(pixel) - MAP_SIZE * 0.5) * 2.0 * PI / tileLength);
+    float waveNumber = length(waveVector) + 1e-6;
+    float2 waveDirection = SanitizeComplex(waveVector / waveNumber);
+
+    float4 initial = _InitialSpectrum[int3(pixel, _CascadeIndex)];
+    float phase = sqrt(GRAVITY * waveNumber * tanh(waveNumber * _Depth))
+        * _SimulationTime;
+    float2 modulation = ComplexExp(phase);
+    float2 height = ComplexMultiply(initial.xy, modulation)
+        + ComplexMultiply(initial.zw, ComplexConjugate(modulation));
+    // A single non-finite coefficient poisons its complete FFT row and column.
+    // Clear invalid bins caused by zero-frequency floating-point edge cases.
+    height = SanitizeComplex(height);
+    float2 heightImaginary = float2(-height.y, height.x);
+
+    float2 displacementX = heightImaginary * waveDirection.y;
+    float2 displacementY = height;
+    float2 displacementZ = heightImaginary * waveDirection.x;
+
+    float2 heightDx = heightImaginary * waveVector.y;
+    float2 heightDz = heightImaginary * waveVector.x;
+    float2 displacementXDx = -height * waveVector.y * waveDirection.y;
+    float2 displacementZDz = -height * waveVector.x * waveDirection.x;
+    float2 displacementZDx = -height * waveVector.y * waveDirection.x;
+
+    _FftBuffer[FftIndex(0, 0, pixel)] = float2(
+        displacementX.x - displacementY.y,
+        displacementX.y + displacementY.x);
+    _FftBuffer[FftIndex(0, 1, pixel)] = float2(
+        displacementZ.x - heightDx.y,
+        displacementZ.y + heightDx.x);
+    _FftBuffer[FftIndex(0, 2, pixel)] = float2(
+        heightDz.x - displacementXDx.y,
+        heightDz.y + displacementXDx.x);
+    _FftBuffer[FftIndex(0, 3, pixel)] = float2(
+        displacementZDz.x - displacementZDx.y,
+        displacementZDz.y + displacementZDx.x);
+}
+
+[numthreads(MAP_SIZE, 1, 1)]
+void InverseFftRows(
+    uint3 groupId : SV_GroupID,
+    uint3 groupThreadId : SV_GroupThreadID)
+{
+    uint column = groupThreadId.x;
+    uint row = groupId.y;
+    uint spectrum = groupId.z;
+
+    _FftShared[column] = _FftBuffer[FftIndex(0, spectrum, uint2(column, row))];
+
+    [unroll]
+    for (uint stage = 0; stage < FFT_STAGES; ++stage)
+    {
+        GroupMemoryBarrierWithGroupSync();
+
+        uint stride = 1u << stage;
+        uint block = column / (2u * stride);
+        uint offset = column % stride;
+        uint midpoint = MAP_SIZE >> (stage + 1u);
+        uint read0 = stride * block + offset;
+        uint read1 = stride * (block + midpoint) + offset;
+        bool negativeTwiddle = (column % (2u * stride)) >= stride;
+
+        float2 twiddle = ComplexExp(PI / (float)stride * (float)offset);
+        if (negativeTwiddle)
+        {
+            twiddle = -twiddle;
+        }
+
+        uint readBuffer = stage & 1u;
+        uint writeBuffer = (stage + 1u) & 1u;
+        float2 upper = _FftShared[readBuffer * MAP_SIZE + read0];
+        float2 lower = _FftShared[readBuffer * MAP_SIZE + read1];
+        _FftShared[writeBuffer * MAP_SIZE + column]
+            = upper + ComplexMultiply(lower, twiddle);
+    }
+
+    _FftBuffer[FftIndex(1, spectrum, uint2(column, row))]
+        = _FftShared[(FFT_STAGES & 1u) * MAP_SIZE + column];
+}
+
+[numthreads(TRANSPOSE_TILE, TRANSPOSE_TILE, 1)]
+void Transpose(
+    uint3 groupId : SV_GroupID,
+    uint3 groupThreadId : SV_GroupThreadID,
+    uint3 dispatchId : SV_DispatchThreadID)
+{
+    uint spectrum = groupId.z;
+    uint sharedWrite = groupThreadId.y * (TRANSPOSE_TILE + 1) + groupThreadId.x;
+    _TransposeShared[sharedWrite]
+        = _FftBuffer[FftIndex(1, spectrum, dispatchId.xy)];
+
+    GroupMemoryBarrierWithGroupSync();
+
+    uint2 outputPixel = groupId.yx * TRANSPOSE_TILE + groupThreadId.xy;
+    uint sharedRead = groupThreadId.x * (TRANSPOSE_TILE + 1) + groupThreadId.y;
+    _FftBuffer[FftIndex(0, spectrum, outputPixel)]
+        = _TransposeShared[sharedRead];
+}
+
+[numthreads(8, 8, 1)]
+void Unpack(uint3 dispatchId : SV_DispatchThreadID)
+{
+    if (dispatchId.x >= MAP_SIZE || dispatchId.y >= MAP_SIZE)
+    {
+        return;
+    }
+
+    uint2 pixel = dispatchId.xy;
+    float signShift = (((pixel.x & 1u) ^ (pixel.y & 1u)) != 0u) ? -1.0 : 1.0;
+
+    float2 packed0 = _FftBuffer[FftIndex(1, 0, pixel)];
+    float2 packed1 = _FftBuffer[FftIndex(1, 1, pixel)];
+    float2 packed2 = _FftBuffer[FftIndex(1, 2, pixel)];
+    float2 packed3 = _FftBuffer[FftIndex(1, 3, pixel)];
+
+    float displacementX = packed0.x;
+    float displacementY = packed0.y;
+    float displacementZ = packed1.x;
+    _DisplacementArray[int3(pixel, _CascadeIndex)]
+        = float4(displacementX, displacementY, displacementZ, 0.0) * signShift;
+
+    float heightDx = packed1.y * signShift;
+    float heightDz = packed2.x * signShift;
+    float displacementXDx = packed2.y * signShift;
+    float displacementZDz = packed3.x * signShift;
+    float displacementZDx = packed3.y * signShift;
+
+    float jacobian = (1.0 + displacementXDx) * (1.0 + displacementZDz)
+        - displacementZDx * displacementZDx;
+    float foamSource = -min(0.0, jacobian - _Whitecap);
+    float foam = _NormalFoamArray[int3(pixel, _CascadeIndex)].a;
+    foam *= exp(-_FoamDecayRate);
+    foam += foamSource * _FoamGrowRate;
+    foam = saturate(foam);
+
+    float2 gradient = float2(heightDx, heightDz)
+        / (1.0 + abs(float2(displacementXDx, displacementZDz)));
+    _NormalFoamArray[int3(pixel, _CascadeIndex)]
+        = float4(gradient, displacementXDx, foam);
+}
+
+
+
