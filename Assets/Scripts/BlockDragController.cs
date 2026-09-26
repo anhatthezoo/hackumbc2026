@@ -46,6 +46,12 @@ public class BlockDragController : MonoBehaviour
         }
     }
 
+    public Transform PlacementCenter
+    {
+        get => placementCenter;
+        set => placementCenter = value;
+    }
+
     private void Awake()
     {
         dragCamera = GetComponent<Camera>();

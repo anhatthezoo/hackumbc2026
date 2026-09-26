@@ -22,6 +22,18 @@ public sealed class AdaptiveBuildGrid : MonoBehaviour
     private GameObject visualRoot;
     private Material lineMaterial;
 
+    public Camera ViewCamera
+    {
+        get => viewCamera;
+        set => viewCamera = value;
+    }
+
+    public Transform CenterTarget
+    {
+        get => centerTarget;
+        set => centerTarget = value;
+    }
+
     private void OnEnable()
     {
         RebuildGrid();
@@ -34,11 +46,21 @@ public sealed class AdaptiveBuildGrid : MonoBehaviour
 
     private void OnValidate()
     {
-        if (isActiveAndEnabled)
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.delayCall -= RebuildAfterValidation;
+        UnityEditor.EditorApplication.delayCall += RebuildAfterValidation;
+#endif
+    }
+
+#if UNITY_EDITOR
+    private void RebuildAfterValidation()
+    {
+        if (this != null && isActiveAndEnabled)
         {
             RebuildGrid();
         }
     }
+#endif
 
     private void LateUpdate()
     {

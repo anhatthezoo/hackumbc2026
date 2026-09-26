@@ -24,6 +24,20 @@ public class CameraOrbitController : MonoBehaviour
     private Vector3 FocusPosition =>
         (orbitTarget != null ? orbitTarget.position : Vector3.zero) + focusOffset;
 
+    public Transform OrbitTarget
+    {
+        get => orbitTarget;
+        set
+        {
+            orbitTarget = value;
+
+            if (isActiveAndEnabled)
+            {
+                InitializeFromCurrentView();
+            }
+        }
+    }
+
     private void Awake()
     {
         orbitCamera = GetComponent<Camera>();
