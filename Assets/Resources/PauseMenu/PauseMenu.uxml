@@ -1,0 +1,85 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="project://database/Assets/Resources/MainMenu/MainMenu.uss" />
+    <Style src="project://database/Assets/Resources/PauseMenu/PauseMenu.uss" />
+
+    <ui:VisualElement name="pause-overlay" class="pause-overlay is-hidden">
+        <ui:VisualElement name="pause-screen" class="pause-screen">
+            <ui:Label text="VOYAGE PAUSED" class="pause-title" />
+            <ui:Label text="THE SEA WILL WAIT" class="pause-subtitle" />
+            <ui:VisualElement class="pause-actions">
+                <ui:Button name="resume-button" text="RESUME" class="pause-button pause-primary" />
+                <ui:Button name="pause-settings-button" text="SETTINGS" class="pause-button" />
+                <ui:Button name="pause-credits-button" text="CREDITS" class="pause-button" />
+            </ui:VisualElement>
+            <ui:Label text="ESC  RESUME" class="escape-hint" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="pause-settings-screen" class="pause-subscreen is-hidden">
+            <ui:Button name="pause-settings-back-button" text="‹  BACK" class="back-button" />
+            <ui:VisualElement class="modal-heading" picking-mode="Ignore">
+                <ui:Label text="SETTINGS" class="screen-title" />
+                <ui:Label text="MAKE THE VOYAGE YOUR OWN" class="screen-subtitle" />
+            </ui:VisualElement>
+            <ui:VisualElement class="settings-card">
+                <ui:VisualElement class="setting-row">
+                    <ui:Label text="MASTER VOLUME" class="setting-label" />
+                    <ui:Slider name="volume-slider" low-value="0" high-value="1" value="1" class="volume-slider" />
+                </ui:VisualElement>
+                <ui:VisualElement class="card-divider" />
+                <ui:VisualElement class="setting-row">
+                    <ui:Label text="FULLSCREEN" class="setting-label" />
+                    <ui:Toggle name="fullscreen-toggle" class="fullscreen-toggle" />
+                </ui:VisualElement>
+                <ui:VisualElement class="card-divider" />
+                <ui:VisualElement class="setting-row">
+                    <ui:Label text="RESOLUTION" class="setting-label" />
+                    <ui:DropdownField name="resolution-dropdown" class="setting-dropdown" />
+                </ui:VisualElement>
+                <ui:VisualElement class="card-divider" />
+                <ui:VisualElement class="setting-row">
+                    <ui:Label text="V-SYNC" class="setting-label" />
+                    <ui:Toggle name="vsync-toggle" class="setting-toggle" />
+                </ui:VisualElement>
+                <ui:VisualElement class="card-divider" />
+                <ui:VisualElement class="setting-row">
+                    <ui:Label text="ANTI-ALIASING" class="setting-label" />
+                    <ui:DropdownField name="anti-aliasing-dropdown" class="setting-dropdown" />
+                </ui:VisualElement>
+                <ui:VisualElement class="card-divider" />
+                <ui:VisualElement class="setting-row">
+                    <ui:Label text="CAMERA SHAKE" class="setting-label" />
+                    <ui:Slider name="camera-shake-slider" low-value="0" high-value="1" value="0.65" class="setting-slider" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="pause-credits-screen" class="pause-subscreen is-hidden">
+            <ui:Button name="pause-credits-back-button" text="‹  BACK" class="back-button" />
+            <ui:VisualElement class="modal-heading" picking-mode="Ignore">
+                <ui:Label text="CREDITS" class="screen-title" />
+                <ui:Label text="THE CREW BEHIND THE VOYAGE" class="screen-subtitle" />
+            </ui:VisualElement>
+            <ui:VisualElement class="credits-card">
+                <ui:VisualElement class="credit-row">
+                    <ui:Label text="DYLAN SIMMONS" class="credit-name" />
+                    <ui:Label text="TEAM MEMBER" class="credit-role" />
+                </ui:VisualElement>
+                <ui:VisualElement class="card-divider" />
+                <ui:VisualElement class="credit-row">
+                    <ui:Label text="JACOB HAUPTMAN" class="credit-name" />
+                    <ui:Label text="TEAM MEMBER" class="credit-role" />
+                </ui:VisualElement>
+                <ui:VisualElement class="card-divider" />
+                <ui:VisualElement class="credit-row">
+                    <ui:Label text="ANH PHAM" class="credit-name" />
+                    <ui:Label text="TEAM MEMBER" class="credit-role" />
+                </ui:VisualElement>
+                <ui:VisualElement class="card-divider" />
+                <ui:VisualElement class="credit-row">
+                    <ui:Label text="DAVID GUAN" class="credit-name" />
+                    <ui:Label text="TEAM MEMBER" class="credit-role" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

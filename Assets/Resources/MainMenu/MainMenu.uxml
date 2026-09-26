@@ -2,61 +2,87 @@
     <Style src="project://database/Assets/Resources/MainMenu/MainMenu.uss" />
 
     <ui:VisualElement name="main-screen" class="screen main-screen">
+        <ui:VisualElement class="top-shade" picking-mode="Ignore" />
         <ui:VisualElement class="title-area" picking-mode="Ignore">
-            <ui:Label text="♛" class="crown" />
             <ui:VisualElement class="title-stack">
                 <ui:Label text="GAME NAME" class="game-title title-shadow" />
                 <ui:Label text="GAME NAME" class="game-title title-face" />
             </ui:VisualElement>
-            <ui:Label text="A ROYAL OCEAN ADVENTURE" class="tagline" />
         </ui:VisualElement>
-
         <ui:VisualElement class="menu-panel">
-            <ui:Label text="SET SAIL" class="menu-kicker" />
-            <ui:Button name="start-button" text="PLAY" class="menu-button primary-button" />
-            <ui:Button name="credits-button" text="CREDITS" class="menu-button secondary-button" />
-            <ui:Button name="quit-button" text="QUIT" class="menu-button secondary-button" />
-        </ui:VisualElement>
-
-        <ui:VisualElement class="crew-preview" picking-mode="Ignore">
-            <ui:Label text="THE CREW" class="crew-heading" />
-            <ui:Label text="Dylan S" class="crew-name" />
-            <ui:Label text="Jacob H" class="crew-name" />
-            <ui:Label text="Anh P" class="crew-name" />
-            <ui:Label text="David G" class="crew-name" />
+            <ui:Button name="start-button" text="▶  PLAY" class="menu-button primary-button" />
+            <ui:Button name="settings-button" text="⚙  SETTINGS" class="menu-button secondary-button" />
+            <ui:Button name="credits-button" text="●  CREDITS" class="menu-button secondary-button" />
+            <ui:Button name="quit-button" text="↪  QUIT" class="menu-button secondary-button" />
         </ui:VisualElement>
     </ui:VisualElement>
 
-    <ui:VisualElement name="credits-screen" class="screen credits-screen is-hidden">
-        <ui:Button name="back-button" text="‹  BACK" class="back-button" />
-
-        <ui:VisualElement class="credits-title-area" picking-mode="Ignore">
-            <ui:Label text="CREDITS" class="credits-title" />
-            <ui:Label text="THE CREW BEHIND THE VOYAGE" class="credits-subtitle" />
+    <ui:VisualElement name="settings-screen" class="screen modal-screen is-hidden">
+        <ui:Button name="settings-back-button" text="‹  BACK" class="back-button" />
+        <ui:VisualElement class="modal-heading" picking-mode="Ignore">
+            <ui:Label text="SETTINGS" class="screen-title" />
+            <ui:Label text="MAKE THE VOYAGE YOUR OWN" class="screen-subtitle" />
         </ui:VisualElement>
+        <ui:VisualElement class="settings-card">
+            <ui:VisualElement class="setting-row">
+                <ui:Label text="MASTER VOLUME" class="setting-label" />
+                <ui:Slider name="volume-slider" low-value="0" high-value="1" value="1" class="volume-slider" />
+            </ui:VisualElement>
+            <ui:VisualElement class="card-divider" />
+            <ui:VisualElement class="setting-row">
+                <ui:Label text="FULLSCREEN" class="setting-label" />
+                <ui:Toggle name="fullscreen-toggle" class="fullscreen-toggle" />
+            </ui:VisualElement>
+            <ui:VisualElement class="card-divider" />
+            <ui:VisualElement class="setting-row">
+                <ui:Label text="RESOLUTION" class="setting-label" />
+                <ui:DropdownField name="resolution-dropdown" class="setting-dropdown" />
+            </ui:VisualElement>
+            <ui:VisualElement class="card-divider" />
+            <ui:VisualElement class="setting-row">
+                <ui:Label text="V-SYNC" class="setting-label" />
+                <ui:Toggle name="vsync-toggle" class="setting-toggle" />
+            </ui:VisualElement>
+            <ui:VisualElement class="card-divider" />
+            <ui:VisualElement class="setting-row">
+                <ui:Label text="ANTI-ALIASING" class="setting-label" />
+                <ui:DropdownField name="anti-aliasing-dropdown" class="setting-dropdown" />
+            </ui:VisualElement>
+            <ui:VisualElement class="card-divider" />
+            <ui:VisualElement class="setting-row">
+                <ui:Label text="CAMERA SHAKE" class="setting-label" />
+                <ui:Slider name="camera-shake-slider" low-value="0" high-value="1" value="0.65" class="setting-slider" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
 
+    <ui:VisualElement name="credits-screen" class="screen modal-screen is-hidden">
+        <ui:Button name="credits-back-button" text="‹  BACK" class="back-button" />
+        <ui:VisualElement class="modal-heading" picking-mode="Ignore">
+            <ui:Label text="CREDITS" class="screen-title" />
+            <ui:Label text="THE CREW BEHIND THE VOYAGE" class="screen-subtitle" />
+        </ui:VisualElement>
         <ui:VisualElement class="credits-card">
             <ui:VisualElement class="credit-row">
-                <ui:Label text="DYLAN S" class="credit-name" />
-                <ui:Label text="ROLE / DISCIPLINE" class="credit-role" />
+                <ui:Label text="DYLAN SIMMONS" class="credit-name" />
+                <ui:Label text="TEAM MEMBER" class="credit-role" />
             </ui:VisualElement>
-            <ui:VisualElement class="credit-divider" />
+            <ui:VisualElement class="card-divider" />
             <ui:VisualElement class="credit-row">
-                <ui:Label text="JACOB H" class="credit-name" />
-                <ui:Label text="ROLE / DISCIPLINE" class="credit-role" />
+                <ui:Label text="JACOB HAUPTMAN" class="credit-name" />
+                <ui:Label text="TEAM MEMBER" class="credit-role" />
             </ui:VisualElement>
-            <ui:VisualElement class="credit-divider" />
+            <ui:VisualElement class="card-divider" />
             <ui:VisualElement class="credit-row">
-                <ui:Label text="ANH P" class="credit-name" />
-                <ui:Label text="ROLE / DISCIPLINE" class="credit-role" />
+                <ui:Label text="ANH PHAM" class="credit-name" />
+                <ui:Label text="TEAM MEMBER" class="credit-role" />
             </ui:VisualElement>
-            <ui:VisualElement class="credit-divider" />
+            <ui:VisualElement class="card-divider" />
             <ui:VisualElement class="credit-row">
-                <ui:Label text="DAVID G" class="credit-name" />
-                <ui:Label text="ROLE / DISCIPLINE" class="credit-role" />
+                <ui:Label text="DAVID GUAN" class="credit-name" />
+                <ui:Label text="TEAM MEMBER" class="credit-role" />
             </ui:VisualElement>
         </ui:VisualElement>
-
         <ui:VisualElement class="technology-credit">
             <ui:Label text="OCEAN TECHNOLOGY" class="technology-heading" />
             <ui:Button name="ocean-credit-button" text="GodotOceanWaves by Ethan Truong / 2Retr0 — MIT License  ↗" class="technology-link" />

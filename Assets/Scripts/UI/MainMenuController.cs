@@ -1,5 +1,6 @@
 using RoyaltyBoat.Flow;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 
@@ -10,12 +11,16 @@ namespace RoyaltyBoat.UI
     {
         private UIDocument document;
         private VisualElement mainScreen;
+        private VisualElement settingsScreen;
         private VisualElement creditsScreen;
         private Button startButton;
+        private Button settingsButton;
         private Button creditsButton;
         private Button quitButton;
-        private Button backButton;
+        private Button settingsBackButton;
+        private Button creditsBackButton;
         private Button oceanCreditButton;
+        private VisualSettingsUIBinder settingsBinder;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()
@@ -52,36 +57,59 @@ namespace RoyaltyBoat.UI
         {
             VisualElement root = document.rootVisualElement;
             mainScreen = root.Q<VisualElement>("main-screen");
+            settingsScreen = root.Q<VisualElement>("settings-screen");
             creditsScreen = root.Q<VisualElement>("credits-screen");
             startButton = root.Q<Button>("start-button");
+            settingsButton = root.Q<Button>("settings-button");
             creditsButton = root.Q<Button>("credits-button");
             quitButton = root.Q<Button>("quit-button");
-            backButton = root.Q<Button>("back-button");
+            settingsBackButton = root.Q<Button>("settings-back-button");
+            creditsBackButton = root.Q<Button>("credits-back-button");
             oceanCreditButton = root.Q<Button>("ocean-credit-button");
 
             startButton.clicked += StartGame;
+            settingsButton.clicked += ShowSettings;
             creditsButton.clicked += ShowCredits;
             quitButton.clicked += QuitGame;
-            backButton.clicked += ShowMainMenu;
+            settingsBackButton.clicked += ShowMainMenu;
+            creditsBackButton.clicked += ShowMainMenu;
             oceanCreditButton.clicked += OpenOceanCredit;
-            root.RegisterCallback<KeyDownEvent>(HandleKeyDown);
             root.RegisterCallback<GeometryChangedEvent>(HandleGeometryChanged);
 
+            settingsBinder = new VisualSettingsUIBinder(root);
             ShowMainMenu();
         }
 
         private void OnDisable()
         {
             if (startButton != null) startButton.clicked -= StartGame;
+            if (settingsButton != null) settingsButton.clicked -= ShowSettings;
             if (creditsButton != null) creditsButton.clicked -= ShowCredits;
             if (quitButton != null) quitButton.clicked -= QuitGame;
-            if (backButton != null) backButton.clicked -= ShowMainMenu;
+            if (settingsBackButton != null) settingsBackButton.clicked -= ShowMainMenu;
+            if (creditsBackButton != null) creditsBackButton.clicked -= ShowMainMenu;
             if (oceanCreditButton != null) oceanCreditButton.clicked -= OpenOceanCredit;
+            settingsBinder?.Dispose();
+            settingsBinder = null;
             VisualElement root = document != null ? document.rootVisualElement : null;
             if (root != null)
             {
-                root.UnregisterCallback<KeyDownEvent>(HandleKeyDown);
                 root.UnregisterCallback<GeometryChangedEvent>(HandleGeometryChanged);
+            }
+        }
+
+        private void Update()
+        {
+            if (Keyboard.current?.escapeKey.wasPressedThisFrame != true)
+            {
+                return;
+            }
+
+            bool subScreenOpen = !settingsScreen.ClassListContains("is-hidden") ||
+                                 !creditsScreen.ClassListContains("is-hidden");
+            if (subScreenOpen)
+            {
+                ShowMainMenu();
             }
         }
 
@@ -93,30 +121,32 @@ namespace RoyaltyBoat.UI
         private void ShowCredits()
         {
             mainScreen.AddToClassList("is-hidden");
+            settingsScreen.AddToClassList("is-hidden");
             creditsScreen.RemoveFromClassList("is-hidden");
-            backButton.Focus();
+            creditsBackButton.Focus();
+        }
+
+        private void ShowSettings()
+        {
+            mainScreen.AddToClassList("is-hidden");
+            creditsScreen.AddToClassList("is-hidden");
+            settingsScreen.RemoveFromClassList("is-hidden");
+            settingsBinder.FocusPrimaryControl();
         }
 
         private void ShowMainMenu()
         {
+            settingsScreen.AddToClassList("is-hidden");
             creditsScreen.AddToClassList("is-hidden");
             mainScreen.RemoveFromClassList("is-hidden");
             startButton.Focus();
-        }
-
-        private void HandleKeyDown(KeyDownEvent evt)
-        {
-            if (evt.keyCode == KeyCode.Escape && !creditsScreen.ClassListContains("is-hidden"))
-            {
-                ShowMainMenu();
-                evt.StopPropagation();
-            }
         }
 
         private void HandleGeometryChanged(GeometryChangedEvent evt)
         {
             bool compact = evt.newRect.width < 900f;
             mainScreen.EnableInClassList("is-compact", compact);
+            settingsScreen.EnableInClassList("is-compact", compact);
             creditsScreen.EnableInClassList("is-compact", compact);
         }
 

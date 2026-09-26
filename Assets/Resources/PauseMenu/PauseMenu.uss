@@ -1,0 +1,116 @@
+.pause-overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    align-items: center;
+    justify-content: center;
+    color: rgb(255, 240, 201);
+    background-color: rgba(8, 29, 51, 0.76);
+}
+
+.pause-screen {
+    width: 560px;
+    padding: 42px 48px 34px 48px;
+    align-items: center;
+    background-color: rgba(35, 68, 101, 0.98);
+    border-left-width: 3px;
+    border-right-width: 3px;
+    border-top-width: 3px;
+    border-bottom-width: 10px;
+    border-left-color: rgb(255, 220, 137);
+    border-right-color: rgb(255, 220, 137);
+    border-top-color: rgb(255, 220, 137);
+    border-bottom-color: rgb(24, 48, 75);
+    border-top-left-radius: 30px;
+    border-top-right-radius: 30px;
+    border-bottom-left-radius: 30px;
+    border-bottom-right-radius: 30px;
+}
+
+.pause-title {
+    height: 88px;
+    color: rgb(255, 229, 177);
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
+    -unity-text-align: middle-center;
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgb(205, 108, 29);
+    font-size: 58px;
+    letter-spacing: 4px;
+}
+
+.pause-subtitle {
+    margin-top: -8px;
+    color: rgb(255, 239, 197);
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/PatrickHand-Regular.ttf");
+    font-size: 23px;
+    letter-spacing: 4px;
+}
+
+.pause-actions {
+    width: 100%;
+    margin-top: 28px;
+}
+
+.pause-button {
+    height: 72px;
+    margin-bottom: 14px;
+    color: rgb(255, 239, 198);
+    background-color: rgb(66, 99, 134);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 7px;
+    border-bottom-color: rgb(26, 53, 82);
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    border-bottom-left-radius: 20px;
+    border-bottom-right-radius: 20px;
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
+    font-size: 31px;
+    letter-spacing: 3px;
+}
+
+.pause-primary {
+    color: rgb(28, 55, 88);
+    background-color: rgb(255, 191, 57);
+    border-bottom-color: rgb(211, 111, 26);
+}
+
+.pause-button:hover {
+    scale: 1.025 1.025;
+    translate: 0 -2px;
+}
+
+.pause-button:active {
+    scale: 0.98 0.98;
+    translate: 0 3px;
+}
+
+.pause-button:focus {
+    border-left-width: 3px;
+    border-right-width: 3px;
+    border-top-width: 3px;
+    border-left-color: rgb(255, 231, 167);
+    border-right-color: rgb(255, 231, 167);
+    border-top-color: rgb(255, 231, 167);
+}
+
+.escape-hint {
+    margin-top: 7px;
+    color: rgba(255, 239, 197, 0.72);
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/PatrickHand-Regular.ttf");
+    font-size: 18px;
+    letter-spacing: 3px;
+}
+
+.pause-subscreen {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    align-items: center;
+    background-color: rgba(8, 29, 51, 0.96);
+}
