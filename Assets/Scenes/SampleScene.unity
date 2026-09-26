@@ -538,7 +538,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::OceanWaveGenerator
   _compute: {fileID: 7200000, guid: 9e6439af3fe2a3349a97749943b628f3, type: 3}
   _waterRenderer: {fileID: 948573297}
-  _updatesPerSecond: 60
+  _qualityPreset: 0
+  _updatesPerSecond: 30
   _waterDepth: 20
   _cascades:
   - tileLength: {x: 88, y: 88}

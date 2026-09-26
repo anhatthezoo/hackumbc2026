@@ -22,9 +22,21 @@ This folder contains a Unity URP port of
 ## Usage
 
 Add `OceanWaveGenerator` to a sufficiently tessellated mesh renderer using
-`GodotOceanWater.mat`. The default three cascades match the source project's
-tile sizes and wave settings. The component creates and binds the displacement
-and normal/foam texture arrays automatically.
+`GodotOceanWater.mat`. The authored cascades match the source project's tile
+sizes and wave settings. The component creates and binds the displacement and
+normal/foam texture arrays automatically.
+
+## Performance profiles
+
+`Balanced512` is the default runtime profile. It simulates the first four
+cascades at 512 x 512 and schedules one cascade update 30 times per second.
+`High1024` retains the full authored cascade list at 1024 x 1024 for machines
+with substantially more GPU headroom.
+
+The FFT workspace is shared because cascades are updated sequentially. Approximate
+allocated GPU memory is 64 MiB for the default four-cascade balanced profile and
+304 MiB for the current five-cascade high profile, excluding driver overhead.
+The former implementation reserved roughly 560 MiB for the five-cascade setup.
 
 The material exposes body opacity, crest transparency, transmission color,
 and transmission strength. Troughs stay dark while elevated crests transmit
