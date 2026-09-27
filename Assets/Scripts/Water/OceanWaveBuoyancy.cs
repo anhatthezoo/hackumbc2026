@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -7,42 +9,35 @@ namespace RoyaltyBoat.Water
     [RequireComponent(typeof(Rigidbody))]
     public sealed class OceanWaveBuoyancy : MonoBehaviour
     {
-        private const int CornerProbeCount = 4;
-        private const int CenterProbeIndex = CornerProbeCount;
-        private const int SampleCount = CornerProbeCount + 1;
+        private struct HullSample
+        {
+            public Vector3 LocalCenter;
+            public Vector3 LocalExtents;
+            public float VolumeShare;
+        }
 
-        [Header("Buoyancy")]
-        [SerializeField, Min(0.05f)] private float floatDepth = 0.55f;
-        [SerializeField, Min(0f)] private float buoyancyMultiplier = 1.3f;
-        [SerializeField, Min(0f)] private float waterDrag = 0.35f;
-        [SerializeField, Min(0f)] private float waterAngularDrag = 0.3f;
-        [SerializeField, Range(0.1f, 1.5f)] private float maximumSubmersion = 1f;
-        [Tooltip("Maximum upward acceleration available to each mass-weighted hull section. Must remain above gravity so a submerged ship can recover.")]
-        [SerializeField, Min(10f)] private float maximumPointAcceleration = 20f;
-        [SerializeField, Min(0.1f)] private float maximumUpwardSpeed = 5f;
+        [Header("Flotation")]
+        [Tooltip("Fraction of a one-block-tall platform that rests below calm water.")]
+        [SerializeField, Range(0.08f, 0.5f)] private float targetSubmergedFraction = 0.18f;
+        [Tooltip("Vertical water resistance. This removes bounce without preventing the hull from following waves.")]
+        [SerializeField, Min(0f)] private float verticalWaterDamping = 7f;
+        [SerializeField, Min(0f)] private float waterAngularDrag = 1.2f;
+        [Tooltip("Safety limit for recovery acceleration at an individual hull sample.")]
+        [SerializeField, Min(10f)] private float maximumPointAcceleration = 45f;
+        [SerializeField, Min(0.1f)] private float maximumUpwardSpeed = 4f;
         [SerializeField, Min(0.1f)] private float maximumDownwardSpeed = 18f;
+        [Tooltip("Limits upward momentum when the hull leaves the water, preventing a recovered ship from flying.")]
+        [SerializeField, Min(0f)] private float maximumSurfaceExitSpeed = 1.25f;
 
-        [Header("Wave Alignment")]
-        [SerializeField, Min(0f)] private float waveAlignmentStrength = 3f;
-        [SerializeField, Min(0f)] private float waveAlignmentDamping = 0.5f;
-        [SerializeField, Min(0.1f)] private float maximumWaveAlignmentAcceleration = 2.25f;
-        [SerializeField, Min(0.1f)] private float surfaceNormalResponse = 8f;
-
-        [Header("Wave Sample Stabilization")]
+        [Header("Wave Sampling")]
         [SerializeField, Range(0.01f, 1f)] private float sampleResponse = 0.7f;
-        [SerializeField, Range(0f, 2f)] private float physicsWaveHeightMultiplier = 1.3f;
-        [SerializeField, Range(1f, 3f)] private float waveSlopeMultiplier = 1.5f;
+        [SerializeField, Range(0f, 2f)] private float physicsWaveHeightMultiplier = 1f;
         [SerializeField, Min(0.01f)] private float maximumSampleStep = 0.45f;
         [SerializeField, Min(0.1f)] private float maximumWaveDisplacement = 2f;
-        [SerializeField, Min(0.1f)] private float maximumCornerHeightDifference = 1.25f;
 
-        private readonly Vector3[] localBuoyancyPoints = new Vector3[SampleCount];
-        private readonly float[] cornerMassShares = new float[CornerProbeCount];
-        private readonly Vector2[] samplePositions = new Vector2[SampleCount];
-        private readonly float[] sampledHeights = new float[SampleCount];
-        private readonly Vector3[] worldCornerPoints = new Vector3[CornerProbeCount];
-        private readonly float[] cornerSurfaceHeights = new float[CornerProbeCount];
-        private Vector3 smoothedSurfaceNormal = Vector3.up;
+        private HullSample[] hullSamples = Array.Empty<HullSample>();
+        private Vector2[] samplePositions = Array.Empty<Vector2>();
+        private float[] sampledHeights = Array.Empty<float>();
 
         private Rigidbody body;
         private Ship ship;
@@ -57,20 +52,21 @@ namespace RoyaltyBoat.Water
         private int cachedBlockCount = -1;
 
         public bool HasOceanSamples => hasOceanSamples;
+        public int BuoyancyPointCount => hullSamples.Length;
 
         public float AverageSampledHeight
         {
             get
             {
-                if (sampledHeights == null || sampledHeights.Length == 0)
+                if (sampledHeights.Length == 0)
                 {
                     return 0f;
                 }
 
                 float total = 0f;
-                for (int index = 0; index < sampledHeights.Length; ++index)
+                foreach (float sampledHeight in sampledHeights)
                 {
-                    total += sampledHeights[index];
+                    total += sampledHeight;
                 }
 
                 return total / sampledHeights.Length;
@@ -83,26 +79,22 @@ namespace RoyaltyBoat.Water
             ship = GetComponent<Ship>();
             ocean = FindAnyObjectByType<OceanWaveGenerator>();
             samplingCompute = Resources.Load<ComputeShader>("Water/OceanPhysicsSampling");
-            BuildBuoyancyPoints();
 
             if (samplingCompute == null)
             {
                 Debug.LogError("Missing Resources/Water/OceanPhysicsSampling.compute.", this);
-                return;
+            }
+            else
+            {
+                sampleKernel = samplingCompute.FindKernel("SampleOcean");
             }
 
-            sampleKernel = samplingCompute.FindKernel("SampleOcean");
-            samplePositionBuffer = new ComputeBuffer(localBuoyancyPoints.Length, sizeof(float) * 2);
-            sampleResultBuffer = new ComputeBuffer(localBuoyancyPoints.Length, sizeof(float) * 4);
+            BuildHullSamples();
         }
 
         private void OnDestroy()
         {
-            requestVersion++;
-            samplePositionBuffer?.Release();
-            sampleResultBuffer?.Release();
-            samplePositionBuffer = null;
-            sampleResultBuffer = null;
+            ReleaseSampleBuffers();
         }
 
         private void FixedUpdate()
@@ -117,9 +109,12 @@ namespace RoyaltyBoat.Water
                 ocean = FindAnyObjectByType<OceanWaveGenerator>();
             }
 
-            if (ship != null && ship.BlockCount != cachedBlockCount)
+            int currentBlockCount = ship != null
+                ? ship.BlockCount
+                : GetComponentsInChildren<Block>(true).Length;
+            if (currentBlockCount != cachedBlockCount && !requestPending)
             {
-                BuildBuoyancyPoints();
+                BuildHullSamples();
             }
 
             ApplyBuoyancy();
@@ -129,162 +124,113 @@ namespace RoyaltyBoat.Water
 
         private void ApplyBuoyancy()
         {
-            Vector3 gravity = Physics.gravity;
-            Vector3 centerPoint = transform.TransformPoint(
-                localBuoyancyPoints[CenterProbeIndex]);
-            float centerSurfaceHeight = CastWaterProbe(
-                CenterProbeIndex,
-                centerPoint);
-
-            for (int index = 0; index < CornerProbeCount; ++index)
+            if (hullSamples.Length == 0)
             {
-                worldCornerPoints[index] = transform.TransformPoint(
-                    localBuoyancyPoints[index]);
-                float sampledCornerHeight = CastWaterProbe(
-                    index,
-                    worldCornerPoints[index]);
-                float amplifiedSlopeOffset = Mathf.Clamp(
-                    (sampledCornerHeight - centerSurfaceHeight) * waveSlopeMultiplier,
-                    -maximumCornerHeightDifference,
-                    maximumCornerHeightDifference);
-                cornerSurfaceHeights[index] = centerSurfaceHeight + amplifiedSlopeOffset;
+                return;
             }
 
-            UpdateSurfaceNormal();
+            Vector3 gravity = Physics.gravity;
+            float gravityMagnitude = gravity.magnitude;
+            Vector3 gravityDirection = gravityMagnitude > 0.001f
+                ? gravity / gravityMagnitude
+                : Vector3.down;
+            Matrix4x4 localToWorld = transform.localToWorldMatrix;
+            float totalSubmergedShare = 0f;
 
-            for (int index = 0; index < CornerProbeCount; ++index)
+            for (int index = 0; index < hullSamples.Length; ++index)
             {
-                Vector3 worldPoint = worldCornerPoints[index];
-                float surfaceHeight = cornerSurfaceHeights[index];
-                float submersion = Mathf.Clamp(
-                    (surfaceHeight - worldPoint.y) / floatDepth,
-                    0f,
-                    maximumSubmersion);
-                if (submersion <= 0f)
+                HullSample sample = hullSamples[index];
+                Vector3 worldCenter = localToWorld.MultiplyPoint3x4(sample.LocalCenter);
+                float verticalHalfExtent = GetWorldVerticalHalfExtent(
+                    localToWorld,
+                    sample.LocalExtents);
+                if (verticalHalfExtent <= 0.001f)
                 {
                     continue;
                 }
 
-                Vector3 pointVelocity = body.GetPointVelocity(worldPoint);
+                float surfaceHeight = GetSurfaceHeight(index);
+                float bottomHeight = worldCenter.y - verticalHalfExtent;
+                float topHeight = worldCenter.y + verticalHalfExtent;
+                float submergedFraction = Mathf.InverseLerp(
+                    bottomHeight,
+                    topHeight,
+                    surfaceHeight);
+                if (submergedFraction <= 0f)
+                {
+                    continue;
+                }
+
+                float supportedMass = body.mass * sample.VolumeShare;
+                float liftScale = submergedFraction / targetSubmergedFraction;
+                Vector3 liftForce = -gravity * (supportedMass * liftScale);
+
+                float submergedTop = Mathf.Min(surfaceHeight, topHeight);
+                Vector3 forcePoint = new Vector3(
+                    worldCenter.x,
+                    (bottomHeight + submergedTop) * 0.5f,
+                    worldCenter.z);
+                Vector3 pointVelocity = body.GetPointVelocity(forcePoint);
                 if (!IsFinite(pointVelocity))
                 {
                     continue;
                 }
 
-                Vector3 gravityDirection = gravity.sqrMagnitude > 0.001f
-                    ? gravity.normalized
-                    : Vector3.down;
                 Vector3 verticalVelocity = Vector3.Project(
                     pointVelocity,
                     gravityDirection);
-                float supportedMass = body.mass * cornerMassShares[index];
-                Vector3 liftForce = -gravity
-                    * (supportedMass * buoyancyMultiplier * submersion);
+                float dampingScale = Mathf.Sqrt(submergedFraction);
                 Vector3 dampingForce = -verticalVelocity
-                    * (supportedMass * waterDrag * submersion);
+                    * (supportedMass * verticalWaterDamping * dampingScale);
                 Vector3 force = Vector3.ClampMagnitude(
                     liftForce + dampingForce,
                     supportedMass * maximumPointAcceleration);
-                body.AddForceAtPosition(force, worldPoint, ForceMode.Force);
+                body.AddForceAtPosition(force, forcePoint, ForceMode.Force);
+                totalSubmergedShare += sample.VolumeShare * submergedFraction;
             }
 
-            body.AddTorque(
-                -body.angularVelocity * waterAngularDrag,
-                ForceMode.Acceleration);
+            if (totalSubmergedShare > 0f)
+            {
+                body.AddTorque(
+                    -body.angularVelocity
+                        * waterAngularDrag
+                        * Mathf.Sqrt(totalSubmergedShare),
+                    ForceMode.Acceleration);
+            }
 
-            Vector3 alignmentAxis = Vector3.Cross(
-                transform.up,
-                smoothedSurfaceNormal);
-            Vector3 rockingVelocity = Vector3.ProjectOnPlane(
-                body.angularVelocity,
-                smoothedSurfaceNormal);
-            Vector3 alignmentAcceleration = Vector3.ClampMagnitude(
-                alignmentAxis * waveAlignmentStrength
-                    - rockingVelocity * waveAlignmentDamping,
-                maximumWaveAlignmentAcceleration);
-            body.AddTorque(alignmentAcceleration, ForceMode.Acceleration);
+            if (totalSubmergedShare < targetSubmergedFraction * 0.2f)
+            {
+                LimitSurfaceExitSpeed(gravityDirection);
+            }
         }
 
-        private void UpdateSurfaceNormal()
-        {
-            Vector3 rearLeft = new Vector3(
-                worldCornerPoints[0].x,
-                cornerSurfaceHeights[0],
-                worldCornerPoints[0].z);
-            Vector3 rearRight = new Vector3(
-                worldCornerPoints[1].x,
-                cornerSurfaceHeights[1],
-                worldCornerPoints[1].z);
-            Vector3 frontLeft = new Vector3(
-                worldCornerPoints[2].x,
-                cornerSurfaceHeights[2],
-                worldCornerPoints[2].z);
-            Vector3 frontRight = new Vector3(
-                worldCornerPoints[3].x,
-                cornerSurfaceHeights[3],
-                worldCornerPoints[3].z);
-
-            Vector3 leftCenter = (rearLeft + frontLeft) * 0.5f;
-            Vector3 rightCenter = (rearRight + frontRight) * 0.5f;
-            Vector3 rearCenter = (rearLeft + rearRight) * 0.5f;
-            Vector3 frontCenter = (frontLeft + frontRight) * 0.5f;
-            Vector3 surfaceRight = rightCenter - leftCenter;
-            Vector3 surfaceForward = frontCenter - rearCenter;
-            Vector3 targetNormal = Vector3.Cross(surfaceForward, surfaceRight).normalized;
-
-            if (!IsFinite(targetNormal) || targetNormal.sqrMagnitude < 0.5f)
-            {
-                targetNormal = Vector3.up;
-            }
-            else if (Vector3.Dot(targetNormal, Vector3.up) < 0f)
-            {
-                targetNormal = -targetNormal;
-            }
-
-            float normalBlend = 1f - Mathf.Exp(
-                -surfaceNormalResponse * Time.fixedDeltaTime);
-            smoothedSurfaceNormal = Vector3.Slerp(
-                smoothedSurfaceNormal,
-                targetNormal,
-                normalBlend).normalized;
-        }
-
-        private float CastWaterProbe(int probeIndex, Vector3 hullPoint)
+        private float GetSurfaceHeight(int sampleIndex)
         {
             float oceanBaseHeight = ocean != null
                 ? ocean.transform.position.y
                 : 0f;
-            float waveOffset = hasOceanSamples && IsFinite(sampledHeights[probeIndex])
-                ? Mathf.Clamp(
-                    sampledHeights[probeIndex] * physicsWaveHeightMultiplier,
-                    -maximumWaveDisplacement,
-                    maximumWaveDisplacement)
-                : 0f;
-            float surfaceHeight = oceanBaseHeight + waveOffset;
+            float waveOffset = hasOceanSamples &&
+                sampleIndex < sampledHeights.Length &&
+                IsFinite(sampledHeights[sampleIndex])
+                    ? Mathf.Clamp(
+                        sampledHeights[sampleIndex] * physicsWaveHeightMultiplier,
+                        -maximumWaveDisplacement,
+                        maximumWaveDisplacement)
+                    : 0f;
+            return oceanBaseHeight + waveOffset;
+        }
 
-            // The rendered ocean has no Physics collider. Cast a vertical ray
-            // against the sampled wave plane at this hull corner instead.
-            float rayOriginHeight = Mathf.Max(
-                hullPoint.y + maximumWaveDisplacement + floatDepth,
-                surfaceHeight + 0.01f);
-            Ray waterRay = new Ray(
-                new Vector3(hullPoint.x, rayOriginHeight, hullPoint.z),
-                Vector3.down);
-            Plane sampledSurface = new Plane(
-                Vector3.up,
-                new Vector3(hullPoint.x, surfaceHeight, hullPoint.z));
-
-            if (sampledSurface.Raycast(waterRay, out float hitDistance))
+        private void LimitSurfaceExitSpeed(Vector3 gravityDirection)
+        {
+            Vector3 velocity = body.linearVelocity;
+            float upwardSpeed = Vector3.Dot(velocity, -gravityDirection);
+            if (upwardSpeed <= maximumSurfaceExitSpeed)
             {
-                Debug.DrawRay(
-                    waterRay.origin,
-                    waterRay.direction * hitDistance,
-                    Color.cyan,
-                    Time.fixedDeltaTime);
-                return waterRay.GetPoint(hitDistance).y;
+                return;
             }
 
-            return surfaceHeight;
+            velocity += gravityDirection * (upwardSpeed - maximumSurfaceExitSpeed);
+            body.linearVelocity = velocity;
         }
 
         private void LimitVerticalSpeed()
@@ -307,16 +253,16 @@ namespace RoyaltyBoat.Water
         {
             if (requestPending || ocean == null || samplingCompute == null ||
                 samplePositionBuffer == null || sampleResultBuffer == null ||
+                hullSamples.Length == 0 ||
                 !SystemInfo.supportsAsyncGPUReadback)
             {
                 return;
             }
 
-            int sampleCount = localBuoyancyPoints.Length;
-
-            for (int index = 0; index < sampleCount; ++index)
+            for (int index = 0; index < hullSamples.Length; ++index)
             {
-                Vector3 worldPoint = transform.TransformPoint(localBuoyancyPoints[index]);
+                Vector3 worldPoint = transform.TransformPoint(
+                    hullSamples[index].LocalCenter);
                 samplePositions[index] = new Vector2(worldPoint.x, worldPoint.z);
             }
 
@@ -326,10 +272,20 @@ namespace RoyaltyBoat.Water
             }
 
             samplePositionBuffer.SetData(samplePositions);
-            samplingCompute.SetInt("_SampleCount", sampleCount);
-            samplingCompute.SetBuffer(sampleKernel, "_SamplePositions", samplePositionBuffer);
-            samplingCompute.SetBuffer(sampleKernel, "_SampleResults", sampleResultBuffer);
-            samplingCompute.Dispatch(sampleKernel, Mathf.CeilToInt(sampleCount / 8f), 1, 1);
+            samplingCompute.SetInt("_SampleCount", hullSamples.Length);
+            samplingCompute.SetBuffer(
+                sampleKernel,
+                "_SamplePositions",
+                samplePositionBuffer);
+            samplingCompute.SetBuffer(
+                sampleKernel,
+                "_SampleResults",
+                sampleResultBuffer);
+            samplingCompute.Dispatch(
+                sampleKernel,
+                Mathf.CeilToInt(hullSamples.Length / 8f),
+                1,
+                1);
 
             requestPending = true;
             int version = requestVersion;
@@ -343,11 +299,11 @@ namespace RoyaltyBoat.Water
 
                 var samples = request.GetData<Vector4>();
                 bool hadSamples = hasOceanSamples;
+                int resultCount = Mathf.Min(samples.Length, sampledHeights.Length);
 
-                for (int index = 0; index < Mathf.Min(samples.Length, sampleCount); ++index)
+                for (int index = 0; index < resultCount; ++index)
                 {
                     float sampledHeight = samples[index].y;
-
                     if (!IsFinite(sampledHeight))
                     {
                         continue;
@@ -357,7 +313,6 @@ namespace RoyaltyBoat.Water
                         sampledHeight,
                         -maximumWaveDisplacement,
                         maximumWaveDisplacement);
-
                     if (!hadSamples)
                     {
                         sampledHeights[index] = sampledHeight;
@@ -378,130 +333,182 @@ namespace RoyaltyBoat.Water
             });
         }
 
-        private void BuildBuoyancyPoints()
+        private void BuildHullSamples()
         {
             Block[] blocks = GetComponentsInChildren<Block>(true);
             cachedBlockCount = ship != null ? ship.BlockCount : blocks.Length;
-            Bounds localBounds = new Bounds(Vector3.zero, Vector3.one);
+            var samples = new List<HullSample>(Mathf.Max(1, blocks.Length));
+            float totalVolume = 0f;
+
+            foreach (Block block in blocks)
+            {
+                if (block == null || !block.gameObject.activeInHierarchy ||
+                    !TryGetLocalBlockBounds(block, out Bounds localBounds))
+                {
+                    continue;
+                }
+
+                Vector3 size = localBounds.size;
+                float volume = Mathf.Max(0.001f, size.x * size.y * size.z);
+                samples.Add(new HullSample
+                {
+                    LocalCenter = localBounds.center,
+                    LocalExtents = localBounds.extents,
+                    VolumeShare = volume
+                });
+                totalVolume += volume;
+            }
+
+            if (samples.Count == 0)
+            {
+                samples.Add(new HullSample
+                {
+                    LocalCenter = Vector3.zero,
+                    LocalExtents = Vector3.one * 0.5f,
+                    VolumeShare = 1f
+                });
+                totalVolume = 1f;
+            }
+
+            for (int index = 0; index < samples.Count; ++index)
+            {
+                HullSample sample = samples[index];
+                sample.VolumeShare /= totalVolume;
+                samples[index] = sample;
+            }
+
+            hullSamples = samples.ToArray();
+            samplePositions = new Vector2[hullSamples.Length];
+            sampledHeights = new float[hullSamples.Length];
+            hasOceanSamples = false;
+            RecreateSampleBuffers();
+        }
+
+        private bool TryGetLocalBlockBounds(Block block, out Bounds localBounds)
+        {
+            localBounds = default;
             bool hasBounds = false;
 
-            foreach (Block block in blocks)
+            foreach (Collider blockCollider in
+                block.GetComponentsInChildren<Collider>(true))
             {
-                if (block == null || !block.gameObject.activeInHierarchy)
+                if (blockCollider == null || blockCollider.isTrigger ||
+                    !blockCollider.enabled)
                 {
                     continue;
                 }
 
-                Collider[] colliders = block.GetComponentsInChildren<Collider>(true);
-                foreach (Collider collider in colliders)
+                if (blockCollider is BoxCollider boxCollider)
                 {
-                    if (collider == null || collider.isTrigger || !collider.enabled)
+                    Vector3 colliderExtents = boxCollider.size * 0.5f;
+                    for (int corner = 0; corner < 8; ++corner)
                     {
-                        continue;
+                        Vector3 colliderCorner = boxCollider.center + new Vector3(
+                            (corner & 1) == 0
+                                ? -colliderExtents.x
+                                : colliderExtents.x,
+                            (corner & 2) == 0
+                                ? -colliderExtents.y
+                                : colliderExtents.y,
+                            (corner & 4) == 0
+                                ? -colliderExtents.z
+                                : colliderExtents.z);
+                        EncapsulateLocalPoint(
+                            blockCollider.transform.TransformPoint(colliderCorner),
+                            ref localBounds,
+                            ref hasBounds);
                     }
 
-                    Bounds worldBounds = collider.bounds;
-                    Vector3 localMinimum = transform.InverseTransformPoint(worldBounds.min);
-                    Vector3 localMaximum = transform.InverseTransformPoint(worldBounds.max);
-                    Bounds colliderBounds = new Bounds();
-                    colliderBounds.SetMinMax(
-                        Vector3.Min(localMinimum, localMaximum),
-                        Vector3.Max(localMinimum, localMaximum));
+                    continue;
+                }
 
-                    if (!hasBounds)
-                    {
-                        localBounds = colliderBounds;
-                        hasBounds = true;
-                    }
-                    else
-                    {
-                        localBounds.Encapsulate(colliderBounds.min);
-                        localBounds.Encapsulate(colliderBounds.max);
-                    }
+                // Block pieces currently use box colliders. This fallback keeps
+                // future collider types buoyant, with a conservative AABB volume.
+                Bounds worldBounds = blockCollider.bounds;
+                Vector3 minimum = worldBounds.min;
+                Vector3 maximum = worldBounds.max;
+                for (int corner = 0; corner < 8; ++corner)
+                {
+                    Vector3 worldCorner = new Vector3(
+                        (corner & 1) == 0 ? minimum.x : maximum.x,
+                        (corner & 2) == 0 ? minimum.y : maximum.y,
+                        (corner & 4) == 0 ? minimum.z : maximum.z);
+                    EncapsulateLocalPoint(
+                        worldCorner,
+                        ref localBounds,
+                        ref hasBounds);
                 }
             }
 
+            return hasBounds;
+        }
+
+        private void EncapsulateLocalPoint(
+            Vector3 worldPoint,
+            ref Bounds localBounds,
+            ref bool hasBounds)
+        {
+            Vector3 localPoint = transform.InverseTransformPoint(worldPoint);
             if (!hasBounds)
             {
-                localBounds = new Bounds(Vector3.zero, Vector3.one);
+                localBounds = new Bounds(localPoint, Vector3.zero);
+                hasBounds = true;
             }
-
-            Vector3 minimum = localBounds.min;
-            Vector3 maximum = localBounds.max;
-            float probeHeight = minimum.y + localBounds.size.y * 0.1f;
-
-            localBuoyancyPoints[0] = new Vector3(minimum.x, probeHeight, minimum.z);
-            localBuoyancyPoints[1] = new Vector3(maximum.x, probeHeight, minimum.z);
-            localBuoyancyPoints[2] = new Vector3(minimum.x, probeHeight, maximum.z);
-            localBuoyancyPoints[3] = new Vector3(maximum.x, probeHeight, maximum.z);
-            localBuoyancyPoints[CenterProbeIndex] = new Vector3(
-                localBounds.center.x,
-                probeHeight,
-                localBounds.center.z);
-
-            for (int index = 0; index < CornerProbeCount; ++index)
+            else
             {
-                cornerMassShares[index] = 0f;
+                localBounds.Encapsulate(localPoint);
             }
+        }
 
-            int contributingBlocks = 0;
-            foreach (Block block in blocks)
+        private void RecreateSampleBuffers()
+        {
+            ReleaseSampleBuffers();
+            if (samplingCompute == null || hullSamples.Length == 0)
             {
-                if (block == null || !block.gameObject.activeInHierarchy)
-                {
-                    continue;
-                }
-
-                Vector3 localBlockPosition = transform.InverseTransformPoint(
-                    block.transform.position);
-                float horizontalPosition = localBounds.size.x > 0.001f
-                    ? Mathf.InverseLerp(minimum.x, maximum.x, localBlockPosition.x)
-                    : 0.5f;
-                float depthPosition = localBounds.size.z > 0.001f
-                    ? Mathf.InverseLerp(minimum.z, maximum.z, localBlockPosition.z)
-                    : 0.5f;
-
-                cornerMassShares[0] += (1f - horizontalPosition) * (1f - depthPosition);
-                cornerMassShares[1] += horizontalPosition * (1f - depthPosition);
-                cornerMassShares[2] += (1f - horizontalPosition) * depthPosition;
-                cornerMassShares[3] += horizontalPosition * depthPosition;
-                contributingBlocks++;
-            }
-
-            if (contributingBlocks == 0)
-            {
-                for (int index = 0; index < CornerProbeCount; ++index)
-                {
-                    cornerMassShares[index] = 1f / CornerProbeCount;
-                }
-
                 return;
             }
 
-            for (int index = 0; index < CornerProbeCount; ++index)
-            {
-                cornerMassShares[index] /= contributingBlocks;
-            }
+            samplePositionBuffer = new ComputeBuffer(
+                hullSamples.Length,
+                sizeof(float) * 2);
+            sampleResultBuffer = new ComputeBuffer(
+                hullSamples.Length,
+                sizeof(float) * 4);
+        }
+
+        private void ReleaseSampleBuffers()
+        {
+            requestVersion++;
+            requestPending = false;
+            samplePositionBuffer?.Release();
+            sampleResultBuffer?.Release();
+            samplePositionBuffer = null;
+            sampleResultBuffer = null;
+        }
+
+        private static float GetWorldVerticalHalfExtent(
+            Matrix4x4 localToWorld,
+            Vector3 localExtents)
+        {
+            return Mathf.Abs(localToWorld.m10) * localExtents.x
+                + Mathf.Abs(localToWorld.m11) * localExtents.y
+                + Mathf.Abs(localToWorld.m12) * localExtents.z;
         }
 
         private void OnValidate()
         {
-            floatDepth = Mathf.Max(0.05f, floatDepth);
-            buoyancyMultiplier = Mathf.Max(0f, buoyancyMultiplier);
-            waterDrag = Mathf.Max(0f, waterDrag);
+            targetSubmergedFraction = Mathf.Clamp(
+                targetSubmergedFraction,
+                0.08f,
+                0.5f);
+            verticalWaterDamping = Mathf.Max(0f, verticalWaterDamping);
             waterAngularDrag = Mathf.Max(0f, waterAngularDrag);
             maximumPointAcceleration = Mathf.Max(10f, maximumPointAcceleration);
             maximumUpwardSpeed = Mathf.Max(0.1f, maximumUpwardSpeed);
             maximumDownwardSpeed = Mathf.Max(0.1f, maximumDownwardSpeed);
-            waveAlignmentStrength = Mathf.Max(0f, waveAlignmentStrength);
-            waveAlignmentDamping = Mathf.Max(0f, waveAlignmentDamping);
-            maximumWaveAlignmentAcceleration = Mathf.Max(
-                0.1f,
-                maximumWaveAlignmentAcceleration);
-            surfaceNormalResponse = Mathf.Max(0.1f, surfaceNormalResponse);
+            maximumSurfaceExitSpeed = Mathf.Max(0f, maximumSurfaceExitSpeed);
             maximumSampleStep = Mathf.Max(0.01f, maximumSampleStep);
             maximumWaveDisplacement = Mathf.Max(0.1f, maximumWaveDisplacement);
-            maximumCornerHeightDifference = Mathf.Max(0.1f, maximumCornerHeightDifference);
         }
 
         private static bool IsFinite(float value)
