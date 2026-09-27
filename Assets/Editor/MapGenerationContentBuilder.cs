@@ -14,6 +14,8 @@ public static class MapGenerationContentBuilder
     private const string DefinitionFolder = RootFolder + "/Definitions";
     private const string CatalogFolder = RootFolder + "/Catalogs";
     private const string PrefabFolder = RootFolder + "/Prefabs";
+    private static int nextIcebergVariant;
+
 
     private readonly struct Placement
     {
@@ -35,6 +37,8 @@ public static class MapGenerationContentBuilder
     public static void BuildAll()
     {
         EnsureFolders();
+        nextIcebergVariant = 0;
+
 
         GameObject opening = BuildChunk("OpenWater", "open-water", LaneMask.All, LaneMask.All,
             Route(0f, 0f, 160f, 0f));
@@ -411,7 +415,14 @@ public static class MapGenerationContentBuilder
 
     private static Placement Place(string prefabName, float x, float z, float yaw)
     {
-        string path = $"Assets/Obstacles/Prefabs/{prefabName}.prefab";
+        string resolvedName = prefabName;
+        if (prefabName == "Iceberg")
+        {
+            int variant = nextIcebergVariant++ % 7 + 1;
+            resolvedName = variant == 1 ? "Iceberg" : $"Iceberg{variant:00}";
+        }
+
+        string path = $"Assets/Obstacles/Prefabs/{resolvedName}.prefab";
         return new Placement(path, new Vector3(x, 0f, z), yaw, $"{prefabName} at {x:0}");
     }
 

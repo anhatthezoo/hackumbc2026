@@ -11,23 +11,28 @@ public static class ObstaclePrefabBuilder
     private const string MaterialFolder = RootFolder + "/Materials";
     private const string MeshFolder = RootFolder + "/Meshes";
     private const string PrefabFolder = RootFolder + "/Prefabs";
+    private const string IceModelFolder = "Assets/Meshes/Ice";
+
 
     [MenuItem("Tools/Royalty Boat/Rebuild Obstacle Prefabs")]
     public static void BuildAll()
     {
         EnsureFolders();
 
-        Material ice = CreateLitMaterial("Iceberg", new Color(0.55f, 0.86f, 0.94f), 0.05f, 0.3f);
-        Material snow = CreateLitMaterial("IcebergSnow", new Color(0.9f, 0.98f, 1f), 0f, 0.18f);
+        Material ice = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/Ice.mat");
+        if (ice == null)
+        {
+            throw new FileNotFoundException("Missing iceberg material: Assets/Materials/Ice.mat");
+        }
+
         Material wood = CreateLitMaterial("Driftwood", new Color(0.34f, 0.16f, 0.065f), 0f, 0.12f);
         Material darkWood = CreateLitMaterial("DriftwoodDark", new Color(0.16f, 0.075f, 0.035f), 0f, 0.08f);
         Material metal = CreateLitMaterial("DebrisMetal", new Color(0.18f, 0.22f, 0.24f), 0.45f, 0.18f);
         Material ghostWood = CreateTransparentMaterial("GhostShip", new Color(0.2f, 0.85f, 0.78f, 0.62f), new Color(0.05f, 0.6f, 0.5f));
         Material cannonballMaterial = CreateLitMaterial("GhostCannonball", new Color(0.08f, 0.12f, 0.14f), 0.6f, 0.25f);
 
-        Mesh icebergMesh = CreateIcebergMesh();
         GhostShipCannonball cannonball = BuildGhostShipCannonball(cannonballMaterial);
-        BuildIceberg(icebergMesh, ice, snow);
+        BuildIcebergs(ice);
         BuildFloatingLog(wood, darkWood);
         BuildDebrisCluster(wood, darkWood, metal);
         BuildBurningOilSlick();
@@ -35,8 +40,26 @@ public static class ObstaclePrefabBuilder
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log("Built iceberg, floating log, debris cluster, burning oil slick, and ghost ship prefabs.");
+        Debug.Log("Built iceberg variants, floating log, debris cluster, burning oil slick, and ghost ship prefabs.");
     }
+
+    [MenuItem("Tools/Royalty Boat/Rebuild Iceberg Prefabs")]
+    public static void BuildIcebergsOnly()
+    {
+        EnsureFolders();
+
+        Material ice = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/Ice.mat");
+        if (ice == null)
+        {
+            throw new FileNotFoundException("Missing iceberg material: Assets/Materials/Ice.mat");
+        }
+
+        BuildIcebergs(ice);
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+        Debug.Log("Built all iceberg prefab variants from Assets/Meshes/Ice.");
+    }
+
 
     public static void BuildAndValidate()
     {
@@ -47,9 +70,13 @@ public static class ObstaclePrefabBuilder
     [MenuItem("Tools/Royalty Boat/Validate Obstacle Prefabs")]
     public static void ValidateAll()
     {
-        GameObject iceberg = RequirePrefab("Iceberg");
-        RequireComponent<ObstacleDescriptor>(iceberg);
-        RequireComponentInChildren<MeshCollider>(iceberg);
+        for (int variant = 1; variant <= 7; variant++)
+        {
+            string prefabName = variant == 1 ? "Iceberg" : $"Iceberg{variant:00}";
+            GameObject iceberg = RequirePrefab(prefabName);
+            RequireComponent<ObstacleDescriptor>(iceberg);
+            RequireComponentInChildren<MeshCollider>(iceberg);
+        }
 
         GameObject log = RequirePrefab("FloatingLog");
         RequireComponent<ObstacleDescriptor>(log);
@@ -156,33 +183,119 @@ public static class ObstaclePrefabBuilder
         }
     }
 
-    private static void BuildIceberg(Mesh mesh, Material ice, Material snow)
+    private static void BuildIcebergs(Material ice)
     {
-        GameObject root = new GameObject("Iceberg");
-        try
+        const float targetFootprint = 15f;
+        const float submergedFraction = 0.3f;
+        const int variantCount = 7;
+
+        var models = new GameObject[variantCount];
+        for (int index = 0; index < variantCount; index++)
         {
-            root.AddComponent<ObstacleDescriptor>().Configure("iceberg", ObstacleKind.Iceberg, 4f, new Vector2(10f, 10f));
-
-            GameObject body = new GameObject("Faceted Ice");
-            body.transform.SetParent(root.transform, false);
-            body.AddComponent<MeshFilter>().sharedMesh = mesh;
-            body.AddComponent<MeshRenderer>().sharedMaterial = ice;
-            MeshCollider collider = body.AddComponent<MeshCollider>();
-            collider.sharedMesh = mesh;
-
-            AddVisualPrimitive(root.transform, PrimitiveType.Cube, "Snow Shelf A", new Vector3(-0.8f, 3.15f, 0.2f), new Vector3(3.7f, 0.35f, 2.8f), Quaternion.Euler(2f, 18f, -7f), snow);
-            AddVisualPrimitive(root.transform, PrimitiveType.Cube, "Snow Shelf B", new Vector3(1.15f, 2.45f, -0.25f), new Vector3(2.5f, 0.3f, 2.1f), Quaternion.Euler(-4f, -25f, 11f), snow);
-
-            GameObject shadow = AddVisualPrimitive(root.transform, PrimitiveType.Cylinder, "Underwater Silhouette", new Vector3(0f, -1.65f, 0f), new Vector3(4.2f, 0.75f, 4.2f), Quaternion.identity, ice);
-            shadow.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
-
-            PrefabUtility.SaveAsPrefabAsset(root, PrefabFolder + "/Iceberg.prefab");
+            string modelPath = $"{IceModelFolder}/ice_{index + 1:00}.fbx";
+            models[index] = AssetDatabase.LoadAssetAtPath<GameObject>(modelPath);
+            if (models[index] == null ||
+                models[index].GetComponentInChildren<MeshFilter>(true) == null)
+            {
+                throw new FileNotFoundException(
+                    $"Missing or invalid iceberg model: {modelPath}");
+            }
         }
-        finally
+
+        for (int prefabVariant = 1; prefabVariant <= variantCount; prefabVariant++)
         {
-            Object.DestroyImmediate(root);
+            GameObject root = new GameObject(
+                prefabVariant == 1 ? "Iceberg" : $"Iceberg {prefabVariant:00}");
+            try
+            {
+                root.AddComponent<ObstacleDescriptor>().Configure(
+                    "iceberg",
+                    ObstacleKind.Iceberg,
+                    4f,
+                    new Vector2(targetFootprint, targetFootprint));
+
+                var rotationPivots = new GameObject[variantCount];
+                for (int index = 0; index < variantCount; index++)
+                {
+                    var pivot = new GameObject($"Ice Variant {index + 1:00}");
+                    pivot.transform.SetParent(root.transform, false);
+
+                    GameObject visual =
+                        (GameObject)PrefabUtility.InstantiatePrefab(models[index]);
+                    visual.name = $"Ice Model {index + 1:00}";
+                    visual.transform.SetParent(pivot.transform, false);
+
+                    Bounds bounds = CalculateRendererBounds(visual);
+                    float horizontalSize = Mathf.Max(bounds.size.x, bounds.size.z);
+                    float scale = horizontalSize > 0f
+                        ? targetFootprint / horizontalSize
+                        : 1f;
+
+                    pivot.transform.localScale = Vector3.one * scale;
+                    pivot.transform.localPosition = new Vector3(
+                        -bounds.center.x * scale,
+                        (-bounds.min.y - bounds.size.y * submergedFraction) * scale,
+                        -bounds.center.z * scale);
+                    pivot.transform.localRotation = Quaternion.identity;
+
+                    foreach (MeshRenderer renderer in
+                        visual.GetComponentsInChildren<MeshRenderer>(true))
+                    {
+                        renderer.sharedMaterial = ice;
+                    }
+
+                    foreach (MeshFilter filter in
+                        visual.GetComponentsInChildren<MeshFilter>(true))
+                    {
+                        MeshCollider collider =
+                            filter.gameObject.GetComponent<MeshCollider>();
+                        if (collider == null)
+                        {
+                            collider = filter.gameObject.AddComponent<MeshCollider>();
+                        }
+
+                        collider.sharedMesh = filter.sharedMesh;
+                    }
+
+                    pivot.SetActive(index == prefabVariant - 1);
+                    rotationPivots[index] = pivot;
+                }
+
+                root.AddComponent<IcebergVisualRandomizer>()
+                    .Configure(rotationPivots);
+
+                string prefabName = prefabVariant == 1
+                    ? "Iceberg"
+                    : $"Iceberg{prefabVariant:00}";
+                PrefabUtility.SaveAsPrefabAsset(
+                    root,
+                    $"{PrefabFolder}/{prefabName}.prefab");
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
         }
     }
+
+    private static Bounds CalculateRendererBounds(GameObject root)
+    {
+        Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+        if (renderers.Length == 0)
+        {
+            throw new System.InvalidOperationException(
+                $"{root.name} has no renderers.");
+        }
+
+        Bounds bounds = renderers[0].bounds;
+        for (int index = 1; index < renderers.Length; index++)
+        {
+            bounds.Encapsulate(renderers[index].bounds);
+        }
+
+        return bounds;
+    }
+
 
     private static void BuildFloatingLog(Material wood, Material darkWood)
     {

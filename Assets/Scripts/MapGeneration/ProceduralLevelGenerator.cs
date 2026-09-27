@@ -263,7 +263,9 @@ namespace RoyaltyBoat.MapGeneration
                     obstacleDamage = descriptor.gameObject.AddComponent<ObstacleDamage>();
                 }
 
-                obstacleDamage.Configure(GetContactDamage(descriptor.Kind), true);
+                obstacleDamage.Configure(
+                    GetContactDamage(descriptor.Kind),
+                    descriptor.Kind != ObstacleKind.Iceberg);
             }
         }
 

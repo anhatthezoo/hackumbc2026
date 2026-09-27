@@ -1,5 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using RoyaltyBoat.Obstacles;
+
 
 namespace RoyaltyBoat.Gameplay
 {
@@ -16,6 +18,15 @@ namespace RoyaltyBoat.Gameplay
         [SerializeField, Min(0f)] private float lateralAcceleration = 18f;
         [SerializeField, Min(1f)] private float courseHalfWidth = 25f;
 
+        [Header("Iceberg Collision")]
+        [SerializeField, Range(0f, 1.5f)] private float icebergBounceMultiplier = 0.65f;
+        [SerializeField, Min(0f)] private float minimumIcebergBounceSpeed = 5f;
+        [SerializeField, Min(0f)] private float icebergControlLockDuration = 0.4f;
+
+        private Vector3 previousPlanarVelocity;
+        private float resumeControlTime;
+
+
         private Rigidbody body;
 
         public float ForwardSpeed => forwardSpeed;
@@ -30,6 +41,15 @@ namespace RoyaltyBoat.Gameplay
         {
             if (body == null || body.isKinematic)
             {
+                return;
+            }
+
+            if (Time.time < resumeControlTime)
+            {
+                previousPlanarVelocity = new Vector3(
+                    body.linearVelocity.x,
+                    0f,
+                    body.linearVelocity.z);
                 return;
             }
 
@@ -51,7 +71,63 @@ namespace RoyaltyBoat.Gameplay
             }
 
             body.linearVelocity = velocity;
+            previousPlanarVelocity = new Vector3(velocity.x, 0f, velocity.z);
         }
+
+        private void OnCollisionEnter(Collision collision)
+        {
+            ObstacleDescriptor obstacle =
+                collision.collider.GetComponentInParent<ObstacleDescriptor>();
+            if (obstacle == null || obstacle.Kind != ObstacleKind.Iceberg || body == null)
+            {
+                return;
+            }
+
+            Vector3 incoming = previousPlanarVelocity;
+            if (incoming.sqrMagnitude < 0.01f)
+            {
+                incoming = new Vector3(
+                    body.linearVelocity.x,
+                    0f,
+                    body.linearVelocity.z);
+            }
+
+            Vector3 normal = collision.contactCount > 0
+                ? collision.GetContact(0).normal
+                : -incoming.normalized;
+            normal.y = 0f;
+            if (normal.sqrMagnitude < 0.01f)
+            {
+                normal = -incoming.normalized;
+            }
+            else
+            {
+                normal.Normalize();
+            }
+
+            if (Vector3.Dot(incoming, normal) > 0f)
+            {
+                normal = -normal;
+            }
+
+            Vector3 reflected = Vector3.Reflect(incoming, normal);
+            float bounceSpeed = Mathf.Max(
+                minimumIcebergBounceSpeed,
+                incoming.magnitude * icebergBounceMultiplier);
+            if (reflected.sqrMagnitude < 0.01f)
+            {
+                reflected = -incoming;
+            }
+
+            reflected = reflected.normalized * bounceSpeed;
+            body.linearVelocity = new Vector3(
+                reflected.x,
+                body.linearVelocity.y,
+                reflected.z);
+            previousPlanarVelocity = reflected;
+            resumeControlTime = Time.time + icebergControlLockDuration;
+        }
+
 
         private static float ReadSteering()
         {
@@ -72,6 +148,9 @@ namespace RoyaltyBoat.Gameplay
             lateralSpeed = Mathf.Max(0f, lateralSpeed);
             lateralAcceleration = Mathf.Max(0f, lateralAcceleration);
             courseHalfWidth = Mathf.Max(1f, courseHalfWidth);
+            icebergBounceMultiplier = Mathf.Clamp(icebergBounceMultiplier, 0f, 1.5f);
+            minimumIcebergBounceSpeed = Mathf.Max(0f, minimumIcebergBounceSpeed);
+            icebergControlLockDuration = Mathf.Max(0f, icebergControlLockDuration);
         }
     }
 }

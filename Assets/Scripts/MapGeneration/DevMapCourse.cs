@@ -43,7 +43,7 @@ namespace RoyaltyBoat.MapGeneration
                 }
 
                 int amount = descriptor.Kind == ObstacleKind.Iceberg ? 35 : 15;
-                damage.Configure(amount, true);
+                damage.Configure(amount, descriptor.Kind != ObstacleKind.Iceberg);
             }
         }
 
