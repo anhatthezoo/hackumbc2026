@@ -212,7 +212,7 @@ namespace RoyaltyBoat.UI
 
             if (!king.IsPlaced || king.SupportingShip != ship)
             {
-                ShowLaunchError("Place the King on top of a connected ship part before launch.");
+                ShowLaunchError("Place the King on a connected chair before launch.");
                 return false;
             }
 

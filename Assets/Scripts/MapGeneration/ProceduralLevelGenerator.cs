@@ -272,7 +272,9 @@ namespace RoyaltyBoat.MapGeneration
 
                 obstacleDamage.Configure(
                     GetContactDamage(descriptor.Kind),
-                    descriptor.Kind != ObstacleKind.Iceberg);
+                    descriptor.Kind != ObstacleKind.Iceberg,
+                    descriptor.HitCount,
+                    descriptor.HitCooldown);
             }
         }
 

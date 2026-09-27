@@ -184,6 +184,8 @@ MonoBehaviour:
   kind: 0
   difficultyCost: 4
   footprint: {x: 15, y: 15}
+  hitCount: 3
+  hitCooldown: 0.5
 --- !u!114 &2459648705249563507
 MonoBehaviour:
   m_ObjectHideFlags: 0

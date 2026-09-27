@@ -542,6 +542,12 @@ public class BlockDragController : MonoBehaviour
                 continue;
             }
 
+            if (draggedKing != null
+                && targetBlock.GetComponent<ChairSeat>() == null)
+            {
+                continue;
+            }
+
             Ship targetShip = targetBlock.GetComponentInParent<Ship>();
 
             if (targetShip == null || hit.distance >= closestHitDistance)
@@ -771,7 +777,9 @@ public class BlockDragController : MonoBehaviour
 
         foreach (Block block in Object.FindObjectsByType<Block>(FindObjectsInactive.Exclude))
         {
-            if (block == null || !block.IsAlive)
+            if (block == null
+                || !block.IsAlive
+                || block.GetComponent<ChairSeat>() == null)
             {
                 continue;
             }

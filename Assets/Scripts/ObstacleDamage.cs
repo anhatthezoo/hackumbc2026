@@ -1,22 +1,34 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 [DisallowMultipleComponent]
 public class ObstacleDamage : MonoBehaviour
 {
     [SerializeField, Min(0)] private int damage = 10;
+    [SerializeField, Min(1)] private int hitCount = 1;
     [SerializeField, Min(0f)] private float repeatDamageCooldown = 0.75f;
     [SerializeField, Min(0.01f)] private float fullDamageImpactSpeed = 14f;
     [SerializeField, Min(0f)] private float minimumDamageImpactSpeed = 0.75f;
     [SerializeField, Min(1f)] private float maximumDamageMultiplier = 2f;
 
-    private readonly Dictionary<Block, float> nextDamageTimes = new Dictionary<Block, float>();
+    private int remainingHits;
+    private float nextHitTime;
+    private bool isDepleted;
 
     public int Damage => damage;
+    public int HitCount => hitCount;
+    public int RemainingHits => remainingHits;
+    public float RepeatDamageCooldown => repeatDamageCooldown;
 
-    public void Configure(int damageAmount, bool makeCollidersNonBlocking)
+    public void Configure(
+        int damageAmount,
+        bool makeCollidersNonBlocking,
+        int allowedHits = 1,
+        float hitCooldown = 0.75f)
     {
         damage = Mathf.Max(0, damageAmount);
+        hitCount = Mathf.Max(1, allowedHits);
+        repeatDamageCooldown = Mathf.Max(0f, hitCooldown);
+        ResetHitCount();
 
         foreach (Collider obstacleCollider in GetComponentsInChildren<Collider>(true))
         {
@@ -108,29 +120,40 @@ public class ObstacleDamage : MonoBehaviour
 
     private bool TryApplyDamage(Block block, int amount)
     {
-        if (block == null || amount <= 0)
+        if (block == null || amount <= 0 || isDepleted || Time.time < nextHitTime)
         {
             return false;
         }
 
-        if (nextDamageTimes.TryGetValue(block, out float nextTime) && Time.time < nextTime)
-        {
-            return false;
-        }
-
-        nextDamageTimes[block] = Time.time + repeatDamageCooldown;
+        nextHitTime = Time.time + repeatDamageCooldown;
         block.TakeDamage(amount);
+        remainingHits--;
+
+        if (remainingHits <= 0)
+        {
+            isDepleted = true;
+            Destroy(gameObject);
+        }
+
         return true;
     }
 
-    private void OnDisable()
+    private void OnEnable()
     {
-        nextDamageTimes.Clear();
+        ResetHitCount();
+    }
+
+    private void ResetHitCount()
+    {
+        remainingHits = Mathf.Max(1, hitCount);
+        nextHitTime = 0f;
+        isDepleted = false;
     }
 
     private void OnValidate()
     {
         damage = Mathf.Max(0, damage);
+        hitCount = Mathf.Max(1, hitCount);
         repeatDamageCooldown = Mathf.Max(0f, repeatDamageCooldown);
         fullDamageImpactSpeed = Mathf.Max(0.01f, fullDamageImpactSpeed);
         minimumDamageImpactSpeed = Mathf.Max(0f, minimumDamageImpactSpeed);

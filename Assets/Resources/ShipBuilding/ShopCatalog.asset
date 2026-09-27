@@ -19,3 +19,9 @@ MonoBehaviour:
     description: Reliable timber for hulls, walls, and questionable ideas.
     price: 25
     prefab: {fileID: 5429466535869677022, guid: 487a717d0716e4f4d978214f3b8df501, type: 3}
+  - id: chair
+    displayName: Chair
+    category: ROYAL
+    description: A sturdy seat that secures the King to the ship.
+    price: 25
+    prefab: {fileID: 6095512083062651715, guid: 82c9fad016000264fb0ac21772f464a4, type: 3}

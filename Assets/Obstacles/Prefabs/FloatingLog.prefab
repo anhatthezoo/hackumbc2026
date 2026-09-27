@@ -143,7 +143,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 2, y: 2, z: 2}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 912884982858245202}
@@ -167,6 +167,8 @@ MonoBehaviour:
   kind: 1
   difficultyCost: 1.5
   footprint: {x: 6, y: 2}
+  hitCount: 1
+  hitCooldown: 0.75
 --- !u!54 &6583234259158575182
 Rigidbody:
   m_ObjectHideFlags: 0

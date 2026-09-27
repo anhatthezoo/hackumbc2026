@@ -66,16 +66,23 @@ namespace RoyaltyBoat.King
         {
             Ship ship = block == null ? null : block.GetComponentInParent<Ship>();
             Rigidbody body = ship == null ? null : ship.GetComponent<Rigidbody>();
+            ChairSeat chair = block == null ? null : block.GetComponent<ChairSeat>();
 
-            if (block == null || !block.IsAlive || ship == null || body == null)
+            if (block == null
+                || chair == null
+                || !block.IsAlive
+                || ship == null
+                || body == null)
             {
                 ClearSupport();
                 return false;
             }
 
             CacheController();
+            UnsubscribeFromSupportBlock();
             SupportBlock = block;
             SupportingShip = ship;
+            SupportBlock.Destroyed += HandleSupportDestroyed;
             controller.BoatLink.Connect(body, true);
             return true;
         }
@@ -83,6 +90,7 @@ namespace RoyaltyBoat.King
         public void ClearSupport()
         {
             CacheController();
+            UnsubscribeFromSupportBlock();
             SupportBlock = null;
             SupportingShip = null;
             controller.BoatLink.Disconnect();
@@ -92,20 +100,41 @@ namespace RoyaltyBoat.King
         {
             CacheController();
             SupportingShip = ship;
-            SupportBlock = null;
 
             Rigidbody shipBody = ship == null ? null : ship.GetComponent<Rigidbody>();
+            controller.Body.isKinematic = false;
+            controller.Body.useGravity = true;
+
             if (shipBody != null)
             {
                 controller.BoatLink.Connect(shipBody, true);
             }
 
-            controller.Body.isKinematic = false;
-            controller.Body.useGravity = true;
             controller.Body.linearVelocity = shipBody == null
                 ? Vector3.zero
                 : shipBody.linearVelocity;
             controller.Body.angularVelocity = Vector3.zero;
+        }
+
+        private void HandleSupportDestroyed(Block destroyedBlock)
+        {
+            if (destroyedBlock == SupportBlock)
+            {
+                ClearSupport();
+            }
+        }
+
+        private void UnsubscribeFromSupportBlock()
+        {
+            if (SupportBlock != null)
+            {
+                SupportBlock.Destroyed -= HandleSupportDestroyed;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            UnsubscribeFromSupportBlock();
         }
 
         private void CacheController()

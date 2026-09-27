@@ -212,7 +212,8 @@ public static class ObstaclePrefabBuilder
                     "iceberg",
                     ObstacleKind.Iceberg,
                     4f,
-                    new Vector2(targetFootprint, targetFootprint));
+                    new Vector2(targetFootprint, targetFootprint),
+                    3);
 
                 var rotationPivots = new GameObject[variantCount];
                 for (int index = 0; index < variantCount; index++)
