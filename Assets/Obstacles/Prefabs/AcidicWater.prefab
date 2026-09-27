@@ -84,8 +84,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ab6ecc4a00cb54440b4ac0a860c5ff30, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RoyaltyBoat.Obstacles.AcidWaterVolume
-  damagePerSecond: 20
-  damageInterval: 0.25
+  damagePerSecond: 10
+  damageInterval: 1
 --- !u!114 &8525871558904006414
 MonoBehaviour:
   m_ObjectHideFlags: 0

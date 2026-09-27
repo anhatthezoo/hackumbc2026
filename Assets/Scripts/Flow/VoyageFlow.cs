@@ -15,7 +15,6 @@ namespace RoyaltyBoat.Flow
         public const string GameplaySceneName = "Voyage";
         public const string DevMapSceneName = "DevMap";
         public const string ShipBuildingSceneName = "ShipBuilding";
-        public const int LevelsPerRun = 3;
         public const int StartingFunds = 500;
 
         private static Ship builtShip;
@@ -108,12 +107,6 @@ namespace RoyaltyBoat.Flow
         {
             if (!levelComplete || completedLevel != CurrentLevel)
             {
-                return;
-            }
-
-            if (CurrentLevel >= LevelsPerRun)
-            {
-                StartNewRun();
                 return;
             }
 
@@ -324,18 +317,27 @@ namespace RoyaltyBoat.Flow
         private static void PrepareBuiltShipForBuilding()
         {
             ShipBuildArea buildArea = UnityEngine.Object.FindAnyObjectByType<ShipBuildArea>();
-            if (buildArea == null || builtShip == null || builtKing == null)
+            if (buildArea == null || builtShip == null)
             {
                 Debug.LogError("Could not return the completed ship to the shipyard.");
                 StartNewRun();
                 return;
             }
 
-            buildArea.AdoptReturningShip(
+            builtKing = buildArea.AdoptReturningShip(
                 builtShip,
                 builtKing,
                 builtShipScale,
                 builtKingScale);
+
+            if (builtKing == null)
+            {
+                Debug.LogError("Could not restore the King after the completed voyage.");
+                StartNewRun();
+                return;
+            }
+
+            builtKingScale = builtKing.transform.localScale;
         }
 
         private static void SubscribeToKingDeath()

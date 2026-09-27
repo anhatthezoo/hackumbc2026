@@ -46,6 +46,13 @@ namespace RoyaltyBoat.Obstacles
                 return;
             }
 
+            Block block = other.GetComponentInParent<Block>();
+            if (block != null)
+            {
+                ApplyPeriodicBlockDamage(block);
+                return;
+            }
+
             Transform damageRoot = other.attachedRigidbody != null
                 ? other.attachedRigidbody.transform
                 : other.transform.root;
@@ -72,6 +79,20 @@ namespace RoyaltyBoat.Obstacles
             {
                 kingHealth.ApplyDamage(damage, KingDeathCause.EnvironmentalHazard);
             }
+        }
+
+        private void ApplyPeriodicBlockDamage(Block block)
+        {
+            Transform damageTarget = block.transform;
+            if (nextDamageTimes.TryGetValue(damageTarget, out float nextTime)
+                && Time.time < nextTime)
+            {
+                return;
+            }
+
+            nextDamageTimes[damageTarget] = Time.time + damageInterval;
+            int damage = Mathf.Max(1, Mathf.RoundToInt(damagePerSecond * damageInterval));
+            block.TakeDamage(damage);
         }
 
         private bool TryApplyGenericDamage(Transform targetRoot, float damage)

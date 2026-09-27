@@ -46,15 +46,23 @@ public sealed class ShipBuildArea : MonoBehaviour
         return launchShip;
     }
 
-    public void AdoptReturningShip(
+    public KingBuildPlacement AdoptReturningShip(
         Ship ship,
         KingBuildPlacement king,
         Vector3 shipScale,
         Vector3 kingScale)
     {
-        if (ship == null || king == null)
+        if (ship == null)
         {
-            return;
+            return null;
+        }
+
+        KingBuildPlacement returningKing = king;
+        KingBuildPlacement activeKing = ResolveReturningKing(returningKing);
+        if (activeKing == null)
+        {
+            Debug.LogError("Could not restore or spawn the King in the shipyard.", this);
+            return null;
         }
 
         if (startingShip != null && startingShip != ship)
@@ -69,14 +77,9 @@ public sealed class ShipBuildArea : MonoBehaviour
             }
         }
 
-        Block seat = king.SupportBlock;
+        Block seat = returningKing == null ? null : returningKing.SupportBlock;
         startingShip = ship;
-        KingPlacement = king;
-
-        ship.transform.SetParent(transform, true);
-        ship.transform.localScale = shipScale;
-        ship.transform.rotation = Quaternion.identity;
-        CenterShipOverPlatform(ship);
+        KingPlacement = activeKing;
 
         Rigidbody shipBody = ship.GetComponent<Rigidbody>();
         if (shipBody != null)
@@ -91,6 +94,12 @@ public sealed class ShipBuildArea : MonoBehaviour
             shipBody.isKinematic = true;
             shipBody.constraints = RigidbodyConstraints.FreezeRotation;
         }
+
+        ship.transform.SetParent(transform, true);
+        ship.transform.localScale = shipScale;
+        ship.transform.rotation = Quaternion.identity;
+        ship.RefreshBlocks();
+        CenterShipOverPlatform(ship);
 
         RoyaltyBoat.Water.OceanWaveBuoyancy buoyancy =
             ship.GetComponent<RoyaltyBoat.Water.OceanWaveBuoyancy>();
@@ -113,16 +122,20 @@ public sealed class ShipBuildArea : MonoBehaviour
             presentation.enabled = false;
         }
 
-        king.transform.SetParent(transform, true);
-        king.transform.localScale = kingScale;
+        activeKing.transform.SetParent(transform, true);
+        if (returningKing != null)
+        {
+            activeKing.transform.localScale = kingScale;
+        }
+
         Vector3 kingPosition = seat != null && seat.IsAlive
-            ? king.GetPositionOn(seat)
+            ? activeKing.GetPositionOn(seat)
             : GetKingStagingPosition();
-        king.EnterBuildMode(kingPosition, Quaternion.identity);
+        activeKing.EnterBuildMode(kingPosition, Quaternion.identity);
 
         if (seat != null && seat.IsAlive)
         {
-            king.SetSupport(seat);
+            activeKing.SetSupport(seat);
         }
 
         ship.RefreshBlocks();
@@ -130,6 +143,8 @@ public sealed class ShipBuildArea : MonoBehaviour
         {
             ConfigureCamera(Camera.main);
         }
+
+        return activeKing;
     }
 
     public bool IsOverPlatform(Vector3 worldPosition)
@@ -185,6 +200,40 @@ public sealed class ShipBuildArea : MonoBehaviour
         KingPlacement.EnterBuildMode(stagingPosition, Quaternion.identity);
     }
 
+    private KingBuildPlacement ResolveReturningKing(KingBuildPlacement returningKing)
+    {
+        if (returningKing != null)
+        {
+            if (KingPlacement != null && KingPlacement != returningKing)
+            {
+                if (Application.isPlaying)
+                {
+                    Destroy(KingPlacement.gameObject);
+                }
+                else
+                {
+                    DestroyImmediate(KingPlacement.gameObject);
+                }
+            }
+
+            returningKing.gameObject.SetActive(true);
+            KingPlacement = returningKing;
+            return KingPlacement;
+        }
+
+        if (KingPlacement == null)
+        {
+            SpawnKingForBuilding();
+        }
+
+        if (KingPlacement != null)
+        {
+            KingPlacement.gameObject.SetActive(true);
+        }
+
+        return KingPlacement;
+    }
+
     private Vector3 GetKingStagingPosition()
     {
         return platform == null
@@ -195,12 +244,23 @@ public sealed class ShipBuildArea : MonoBehaviour
     private void CenterShipOverPlatform(Ship ship)
     {
         Vector3 targetCenter = platform == null ? transform.position : platform.position;
-        ship.transform.position = targetCenter;
+        float platformTop = targetCenter.y;
+        Collider platformCollider = platform == null ? null : platform.GetComponent<Collider>();
+        if (platformCollider != null)
+        {
+            platformTop = platformCollider.bounds.max.y;
+        }
+
+        Physics.SyncTransforms();
 
         Collider[] colliders = ship.GetComponentsInChildren<Collider>(true);
         if (colliders.Length == 0)
         {
-            ship.transform.position += Vector3.up;
+            ship.transform.position = new Vector3(
+                targetCenter.x,
+                platformTop + 1f,
+                targetCenter.z);
+            Physics.SyncTransforms();
             return;
         }
 
@@ -210,17 +270,15 @@ public sealed class ShipBuildArea : MonoBehaviour
             shipBounds.Encapsulate(colliders[index].bounds);
         }
 
-        float platformTop = targetCenter.y;
-        Collider platformCollider = platform == null ? null : platform.GetComponent<Collider>();
-        if (platformCollider != null)
-        {
-            platformTop = platformCollider.bounds.max.y;
-        }
-
-        ship.transform.position += new Vector3(
+        Vector3 placementOffset = new Vector3(
             targetCenter.x - shipBounds.center.x,
             platformTop - shipBounds.min.y + 0.02f,
             targetCenter.z - shipBounds.center.z);
+        ship.transform.position += new Vector3(
+            placementOffset.x,
+            placementOffset.y,
+            placementOffset.z);
+        Physics.SyncTransforms();
     }
 
     public void ConfigureCamera(Camera targetCamera)

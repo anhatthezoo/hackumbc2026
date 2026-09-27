@@ -47,8 +47,6 @@ MonoBehaviour:
   catalog: {fileID: 11400000, guid: 87cedd4822c701943b8f7a7091660c5a, type: 2}
   generatedContentParent: {fileID: 0}
   baseHazardChunkCount: 1
-  levelsPerExtraChunk: 1
-  maximumHazardChunkCount: 6
   hazardChunkGap: 40
   baseDifficultyBudget: 10
   difficultyPerLevel: 3
