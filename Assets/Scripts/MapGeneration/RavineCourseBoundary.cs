@@ -19,7 +19,7 @@ namespace RoyaltyBoat.MapGeneration
         [SerializeField, Min(20f)] private float courseLength = 400f;
         [SerializeField, Min(10f)] private float courseWidth =
             MapGenerationDefaults.CourseWidth;
-        [SerializeField, Min(2f)] private float segmentLength = 8f;
+        [SerializeField, Min(2f)] private float segmentLength = 6f;
         [SerializeField, Min(0f)] private float endExtension = 48f;
         [SerializeField, Min(4f)] private float cliffHeight = 18f;
         [SerializeField, Min(24f)] private float outerBankDepth = 88f;
@@ -63,7 +63,7 @@ namespace RoyaltyBoat.MapGeneration
             float startX = -endExtension;
             float totalLength = courseLength + endExtension * 2f;
             int segmentCount = Mathf.Max(1, Mathf.CeilToInt(totalLength / segmentLength));
-            const int crossSectionCount = 9;
+            const int crossSectionCount = 14;
             var sections = new Vector3[segmentCount + 1, crossSectionCount];
             float halfWidth = courseWidth * 0.5f;
 
@@ -71,14 +71,18 @@ namespace RoyaltyBoat.MapGeneration
             {
                 float progress = index / (float)segmentCount;
                 float x = startX + totalLength * progress;
-                float centerDrift =
-                    (FractalNoise(x, 0f, 21, 3, 0.0048f) - 0.5f) * 18f
-                    + (FractalNoise(x, 0f, 22, 2, 0.018f) - 0.5f) * 5f;
+                Vector3 center = GetCourseCenter(x);
+                Vector3 tangent = GetCourseTangent(x);
+                Vector3 bankAcross = Vector3.forward;
                 float detailNoise =
                     FractalNoise(x, side * 67f, 1, 3, 0.047f);
                 float bankSquiggle =
-                    (FractalNoise(x, side * 83f, 4, 3, 0.011f) - 0.5f) * 11f;
-                float edgeDistance = halfWidth + 2f + bankSquiggle;
+                    (FractalNoise(x, side * 83f, 4, 3, 0.011f) - 0.5f) * 9f;
+                float widthNoise = Mathf.SmoothStep(0f, 1f,
+                    FractalNoise(x, 0f, 24, 3, 0.0038f));
+                float edgeDistance = halfWidth
+                    + Mathf.Lerp(-5f, 25f, widthNoise)
+                    + bankSquiggle;
                 float steepness = FractalNoise(
                     x,
                     side * 109f,
@@ -91,20 +95,21 @@ namespace RoyaltyBoat.MapGeneration
                     14,
                     3,
                     0.0068f);
-                float profilePower = Mathf.Lerp(0.48f, 2.25f,
+                float profilePower = Mathf.Lerp(1.3f, 2.8f,
                     Mathf.Clamp01(steepness * 0.72f + shelfVariation * 0.45f));
 
-                sections[index, 0] = new Vector3(
-                    x,
-                    -4.5f,
-                    centerDrift + side * edgeDistance);
-                sections[index, 1] = new Vector3(
-                    x,
-                    Mathf.Lerp(0.18f, 2.4f, steepness) + detailNoise * 0.45f,
-                    centerDrift + side *
-                        (edgeDistance
-                            + Mathf.Lerp(0.35f, 2.8f, shelfVariation)
-                            + detailNoise));
+                Vector3 underwaterEdge = center
+                    + bankAcross * (side * edgeDistance);
+                underwaterEdge.y = -4.5f;
+                sections[index, 0] = underwaterEdge;
+
+                Vector3 shoreline = center + bankAcross * side *
+                    (edgeDistance
+                            + Mathf.Lerp(0.25f, 1.2f, shelfVariation)
+                        + detailNoise);
+                shoreline.y = Mathf.Lerp(0.18f, 2.4f, steepness)
+                    + detailNoise * 0.45f;
+                sections[index, 1] = shoreline;
 
                 for (int crossSection = 2;
                     crossSection < crossSectionCount;
@@ -119,17 +124,31 @@ namespace RoyaltyBoat.MapGeneration
                     float lateralWarp =
                         (FractalNoise(x, bankDistance * side, 30, 3, 0.009f) - 0.5f) * 8f
                         + (FractalNoise(x, bankDistance * side, 31, 2, 0.027f) - 0.5f) * 2.5f;
-                    float z = centerDrift + side *
-                        (edgeDistance + bankDistance + lateralWarp);
+                    float rowOffsetX = (FractalNoise(
+                        x,
+                        bankDistance * side,
+                        44 + crossSection,
+                        2,
+                        0.021f) - 0.5f) * segmentLength * 0.72f;
+                    Vector3 rowPoint = center
+                        + bankAcross * side *
+                            (edgeDistance + bankDistance + lateralWarp)
+                        + tangent * rowOffsetX;
                     float elevation =
-                        GetMountainHeight(x, z, bankDistance, side);
-                    sections[index, crossSection] =
-                        new Vector3(x, elevation, z);
+                        GetMountainHeight(
+                            x + rowOffsetX,
+                            rowPoint.z,
+                            bankDistance,
+                            side);
+                    rowPoint.y = elevation;
+                    sections[index, crossSection] = rowPoint;
                 }
             }
 
-            var vertices = new List<Vector3>(segmentCount * 32);
-            var uvs = new List<Vector2>(segmentCount * 32);
+            var vertices = new List<Vector3>(
+                segmentCount * (crossSectionCount - 1) * 12);
+            var uvs = new List<Vector2>(
+                segmentCount * (crossSectionCount - 1) * 12);
             var triangles = new List<int>[6];
             for (int materialIndex = 0; materialIndex < triangles.Length; ++materialIndex)
             {
@@ -151,7 +170,8 @@ namespace RoyaltyBoat.MapGeneration
                         side > 0f,
                         side,
                         segment,
-                        band);
+                        band,
+                        band / (float)(crossSectionCount - 2));
                 }
             }
 
@@ -188,7 +208,11 @@ namespace RoyaltyBoat.MapGeneration
             CreateOutcrops(parent, sections, side, bankName + " Outcrops", materials);
         }
 
-        private int GetMaterialIndex(int band, Vector3 center, float side)
+        private int GetMaterialIndex(
+            int band,
+            float bandProgress,
+            Vector3 center,
+            float side)
         {
             if (band == 0)
             {
@@ -214,15 +238,15 @@ namespace RoyaltyBoat.MapGeneration
                 150,
                 3,
                 0.0045f);
-            int lowestGrassBand = grassReach > 0.66f
-                ? 1
-                : grassReach > 0.52f ? 3 : 5;
-            if (band >= lowestGrassBand)
+            float grassStart = grassReach > 0.66f
+                ? 0.08f
+                : grassReach > 0.52f ? 0.28f : 0.55f;
+            if (bandProgress >= grassStart)
             {
                 return GroundMaterialIndex;
             }
 
-            if (band >= 5)
+            if (bandProgress >= 0.62f)
             {
                 return GroundMaterialIndex;
             }
@@ -248,16 +272,21 @@ namespace RoyaltyBoat.MapGeneration
             bool reverseWinding,
             float side,
             int segment,
-            int band)
+            int band,
+            float bandProgress)
         {
             Vector3 center =
                 (firstInner + secondInner + secondOuter + firstOuter) * 0.25f;
             float facetOffset = Mathf.Sin(segment * 2.173f + band * 4.719f);
-            center.y += facetOffset * (band >= 6 ? 0.7f : 1.15f);
+            center.y += facetOffset * (bandProgress >= 0.7f ? 1.1f : 1.45f);
             center.z += (reverseWinding ? 1f : -1f) * facetOffset * 0.45f;
 
-            int primaryMaterial = GetMaterialIndex(band, center, side);
-            int accentMaterial = band >= 1 && band <= 5
+            int primaryMaterial = GetMaterialIndex(
+                band,
+                bandProgress,
+                center,
+                side);
+            int accentMaterial = bandProgress > 0f && bandProgress <= 0.72f
                 ? (primaryMaterial == RockMaterialIndex
                     ? DarkRockMaterialIndex
                     : RockMaterialIndex)
@@ -487,6 +516,31 @@ namespace RoyaltyBoat.MapGeneration
             return material;
         }
 
+        public Vector3 GetCourseCenter(float x)
+        {
+            float anchoredOffset = GetRawCourseOffset(x) - GetRawCourseOffset(0f);
+            return new Vector3(x, 0f, anchoredOffset);
+        }
+
+        public Vector3 GetCourseTangent(float x)
+        {
+            const float sampleDistance = 12f;
+            Vector3 before = GetCourseCenter(x - sampleDistance);
+            Vector3 after = GetCourseCenter(x + sampleDistance);
+            return (after - before).normalized;
+        }
+
+        private float GetRawCourseOffset(float x)
+        {
+            float broadMeander =
+                (FractalNoise(x, 0f, 210, 3, 0.0032f) - 0.5f) * 100f;
+            float irregularMeander =
+                (FractalNoise(x, 0f, 211, 2, 0.0095f) - 0.5f) * 28f;
+            float phase = Mathf.Repeat(generationSeed * 0.00071f, Mathf.PI * 2f);
+            float sweepingBend = Mathf.Sin(x * 0.011f + phase) * 10f;
+            return broadMeander + irregularMeander + sweepingBend;
+        }
+
         private float GetMountainHeight(
             float x,
             float z,
@@ -506,7 +560,7 @@ namespace RoyaltyBoat.MapGeneration
                 13,
                 3,
                 0.0032f);
-            float mountainStart = Mathf.Lerp(0.48f, 0.08f, steepness);
+            float mountainStart = Mathf.Lerp(0.2f, 0.02f, steepness);
             float mountainEnvelope = Mathf.SmoothStep(0f, 1f,
                 Mathf.InverseLerp(mountainStart, mountainStart + 0.28f, progress));
 
@@ -533,6 +587,12 @@ namespace RoyaltyBoat.MapGeneration
                 side > 0f ? 100 : 101,
                 3,
                 0.022f);
+            float brokenSlope = RidgedMultifractal(
+                warpedX - 61f,
+                warpedZ + 119f,
+                side > 0f ? 104 : 105,
+                4,
+                0.038f);
 
             float regionalScale = Mathf.Lerp(0.52f, 1.48f, heightRegion);
             float foothillHeight = Mathf.Lerp(
@@ -543,9 +603,13 @@ namespace RoyaltyBoat.MapGeneration
                 * regionalScale;
             float brokenPeaks = secondaryRange * 13f * regionalScale *
                 Mathf.SmoothStep(0f, 1f, progress);
+            float persistentRelief = (brokenSlope - 0.42f) * 12f *
+                Mathf.SmoothStep(0f, 1f,
+                    Mathf.InverseLerp(0.08f, 0.32f, progress));
             return foothillHeight
                 + broadShape * Mathf.Lerp(5f, 13f, heightRegion)
-                + mountainEnvelope * (rangeHeight + brokenPeaks);
+                + mountainEnvelope * (rangeHeight + brokenPeaks)
+                + persistentRelief;
         }
 
         private float FractalNoise(
