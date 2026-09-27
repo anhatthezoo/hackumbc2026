@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Rendering;
+using System.Collections.Generic;
 
 [ExecuteAlways]
 [DisallowMultipleComponent]
@@ -10,17 +11,18 @@ public sealed class AdaptiveBuildGrid : MonoBehaviour
     [SerializeField] private Ship gridSource;
     [SerializeField, Min(0f)] private float verticalOffset = 0.02f;
     [SerializeField, Min(0.1f)] private float fallbackTileSize = 2f;
+    [SerializeField, Min(1f)] private float minimumGridSize = 120f;
 
     [Header("Grid Appearance")]
     [SerializeField] private Color minorLineColor =
-        new Color(0.9f, 0.94f, 1f, 0.5f);
+        new Color(0.9f, 0.94f, 1f, 0.16f);
     [SerializeField] private Color majorLineColor =
-        new Color(1f, 1f, 1f, 0.8f);
+        new Color(1f, 1f, 1f, 0.24f);
     [SerializeField] private Color axisLineColor =
-        new Color(0.92f, 1f, 0.96f, 0.95f);
+        new Color(0.92f, 1f, 0.96f, 0.34f);
 
     private GameObject visualRoot;
-    private Material lineMaterial;
+    private readonly Dictionary<Color, Material> lineMaterials = new();
     private float renderedTileSize;
     private Vector3 renderedBoundsSize;
     private Vector3 renderedSnapOrigin;
@@ -52,6 +54,7 @@ public sealed class AdaptiveBuildGrid : MonoBehaviour
     private void OnValidate()
     {
         fallbackTileSize = Mathf.Max(0.1f, fallbackTileSize);
+        minimumGridSize = Mathf.Max(1f, minimumGridSize);
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.delayCall -= RebuildAfterValidation;
         UnityEditor.EditorApplication.delayCall += RebuildAfterValidation;
@@ -100,7 +103,11 @@ public sealed class AdaptiveBuildGrid : MonoBehaviour
         renderedBoundsSize = bounds.size;
         renderedSnapOrigin = snapOrigin;
 
-        Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+        Shader shader = Shader.Find("RoyaltyBoat/BuildGridTransparent");
+        if (shader == null)
+        {
+            shader = Shader.Find("Universal Render Pipeline/Unlit");
+        }
         if (shader == null)
         {
             shader = Shader.Find("Sprites/Default");
@@ -110,15 +117,6 @@ public sealed class AdaptiveBuildGrid : MonoBehaviour
         {
             return;
         }
-
-        lineMaterial = new Material(shader)
-        {
-            name = "Runtime Build Grid Lines",
-            color = Color.white,
-            hideFlags = HideFlags.HideAndDontSave,
-            renderQueue = 3000
-        };
-        ConfigureTransparentMaterial(lineMaterial);
 
         visualRoot = new GameObject("Generated Build Grid")
         {
@@ -214,13 +212,20 @@ public sealed class AdaptiveBuildGrid : MonoBehaviour
             : centerTarget.GetComponent<Collider>();
         if (targetCollider != null)
         {
-            return targetCollider.bounds;
+            Bounds targetBounds = targetCollider.bounds;
+            float horizontalSize = Mathf.Max(
+                minimumGridSize,
+                targetBounds.size.x,
+                targetBounds.size.z);
+            return new Bounds(
+                targetBounds.center,
+                new Vector3(horizontalSize, targetBounds.size.y, horizontalSize));
         }
 
         Vector3 center = centerTarget == null
             ? transform.position
             : centerTarget.position;
-        return new Bounds(center, new Vector3(20f, 0f, 20f));
+        return new Bounds(center, new Vector3(minimumGridSize, 0f, minimumGridSize));
     }
 
     private void PositionGrid(Bounds bounds)
@@ -275,12 +280,45 @@ public sealed class AdaptiveBuildGrid : MonoBehaviour
         line.SetPosition(1, end);
         line.startWidth = width;
         line.endWidth = width;
-        line.startColor = color;
-        line.endColor = color;
-        line.sharedMaterial = lineMaterial;
+        line.startColor = Color.white;
+        line.endColor = Color.white;
+        line.sharedMaterial = GetLineMaterial(color);
         line.shadowCastingMode = ShadowCastingMode.Off;
         line.receiveShadows = false;
         line.sortingOrder = 100;
+    }
+
+    private Material GetLineMaterial(Color color)
+    {
+        if (lineMaterials.TryGetValue(color, out Material existing))
+        {
+            return existing;
+        }
+
+        Shader shader = Shader.Find("RoyaltyBoat/BuildGridTransparent");
+        if (shader == null)
+        {
+            shader = Shader.Find("Universal Render Pipeline/Unlit");
+        }
+        if (shader == null)
+        {
+            shader = Shader.Find("Sprites/Default");
+        }
+
+        Material material = new Material(shader)
+        {
+            name = "Runtime Build Grid Line",
+            color = color,
+            hideFlags = HideFlags.HideAndDontSave,
+            renderQueue = 3000
+        };
+        if (material.HasProperty("_BaseColor"))
+        {
+            material.SetColor("_BaseColor", color);
+        }
+        ConfigureTransparentMaterial(material);
+        lineMaterials.Add(color, material);
+        return material;
     }
 
     private static void ConfigureTransparentMaterial(Material material)
@@ -289,6 +327,10 @@ public sealed class AdaptiveBuildGrid : MonoBehaviour
         if (material.HasProperty("_Surface"))
         {
             material.SetFloat("_Surface", 1f);
+        }
+        if (material.HasProperty("_Blend"))
+        {
+            material.SetFloat("_Blend", 0f);
         }
         if (material.HasProperty("_SrcBlend"))
         {
@@ -308,9 +350,12 @@ public sealed class AdaptiveBuildGrid : MonoBehaviour
     private void ClearGrid()
     {
         DestroyRuntimeObject(visualRoot);
-        DestroyRuntimeObject(lineMaterial);
         visualRoot = null;
-        lineMaterial = null;
+        foreach (Material material in lineMaterials.Values)
+        {
+            DestroyRuntimeObject(material);
+        }
+        lineMaterials.Clear();
     }
 
     private static void DestroyRuntimeObject(Object target)

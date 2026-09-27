@@ -1,7 +1,7 @@
 :root {
     --ink: rgb(255, 255, 255);
-    --sail-blue: rgb(91, 162, 235);
-    --sail-blue-hover: rgb(112, 181, 247);
+    --sail-blue: rgb(255, 255, 255);
+    --sail-blue-hover: rgb(245, 245, 245);
     --rail: rgba(0, 0, 0, 0.45);
 }
 
@@ -11,6 +11,41 @@
     right: 0;
     top: 0;
     bottom: 0;
+}
+
+.build-vignette-edge {
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.055);
+}
+
+.build-vignette-top,
+.build-vignette-bottom {
+    left: 0;
+    right: 0;
+    height: 92px;
+}
+
+.build-vignette-top {
+    top: 0;
+}
+
+.build-vignette-bottom {
+    bottom: 0;
+}
+
+.build-vignette-left,
+.build-vignette-right {
+    top: 0;
+    bottom: 0;
+    width: 92px;
+}
+
+.build-vignette-left {
+    left: 0;
+}
+
+.build-vignette-right {
+    right: 0;
 }
 
 .build-title {
@@ -175,7 +210,7 @@
     padding: 0;
     align-items: center;
     justify-content: center;
-    color: var(--ink);
+    color: rgb(0, 0, 0);
     background-color: var(--sail-blue);
     border-left-width: 0;
     border-right-width: 0;
@@ -198,7 +233,7 @@
 .sail-button:active {
     scale: 0.96 0.96;
     translate: 0 2px;
-    background-color: rgb(72, 143, 216);
+    background-color: rgb(225, 225, 225);
 }
 
 .sail-button:disabled {
@@ -210,6 +245,7 @@
     height: 72px;
     background-image: url("project://database/Assets/Textures/Icons/BoatIcon.png");
     -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(0, 0, 0);
     scale: -1 1;
     margin-right: 10px;
 }
@@ -217,7 +253,7 @@
 .sail-label {
     width: 97px;
     height: 72px;
-    color: var(--ink);
+    color: rgb(0, 0, 0);
     -unity-font-definition: url("project://database/Assets/UI/Fonts/DarumadropOne-Regular.ttf");
     -unity-text-align: middle-center;
     font-size: 48px;

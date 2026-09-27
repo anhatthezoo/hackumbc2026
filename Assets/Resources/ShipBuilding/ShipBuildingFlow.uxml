@@ -1,6 +1,10 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
     <ui:Style src="ShipBuildingFlow.uss" />
     <ui:VisualElement name="buildScreen" class="build-screen" picking-mode="Ignore">
+        <ui:VisualElement class="build-vignette-edge build-vignette-top" picking-mode="Ignore" />
+        <ui:VisualElement class="build-vignette-edge build-vignette-bottom" picking-mode="Ignore" />
+        <ui:VisualElement class="build-vignette-edge build-vignette-left" picking-mode="Ignore" />
+        <ui:VisualElement class="build-vignette-edge build-vignette-right" picking-mode="Ignore" />
         <ui:Label name="buildTitleShadow" text="BUILD" class="build-title build-title-shadow screen-enter" picking-mode="Ignore" />
         <ui:Label name="buildTitle" text="BUILD" class="build-title screen-enter" picking-mode="Ignore" />
 
