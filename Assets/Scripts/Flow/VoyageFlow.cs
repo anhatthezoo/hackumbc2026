@@ -15,7 +15,7 @@ namespace RoyaltyBoat.Flow
         public const string GameplaySceneName = "Voyage";
         public const string DevMapSceneName = "DevMap";
         public const string ShipBuildingSceneName = "ShipBuilding";
-        public const int StartingFunds = 500;
+        public const int StartingFunds = 250;
 
         private static Ship builtShip;
         private static KingBuildPlacement builtKing;

@@ -45,6 +45,23 @@ namespace RoyaltyBoat.MapGeneration
             return (int)Math.Min(count, int.MaxValue);
         }
 
+        public int GetObstacleCount(int levelNumber)
+        {
+            int safeLevel = Mathf.Max(1, levelNumber);
+            long count = 3L;
+
+            for (int level = 1; level < safeLevel; level++)
+            {
+                count = count * 3L / 2L;
+                if (count >= int.MaxValue)
+                {
+                    return int.MaxValue;
+                }
+            }
+
+            return (int)count;
+        }
+
         private void Start()
         {
             if (generateOnStart)
@@ -307,7 +324,7 @@ namespace RoyaltyBoat.MapGeneration
                 return;
             }
 
-            int targetObstacleCount = Mathf.Max(1, ActiveLevelNumber);
+            int targetObstacleCount = GetObstacleCount(ActiveLevelNumber);
             var activeObstacles = new List<ObstacleDescriptor>(authoredObstacles);
 
             while (activeObstacles.Count > targetObstacleCount)

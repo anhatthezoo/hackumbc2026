@@ -1,4 +1,5 @@
 using System;
+using RoyaltyBoat.Flow;
 using UnityEngine;
 
 namespace RoyaltyBoat.Economy
@@ -6,7 +7,7 @@ namespace RoyaltyBoat.Economy
     [DefaultExecutionOrder(-1000)]
     public sealed class EconomyService : MonoBehaviour, IEconomyService
     {
-        [SerializeField, Min(0)] private int startingBalance = 500;
+        [SerializeField, Min(0)] private int startingBalance = VoyageFlow.StartingFunds;
         [SerializeField] private bool persistBetweenScenes = true;
 
         public static EconomyService Instance { get; private set; }
