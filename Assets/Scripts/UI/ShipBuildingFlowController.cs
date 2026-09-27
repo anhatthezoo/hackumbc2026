@@ -129,7 +129,10 @@ namespace RoyaltyBoat.UI
 
         public bool SetSail()
         {
-            Ship ship = FindAnyObjectByType<Ship>();
+            ShipBuildArea buildArea = FindAnyObjectByType<ShipBuildArea>();
+            Ship ship = buildArea != null
+                ? buildArea.PrepareShipForLaunch()
+                : FindAnyObjectByType<Ship>();
             if (ship == null)
             {
                 Debug.LogError("No Ship was found in the ship-building scene.", this);

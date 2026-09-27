@@ -35,7 +35,7 @@
 
         <ui:VisualElement class="ship-building-card" picking-mode="Position">
             <ui:Label text="ROYAL SHIPYARD" class="ship-building-title" />
-            <ui:Label text="Drag parts together. Flip sides to check your shape." class="ship-building-subtitle" />
+            <ui:Label text="Select a part, then drag the colored arrows to move it • V flips sides" class="ship-building-subtitle" />
             <ui:Button name="camera-angle-button" text="FLIP SIDE  •  V" class="camera-angle-button" />
             <ui:Button name="set-sail-button" text="SET SAIL" class="set-sail-button" />
         </ui:VisualElement>

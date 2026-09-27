@@ -29,6 +29,18 @@ public class BlockDragController : MonoBehaviour
     private Vector3 pointerOffset;
     private bool previousKinematic;
     private bool previousUseGravity;
+    private Transform selectedMoveRoot;
+    private Block selectedBlockComponent;
+    private GameObject moveGizmo;
+    private readonly Dictionary<Collider, Vector3> gizmoHandles =
+        new Dictionary<Collider, Vector3>();
+    private readonly List<Material> gizmoMaterials = new List<Material>();
+    private readonly List<Mesh> gizmoMeshes = new List<Mesh>();
+    private bool axisDragging;
+    private Vector3 activeDragAxis;
+    private Vector3 axisDragStartPosition;
+    private float axisPointerStart;
+    private Plane axisDragPlane;
     private readonly List<BlockDragOutline> activeHighlights =
         new List<BlockDragOutline>();
 
@@ -75,26 +87,43 @@ public class BlockDragController : MonoBehaviour
 
         if (draggedBlock != null && mouse.leftButton.isPressed)
         {
-            Drag(pointerPosition);
+            if (axisDragging)
+            {
+                DragAlongAxis(dragCamera.ScreenPointToRay(pointerPosition));
+            }
+            else
+            {
+                Drag(pointerPosition);
+            }
         }
 
         if (mouse.leftButton.wasReleasedThisFrame)
         {
             EndDrag();
         }
+
+        UpdateMoveGizmoPosition();
     }
 
     private void OnDisable()
     {
         EndDrag();
+        ClearSelection();
     }
 
     private void BeginDrag(Vector2 pointerPosition)
     {
         Ray ray = dragCamera.ScreenPointToRay(pointerPosition);
 
+        if (TryGetGizmoHandleHit(ray, out Vector3 gizmoAxis))
+        {
+            BeginAxisDrag(ray, gizmoAxis);
+            return;
+        }
+
         if (!TryGetClosestBlockHit(ray, out RaycastHit hit))
         {
+            ClearSelection();
             return;
         }
 
@@ -102,8 +131,39 @@ public class BlockDragController : MonoBehaviour
 
         if (selectedBlock == null || !selectedBlock.CompareTag("Block"))
         {
+            ClearSelection();
             return;
         }
+
+        ConfigureDraggedTarget(selectedBlock);
+        SelectMoveTarget(selectedBlock, draggedBlock);
+
+        float dragHeight = snappingShip != null && snappingShip.AnchorBlock != null
+            ? snappingShip.AnchorBlock.transform.position.y
+            : draggedBlock.position.y;
+
+        dragPlane = new Plane(Vector3.up, new Vector3(0f, dragHeight, 0f));
+
+        if (dragPlane.Raycast(ray, out float distance))
+        {
+            pointerOffset = draggedBlock.position - ray.GetPoint(distance);
+        }
+        else
+        {
+            pointerOffset = Vector3.zero;
+        }
+
+        PrepareDraggedBody();
+        Drag(pointerPosition);
+        ShowDragHighlights();
+    }
+
+    private void ConfigureDraggedTarget(Block selectedBlock)
+    {
+        draggedBlock = null;
+        draggedBlockComponent = null;
+        draggedShip = null;
+        snappingShip = null;
 
         Ship shipOnSelectedObject = selectedBlock.GetComponent<Ship>();
 
@@ -128,22 +188,10 @@ public class BlockDragController : MonoBehaviour
             draggedBlockComponent = selectedBlock;
             draggedBlock = selectedBlock.transform;
         }
+    }
 
-        float dragHeight = snappingShip != null && snappingShip.AnchorBlock != null
-            ? snappingShip.AnchorBlock.transform.position.y
-            : draggedBlock.position.y;
-
-        dragPlane = new Plane(Vector3.up, new Vector3(0f, dragHeight, 0f));
-
-        if (dragPlane.Raycast(ray, out float distance))
-        {
-            pointerOffset = draggedBlock.position - ray.GetPoint(distance);
-        }
-        else
-        {
-            pointerOffset = Vector3.zero;
-        }
-
+    private void PrepareDraggedBody()
+    {
         draggedBody = draggedBlock.GetComponent<Rigidbody>();
 
         if (draggedBody != null)
@@ -155,9 +203,6 @@ public class BlockDragController : MonoBehaviour
             draggedBody.useGravity = false;
             draggedBody.isKinematic = true;
         }
-
-        Drag(pointerPosition);
-        ShowDragHighlights();
     }
 
     private bool TryGetClosestBlockHit(Ray ray, out RaycastHit blockHit)
@@ -209,15 +254,8 @@ public class BlockDragController : MonoBehaviour
         }
 
         Vector3 targetPosition = ray.GetPoint(distance) + pointerOffset;
-        Vector3 gridOrigin = snappingShip != null
-            ? (snappingShip.AnchorBlock != null
-                ? snappingShip.AnchorBlock.transform.position
-                : snappingShip.transform.position)
-            : Vector3.zero;
-
-        float activeGridSize = snappingShip != null
-            ? snappingShip.AttachmentGridSize
-            : gridSize;
+        Vector3 gridOrigin = GetGridOrigin();
+        float activeGridSize = GetActiveGridSize();
 
         float snappedHeight = snappingShip != null
             ? gridOrigin.y
@@ -235,6 +273,109 @@ public class BlockDragController : MonoBehaviour
         TryApplyPlacement(
             ConstrainToPlacementBounds(snappedPosition, activeGridSize),
             draggedBlock.rotation);
+    }
+
+    private bool TryGetGizmoHandleHit(Ray ray, out Vector3 axis)
+    {
+        axis = default;
+        RaycastHit[] hits = Physics.RaycastAll(
+            ray,
+            raycastDistance,
+            ~0,
+            QueryTriggerInteraction.Ignore);
+        float closestDistance = float.PositiveInfinity;
+        bool foundHandle = false;
+
+        foreach (RaycastHit hit in hits)
+        {
+            if (!gizmoHandles.TryGetValue(hit.collider, out Vector3 hitAxis)
+                || hit.distance >= closestDistance)
+            {
+                continue;
+            }
+
+            closestDistance = hit.distance;
+            axis = hitAxis;
+            foundHandle = true;
+        }
+
+        return foundHandle;
+    }
+
+    private void BeginAxisDrag(Ray pointerRay, Vector3 axis)
+    {
+        if (selectedBlockComponent == null || selectedMoveRoot == null)
+        {
+            return;
+        }
+
+        ConfigureDraggedTarget(selectedBlockComponent);
+        PrepareDraggedBody();
+        axisDragging = true;
+        activeDragAxis = axis.normalized;
+        axisDragStartPosition = draggedBlock.position;
+
+        Vector3 viewDirection =
+            (axisDragStartPosition - dragCamera.transform.position).normalized;
+        Vector3 side = Vector3.Cross(activeDragAxis, viewDirection);
+        Vector3 planeNormal = Vector3.Cross(activeDragAxis, side).normalized;
+
+        if (planeNormal.sqrMagnitude < 0.001f)
+        {
+            planeNormal = Vector3.Cross(activeDragAxis, dragCamera.transform.up).normalized;
+        }
+
+        axisDragPlane = new Plane(planeNormal, axisDragStartPosition);
+        axisPointerStart = 0f;
+
+        if (axisDragPlane.Raycast(pointerRay, out float distance))
+        {
+            axisPointerStart = Vector3.Dot(
+                pointerRay.GetPoint(distance) - axisDragStartPosition,
+                activeDragAxis);
+        }
+
+        ShowDragHighlights();
+    }
+
+    private void DragAlongAxis(Ray pointerRay)
+    {
+        if (!axisDragPlane.Raycast(pointerRay, out float distance))
+        {
+            return;
+        }
+
+        float pointerPosition = Vector3.Dot(
+            pointerRay.GetPoint(distance) - axisDragStartPosition,
+            activeDragAxis);
+        float gridStep = GetActiveGridSize();
+        float snappedDistance = Mathf.Round(
+            (pointerPosition - axisPointerStart) / gridStep) * gridStep;
+        Vector3 targetPosition = axisDragStartPosition
+            + activeDragAxis * snappedDistance;
+
+        TryApplyPlacement(
+            ConstrainToPlacementBounds(targetPosition, gridStep),
+            draggedBlock.rotation);
+    }
+
+    private Vector3 GetGridOrigin()
+    {
+        if (snappingShip == null)
+        {
+            return Vector3.zero;
+        }
+
+        return snappingShip.AnchorBlock != null
+            ? snappingShip.AnchorBlock.transform.position
+            : snappingShip.transform.position;
+    }
+
+    private float GetActiveGridSize()
+    {
+        return snappingShip != null
+            ? snappingShip.AttachmentGridSize
+            : gridSize;
     }
 
     private bool TryApplyPlacement(Vector3 position, Quaternion rotation)
@@ -452,6 +593,180 @@ public class BlockDragController : MonoBehaviour
         draggedShip = null;
         snappingShip = null;
         draggedBody = null;
+        axisDragging = false;
+        activeDragAxis = Vector3.zero;
+        UpdateMoveGizmoPosition();
+    }
+
+    public void SelectBlock(Block block)
+    {
+        if (block == null)
+        {
+            ClearSelection();
+            return;
+        }
+
+        Ship shipOnBlock = block.GetComponent<Ship>();
+        SelectMoveTarget(
+            block,
+            shipOnBlock != null ? shipOnBlock.transform : block.transform);
+    }
+
+    private void SelectMoveTarget(Block block, Transform moveRoot)
+    {
+        selectedBlockComponent = block;
+        selectedMoveRoot = moveRoot;
+        CreateMoveGizmo();
+        UpdateMoveGizmoPosition();
+    }
+
+    private void ClearSelection()
+    {
+        selectedBlockComponent = null;
+        selectedMoveRoot = null;
+        DestroyMoveGizmo();
+    }
+
+    private void CreateMoveGizmo()
+    {
+        DestroyMoveGizmo();
+        moveGizmo = new GameObject("Block Move Arrows");
+        moveGizmo.hideFlags = HideFlags.DontSave;
+
+        CreateAxisArrow(Vector3.right, new Color(0.92f, 0.22f, 0.18f));
+        CreateAxisArrow(Vector3.up, new Color(0.28f, 0.82f, 0.3f));
+        CreateAxisArrow(Vector3.forward, new Color(0.2f, 0.48f, 0.96f));
+    }
+
+    private void CreateAxisArrow(Vector3 axis, Color color)
+    {
+        Material material = CreateGizmoMaterial(color);
+        gizmoMaterials.Add(material);
+
+        GameObject shaft = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        shaft.name = $"{axis} Move Handle";
+        shaft.transform.SetParent(moveGizmo.transform, false);
+        shaft.transform.localPosition = axis * 0.65f;
+        shaft.transform.localRotation = Quaternion.FromToRotation(Vector3.up, axis);
+        shaft.transform.localScale = new Vector3(0.11f, 0.65f, 0.11f);
+        shaft.GetComponent<Renderer>().sharedMaterial = material;
+        gizmoHandles[shaft.GetComponent<Collider>()] = axis;
+
+        GameObject head = new GameObject($"{axis} Arrow Head");
+        head.transform.SetParent(moveGizmo.transform, false);
+        head.transform.localPosition = axis * 1.52f;
+        head.transform.localRotation = Quaternion.FromToRotation(Vector3.up, axis);
+
+        Mesh arrowHeadMesh = CreateConeMesh();
+        gizmoMeshes.Add(arrowHeadMesh);
+        MeshFilter filter = head.AddComponent<MeshFilter>();
+        filter.sharedMesh = arrowHeadMesh;
+        MeshRenderer renderer = head.AddComponent<MeshRenderer>();
+        renderer.sharedMaterial = material;
+        MeshCollider collider = head.AddComponent<MeshCollider>();
+        collider.sharedMesh = arrowHeadMesh;
+        collider.convex = true;
+        gizmoHandles[collider] = axis;
+    }
+
+    private void DestroyMoveGizmo()
+    {
+        gizmoHandles.Clear();
+
+        if (moveGizmo != null)
+        {
+            Destroy(moveGizmo);
+            moveGizmo = null;
+        }
+
+        foreach (Material material in gizmoMaterials)
+        {
+            if (material != null)
+            {
+                Destroy(material);
+            }
+        }
+
+        foreach (Mesh mesh in gizmoMeshes)
+        {
+            if (mesh != null)
+            {
+                Destroy(mesh);
+            }
+        }
+
+        gizmoMaterials.Clear();
+        gizmoMeshes.Clear();
+    }
+
+    private static Mesh CreateConeMesh()
+    {
+        const int sides = 12;
+        const float radius = 0.24f;
+        const float baseY = -0.22f;
+        const float tipY = 0.32f;
+        var vertices = new Vector3[sides + 2];
+        var triangles = new int[sides * 6];
+        vertices[0] = new Vector3(0f, tipY, 0f);
+        vertices[1] = new Vector3(0f, baseY, 0f);
+
+        for (int side = 0; side < sides; side++)
+        {
+            float angle = side * Mathf.PI * 2f / sides;
+            vertices[side + 2] = new Vector3(
+                Mathf.Cos(angle) * radius,
+                baseY,
+                Mathf.Sin(angle) * radius);
+
+            int next = (side + 1) % sides;
+            int triangle = side * 6;
+            triangles[triangle] = 0;
+            triangles[triangle + 1] = side + 2;
+            triangles[triangle + 2] = next + 2;
+            triangles[triangle + 3] = 1;
+            triangles[triangle + 4] = next + 2;
+            triangles[triangle + 5] = side + 2;
+        }
+
+        Mesh mesh = new Mesh { name = "Runtime Move Arrow Head" };
+        mesh.vertices = vertices;
+        mesh.triangles = triangles;
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+        return mesh;
+    }
+
+    private static Material CreateGizmoMaterial(Color color)
+    {
+        Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+        if (shader == null)
+        {
+            shader = Shader.Find("Unlit/Color");
+        }
+
+        Material material = new Material(shader)
+        {
+            name = "Runtime Move Arrow Material",
+            color = color
+        };
+
+        if (material.HasProperty("_BaseColor"))
+        {
+            material.SetColor("_BaseColor", color);
+        }
+
+        return material;
+    }
+
+    private void UpdateMoveGizmoPosition()
+    {
+        if (moveGizmo == null || selectedMoveRoot == null)
+        {
+            return;
+        }
+
+        moveGizmo.transform.position = selectedMoveRoot.position;
+        moveGizmo.transform.rotation = Quaternion.identity;
     }
 
     private bool IsWithinPlacementBounds(Vector3 position)
