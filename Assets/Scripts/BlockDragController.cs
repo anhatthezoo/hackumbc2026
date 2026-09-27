@@ -4,49 +4,55 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(Camera))]
-public class BlockDragController : MonoBehaviour
+public sealed class BlockDragController : MonoBehaviour
 {
-    [Header("Drag Settings")]
+    [Header("Selection")]
     [SerializeField] private bool draggingEnabled = true;
-    [SerializeField, Min(0.01f)] private float gridSize = Ship.DefaultAttachmentGridSize;
     [SerializeField, Min(0.1f)] private float raycastDistance = 100f;
     [SerializeField] private LayerMask draggableLayers = ~0;
+    [SerializeField, Min(1f)] private float pointerDragThreshold = 7f;
 
-    [Header("Placement Bounds")]
+    [Header("Grid Placement")]
+    [SerializeField, Min(0.01f)] private float gridSize = Ship.DefaultAttachmentGridSize;
     [SerializeField] private Transform placementCenter;
     [SerializeField, Min(0f)] private float maximumPlacementDistance = 9f;
+    [SerializeField, Min(1)] private int maximumBuildLayers = 8;
 
-    [Header("Drag Highlight")]
-    [SerializeField] private Color dragHighlightColor = new Color(0.1f, 1f, 0.2f, 1f);
-    [SerializeField, Min(0.001f)] private float dragHighlightWidth = 0.045f;
+    [Header("Placement Feedback")]
+    [SerializeField] private Color selectedColor = new Color(1f, 0.73f, 0.22f, 1f);
+    [SerializeField] private Color validColor = new Color(0.25f, 0.95f, 0.48f, 1f);
+    [SerializeField] private Color invalidColor = new Color(1f, 0.25f, 0.2f, 1f);
+    [SerializeField, Min(0.001f)] private float outlineWidth = 0.045f;
 
-    private Camera dragCamera;
-    private Transform draggedBlock;
-    private Block draggedBlockComponent;
-    private KingBuildPlacement draggedKing;
-    private Block kingSupportCandidate;
-    private Ship draggedShip;
-    private Ship snappingShip;
-    private Rigidbody draggedBody;
-    private Plane dragPlane;
+    private Camera buildCamera;
+    private Block selectedBlock;
+    private KingBuildPlacement selectedKing;
+    private Transform selectedTransform;
+    private BlockDragOutline selectionOutline;
+    private bool pointerArmed;
+    private bool placementActive;
+    private bool placementValid;
+    private Vector2 pointerDownPosition;
     private Vector3 pointerOffset;
+    private float activeLayerHeight;
+    private PlacementSnapshot snapshot;
+    private Ship targetShip;
+    private Rigidbody movingBody;
     private bool previousKinematic;
     private bool previousUseGravity;
-    private Transform selectedMoveRoot;
-    private Block selectedBlockComponent;
-    private KingBuildPlacement selectedKing;
     private GameObject moveGizmo;
-    private readonly Dictionary<Collider, Vector3> gizmoHandles =
-        new Dictionary<Collider, Vector3>();
-    private readonly List<Material> gizmoMaterials = new List<Material>();
-    private readonly List<Mesh> gizmoMeshes = new List<Mesh>();
-    private bool axisDragging;
-    private Vector3 activeDragAxis;
-    private Vector3 axisDragStartPosition;
-    private float axisPointerStart;
-    private Plane axisDragPlane;
-    private readonly List<BlockDragOutline> activeHighlights =
-        new List<BlockDragOutline>();
+    private readonly Dictionary<Collider, Vector3Int> gizmoDirections = new();
+    private readonly List<Material> gizmoMaterials = new();
+    private readonly List<Mesh> gizmoMeshes = new();
+
+    private sealed class PlacementSnapshot
+    {
+        public Vector3 Position;
+        public Quaternion Rotation;
+        public Transform Parent;
+        public Ship Ship;
+        public Block KingSupport;
+    }
 
     public bool DraggingEnabled
     {
@@ -54,11 +60,7 @@ public class BlockDragController : MonoBehaviour
         set
         {
             draggingEnabled = value;
-
-            if (!draggingEnabled)
-            {
-                EndDrag();
-            }
+            if (!value) CancelActivePlacement();
         }
     }
 
@@ -68,803 +70,574 @@ public class BlockDragController : MonoBehaviour
         set => placementCenter = value;
     }
 
-    private void Awake()
-    {
-        dragCamera = GetComponent<Camera>();
-    }
+    public Transform SelectedTransform => selectedTransform;
+    public bool HasActiveSelection => selectedTransform != null;
+    public bool IsCurrentPlacementValid => !placementActive || placementValid;
+
+    private void Awake() => buildCamera = GetComponent<Camera>();
 
     private void Update()
     {
+        if (!draggingEnabled) return;
+        HandleKeyboard();
         Mouse mouse = Mouse.current;
-
-        if (!draggingEnabled || mouse == null)
+        if (mouse == null)
         {
+            UpdateMoveGizmo();
             return;
         }
 
         Vector2 pointerPosition = mouse.position.ReadValue();
-
-        if (mouse.leftButton.wasPressedThisFrame)
+        if (mouse.leftButton.wasPressedThisFrame) HandlePointerPressed(pointerPosition);
+        if (pointerArmed && mouse.leftButton.isPressed)
         {
-            BeginDrag(pointerPosition);
-        }
-
-        if (draggedBlock != null && mouse.leftButton.isPressed)
-        {
-            if (axisDragging)
-            {
-                DragAlongAxis(dragCamera.ScreenPointToRay(pointerPosition));
-            }
-            else
-            {
-                Drag(pointerPosition);
-            }
+            if (!placementActive && Vector2.Distance(pointerDownPosition, pointerPosition) >= pointerDragThreshold)
+                BeginPlacement();
+            if (placementActive) UpdatePointerPlacement(pointerPosition);
         }
 
         if (mouse.leftButton.wasReleasedThisFrame)
         {
-            EndDrag();
+            if (placementActive) FinishPlacement();
+            pointerArmed = false;
         }
 
-        Keyboard keyboard = Keyboard.current;
-        if (keyboard != null
-            && keyboard.rKey.wasPressedThisFrame
-            && draggedBlock == null)
-        {
-            RotateSelectionClockwise();
-        }
-
-        UpdateMoveGizmoPosition();
+        UpdateMoveGizmo();
     }
 
     private void OnDisable()
     {
-        EndDrag();
+        CancelActivePlacement();
         ClearSelection();
     }
 
-    private void BeginDrag(Vector2 pointerPosition)
+    private void HandlePointerPressed(Vector2 pointerPosition)
     {
-        Ray ray = dragCamera.ScreenPointToRay(pointerPosition);
-
-        if (TryGetGizmoHandleHit(ray, out Vector3 gizmoAxis))
+        Ray ray = buildCamera.ScreenPointToRay(pointerPosition);
+        if (TryGetGizmoDirection(ray, out Vector3Int direction))
         {
-            BeginAxisDrag(ray, gizmoAxis);
+            TryNudgeSelection(direction);
+            pointerArmed = false;
             return;
         }
 
-        if (!TryGetClosestDraggableHit(
-                ray,
-                out RaycastHit hit,
-                out Block selectedBlock,
-                out KingBuildPlacement selectedKingPlacement))
+        if (!TryGetClosestDraggable(ray, out Block block, out KingBuildPlacement king))
         {
             ClearSelection();
+            pointerArmed = false;
             return;
         }
 
-        if (selectedKingPlacement != null)
+        if (king != null) SelectKing(king); else SelectBlock(block);
+        pointerDownPosition = pointerPosition;
+        activeLayerHeight = selectedTransform.position.y;
+        Plane plane = new(Vector3.up, new Vector3(0f, activeLayerHeight, 0f));
+        pointerOffset = Vector3.zero;
+        if (plane.Raycast(ray, out float distance))
         {
-            ConfigureDraggedTarget(selectedKingPlacement);
-            SelectMoveTarget(null, selectedKingPlacement, draggedBlock);
+            pointerOffset = selectedTransform.position - ray.GetPoint(distance);
+            pointerOffset.y = 0f;
         }
-        else
-        {
-            ConfigureDraggedTarget(selectedBlock);
-            SelectMoveTarget(selectedBlock, null, draggedBlock);
-        }
-
-        float dragHeight = snappingShip != null && snappingShip.AnchorBlock != null
-            ? snappingShip.AnchorBlock.transform.position.y
-            : draggedBlock.position.y;
-
-        dragPlane = new Plane(Vector3.up, new Vector3(0f, dragHeight, 0f));
-
-        if (draggedShip == null)
-        {
-            // Individual blocks snap by their center so the selected tile
-            // remains directly under the mouse regardless of click location.
-            pointerOffset = Vector3.zero;
-        }
-        else if (dragPlane.Raycast(ray, out float distance))
-        {
-            pointerOffset = draggedBlock.position - ray.GetPoint(distance);
-        }
-        else
-        {
-            pointerOffset = Vector3.zero;
-        }
-
-        PrepareDraggedBody();
-        Drag(pointerPosition);
-        ShowDragHighlights();
+        pointerArmed = true;
     }
 
-    private void ConfigureDraggedTarget(Block selectedBlock)
+    private void HandleKeyboard()
     {
-        draggedBlock = null;
-        draggedBlockComponent = null;
-        draggedKing = null;
-        kingSupportCandidate = null;
-        draggedShip = null;
-        snappingShip = null;
-
-        Ship shipOnSelectedObject = selectedBlock.GetComponent<Ship>();
-
-        if (shipOnSelectedObject != null)
-        {
-            draggedShip = shipOnSelectedObject;
-            draggedBlockComponent = selectedBlock;
-            draggedBlock = shipOnSelectedObject.transform;
-        }
-        else
-        {
-            Ship owningShip = selectedBlock.GetComponentInParent<Ship>();
-            snappingShip = owningShip != null
-                ? owningShip
-                : FindClosestShip(selectedBlock.transform.position);
-
-            if (owningShip != null)
-            {
-                owningShip.DetachBlock(selectedBlock);
-            }
-
-            draggedBlockComponent = selectedBlock;
-            draggedBlock = selectedBlock.transform;
-        }
+        Keyboard keyboard = Keyboard.current;
+        if (keyboard == null || selectedTransform == null || pointerArmed) return;
+        if (keyboard.rKey.wasPressedThisFrame) RotateSelectionClockwise();
+        else if (keyboard.leftArrowKey.wasPressedThisFrame) TryNudgeSelection(Vector3Int.left);
+        else if (keyboard.rightArrowKey.wasPressedThisFrame) TryNudgeSelection(Vector3Int.right);
+        else if (keyboard.upArrowKey.wasPressedThisFrame) TryNudgeSelection(new Vector3Int(0, 0, 1));
+        else if (keyboard.downArrowKey.wasPressedThisFrame) TryNudgeSelection(new Vector3Int(0, 0, -1));
+        else if (keyboard.eKey.wasPressedThisFrame || keyboard.pageUpKey.wasPressedThisFrame) TryNudgeSelection(Vector3Int.up);
+        else if (keyboard.qKey.wasPressedThisFrame || keyboard.pageDownKey.wasPressedThisFrame) TryNudgeSelection(Vector3Int.down);
     }
 
-    private void ConfigureDraggedTarget(KingBuildPlacement king)
+    private bool TryGetClosestDraggable(Ray ray, out Block blockHit, out KingBuildPlacement kingHit)
     {
-        draggedBlock = king.transform;
-        draggedBlockComponent = null;
-        draggedKing = king;
-        kingSupportCandidate = king.SupportBlock;
-        draggedShip = null;
-        snappingShip = king.SupportingShip != null
-            ? king.SupportingShip
-            : FindClosestShip(king.transform.position);
-        king.ClearSupport();
-    }
-
-    private void PrepareDraggedBody()
-    {
-        draggedBody = draggedBlock.GetComponent<Rigidbody>();
-
-        if (draggedBody != null)
+        blockHit = null;
+        kingHit = null;
+        float closest = float.PositiveInfinity;
+        foreach (RaycastHit hit in Physics.RaycastAll(ray, raycastDistance, draggableLayers, QueryTriggerInteraction.Ignore))
         {
-            previousKinematic = draggedBody.isKinematic;
-            previousUseGravity = draggedBody.useGravity;
-            if (!draggedBody.isKinematic)
-            {
-                draggedBody.linearVelocity = Vector3.zero;
-                draggedBody.angularVelocity = Vector3.zero;
-            }
-            draggedBody.useGravity = false;
-            draggedBody.isKinematic = true;
-        }
-    }
-
-    private bool TryGetClosestDraggableHit(
-        Ray ray,
-        out RaycastHit draggableHit,
-        out Block selectedBlock,
-        out KingBuildPlacement selectedKingPlacement)
-    {
-        draggableHit = default;
-        selectedBlock = null;
-        selectedKingPlacement = null;
-        RaycastHit[] hits = Physics.RaycastAll(
-            ray,
-            raycastDistance,
-            draggableLayers,
-            QueryTriggerInteraction.Ignore);
-        float closestDistance = float.PositiveInfinity;
-        bool foundDraggable = false;
-
-        foreach (RaycastHit hit in hits)
-        {
+            KingBuildPlacement king = hit.collider.GetComponentInParent<KingBuildPlacement>();
             Block block = hit.collider.GetComponentInParent<Block>();
-            KingBuildPlacement king =
-                hit.collider.GetComponentInParent<KingBuildPlacement>();
+            bool isBlock = block != null && block.CompareTag("Block");
+            if ((king == null && !isBlock) || hit.distance >= closest) continue;
+            closest = hit.distance;
+            kingHit = king;
+            blockHit = king == null ? block : null;
+        }
+        return kingHit != null || blockHit != null;
+    }
 
-            if ((king == null && (block == null || !block.CompareTag("Block")))
-                || hit.distance >= closestDistance)
+    private void BeginPlacement()
+    {
+        if (selectedTransform == null || placementActive) return;
+        snapshot = new PlacementSnapshot
+        {
+            Position = selectedTransform.position,
+            Rotation = selectedTransform.rotation,
+            Parent = selectedTransform.parent,
+            Ship = selectedBlock == null ? null : selectedBlock.GetComponentInParent<Ship>(),
+            KingSupport = selectedKing == null ? null : selectedKing.SupportBlock
+        };
+        targetShip = snapshot.Ship != null ? snapshot.Ship : FindClosestShip(selectedTransform.position);
+        if (selectedBlock != null && snapshot.Ship != null) snapshot.Ship.DetachBlock(selectedBlock);
+        else if (selectedKing != null) selectedKing.ClearSupport();
+
+        movingBody = selectedTransform.GetComponent<Rigidbody>();
+        if (movingBody != null)
+        {
+            previousKinematic = movingBody.isKinematic;
+            previousUseGravity = movingBody.useGravity;
+            if (!movingBody.isKinematic)
             {
-                continue;
+                movingBody.linearVelocity = Vector3.zero;
+                movingBody.angularVelocity = Vector3.zero;
             }
-
-            closestDistance = hit.distance;
-            draggableHit = hit;
-            selectedBlock = block;
-            selectedKingPlacement = king;
-            foundDraggable = true;
+            movingBody.useGravity = false;
+            movingBody.isKinematic = true;
         }
 
-        return foundDraggable;
+        placementActive = true;
+        placementValid = EvaluatePlacement();
+        RefreshSelectionOutline(placementValid ? validColor : invalidColor);
+        SetGizmoVisible(false);
     }
 
-    private void Drag(Vector2 pointerPosition)
+    private void UpdatePointerPlacement(Vector2 pointerPosition)
     {
-        Ray ray = dragCamera.ScreenPointToRay(pointerPosition);
-
-        if (draggedShip == null
-            && TryGetSurfacePlacement(ray, out Vector3 surfacePosition))
+        Ray ray = buildCamera.ScreenPointToRay(pointerPosition);
+        if (selectedKing != null && TryGetChairPlacement(ray, out Vector3 kingPosition))
         {
-            TryApplyPlacement(
-                surfacePosition,
-                snappingShip.transform.rotation);
+            ApplyPreview(kingPosition, selectedTransform.rotation);
             return;
         }
 
-        if (!dragPlane.Raycast(ray, out float distance))
-        {
-            return;
-        }
-
-        Vector3 targetPosition = ray.GetPoint(distance) + pointerOffset;
-        Vector3 gridOrigin = GetGridOrigin();
-        float activeGridSize = GetActiveGridSize();
-
-        float snappedHeight = snappingShip != null
-            ? gridOrigin.y
-            : draggedBlock.position.y;
-
-        Vector3 snappedPosition = new Vector3(
-            gridOrigin.x
-                + Mathf.Round((targetPosition.x - gridOrigin.x) / activeGridSize)
-                * activeGridSize,
-            snappedHeight,
-            gridOrigin.z
-                + Mathf.Round((targetPosition.z - gridOrigin.z) / activeGridSize)
-                * activeGridSize);
-
-        TryApplyPlacement(
-            ConstrainToPlacementBounds(snappedPosition, activeGridSize),
-            draggedBlock.rotation);
+        Plane plane = new(Vector3.up, new Vector3(0f, activeLayerHeight, 0f));
+        if (!plane.Raycast(ray, out float distance)) return;
+        Vector3 target = ray.GetPoint(distance) + pointerOffset;
+        target.y = activeLayerHeight;
+        ApplyPreview(SnapHorizontal(target), selectedTransform.rotation);
     }
 
-    private bool TryGetGizmoHandleHit(Ray ray, out Vector3 axis)
+    private Vector3 SnapHorizontal(Vector3 worldPosition)
     {
-        axis = default;
-        RaycastHit[] hits = Physics.RaycastAll(
-            ray,
-            raycastDistance,
-            ~0,
-            QueryTriggerInteraction.Ignore);
-        float closestDistance = float.PositiveInfinity;
-        bool foundHandle = false;
-
-        foreach (RaycastHit hit in hits)
-        {
-            if (!gizmoHandles.TryGetValue(hit.collider, out Vector3 hitAxis)
-                || hit.distance >= closestDistance)
-            {
-                continue;
-            }
-
-            closestDistance = hit.distance;
-            axis = hitAxis;
-            foundHandle = true;
-        }
-
-        return foundHandle;
-    }
-
-    private void BeginAxisDrag(Ray pointerRay, Vector3 axis)
-    {
-        if ((selectedBlockComponent == null && selectedKing == null)
-            || selectedMoveRoot == null)
-        {
-            return;
-        }
-
-        if (selectedKing != null)
-        {
-            ConfigureDraggedTarget(selectedKing);
-        }
-        else
-        {
-            ConfigureDraggedTarget(selectedBlockComponent);
-        }
-        PrepareDraggedBody();
-        axisDragging = true;
-        activeDragAxis = axis.normalized;
-        axisDragStartPosition = draggedBlock.position;
-
-        Vector3 viewDirection =
-            (axisDragStartPosition - dragCamera.transform.position).normalized;
-        Vector3 side = Vector3.Cross(activeDragAxis, viewDirection);
-        Vector3 planeNormal = Vector3.Cross(activeDragAxis, side).normalized;
-
-        if (planeNormal.sqrMagnitude < 0.001f)
-        {
-            planeNormal = Vector3.Cross(activeDragAxis, dragCamera.transform.up).normalized;
-        }
-
-        axisDragPlane = new Plane(planeNormal, axisDragStartPosition);
-        axisPointerStart = 0f;
-
-        if (axisDragPlane.Raycast(pointerRay, out float distance))
-        {
-            axisPointerStart = Vector3.Dot(
-                pointerRay.GetPoint(distance) - axisDragStartPosition,
-                activeDragAxis);
-        }
-
-        ShowDragHighlights();
-    }
-
-    private void DragAlongAxis(Ray pointerRay)
-    {
-        if (!axisDragPlane.Raycast(pointerRay, out float distance))
-        {
-            return;
-        }
-
-        float pointerPosition = Vector3.Dot(
-            pointerRay.GetPoint(distance) - axisDragStartPosition,
-            activeDragAxis);
-        float gridStep = GetActiveGridSize();
-        float snappedDistance = Mathf.Round(
-            (pointerPosition - axisPointerStart) / gridStep) * gridStep;
-        Vector3 targetPosition = axisDragStartPosition
-            + activeDragAxis * snappedDistance;
-
-        TryApplyPlacement(
-            ConstrainToPlacementBounds(targetPosition, gridStep),
-            draggedBlock.rotation);
+        float step = GetGridSize();
+        Quaternion frameRotation = targetShip == null ? Quaternion.identity : targetShip.transform.rotation;
+        Vector3 origin = GetGridOrigin();
+        Vector3 local = Quaternion.Inverse(frameRotation) * (worldPosition - origin);
+        local.x = Mathf.Round(local.x / step) * step;
+        local.z = Mathf.Round(local.z / step) * step;
+        Vector3 snapped = origin + frameRotation * local;
+        snapped.y = activeLayerHeight;
+        return snapped;
     }
 
     private Vector3 GetGridOrigin()
     {
-        if (snappingShip == null)
-        {
-            return Vector3.zero;
-        }
-
-        return snappingShip.AnchorBlock != null
-            ? snappingShip.AnchorBlock.transform.position
-            : snappingShip.transform.position;
+        if (targetShip != null && targetShip.AnchorBlock != null) return targetShip.AnchorBlock.transform.position;
+        Vector3 center = placementCenter == null ? Vector3.zero : placementCenter.position;
+        center.y = activeLayerHeight;
+        return center;
     }
 
-    private float GetActiveGridSize()
-    {
-        return snappingShip != null
-            ? snappingShip.AttachmentGridSize
-            : gridSize;
-    }
+    private float GetGridSize() => targetShip == null ? gridSize : targetShip.AttachmentGridSize;
 
-    private bool TryApplyPlacement(Vector3 position, Quaternion rotation)
+    private void ApplyPreview(Vector3 position, Quaternion rotation)
     {
-        if (draggedBlock == null)
-        {
-            return false;
-        }
-
-        Vector3 previousPosition = draggedBlock.position;
-        Quaternion previousRotation = draggedBlock.rotation;
-        draggedBlock.SetPositionAndRotation(position, rotation);
+        if (selectedTransform == null) return;
+        selectedTransform.SetPositionAndRotation(position, rotation);
         Physics.SyncTransforms();
-
-        if (IsPlacementClear(draggedBlock))
-        {
-            return true;
-        }
-
-        draggedBlock.SetPositionAndRotation(previousPosition, previousRotation);
-        Physics.SyncTransforms();
-        return false;
+        bool valid = EvaluatePlacement();
+        if (valid == placementValid) return;
+        placementValid = valid;
+        RefreshSelectionOutline(valid ? validColor : invalidColor);
     }
 
-    public bool IsPlacementClear(Transform movingRoot)
+    private bool EvaluatePlacement() => selectedTransform != null
+        && IsWithinPlacementBounds(selectedTransform)
+        && IsWithinHeightLimit(selectedTransform.position.y)
+        && IsPlacementClear(selectedTransform);
+
+    private bool IsWithinHeightLimit(float height)
     {
-        if (movingRoot == null)
-        {
-            return false;
-        }
-
-        Collider[] movingColliders =
-            movingRoot.GetComponentsInChildren<Collider>(true);
-
-        foreach (Collider movingCollider in movingColliders)
-        {
-            if (movingCollider == null || !movingCollider.enabled)
-            {
-                continue;
-            }
-
-            Collider[] nearbyColliders = Physics.OverlapBox(
-                movingCollider.bounds.center,
-                movingCollider.bounds.extents + Vector3.one * 0.02f,
-                Quaternion.identity,
-                ~0,
-                QueryTriggerInteraction.Ignore);
-
-            foreach (Collider otherCollider in nearbyColliders)
-            {
-                if (otherCollider == null
-                    || otherCollider == movingCollider
-                    || !otherCollider.enabled
-                    || otherCollider.isTrigger
-                    || otherCollider.transform.IsChildOf(movingRoot)
-                    || otherCollider.GetComponentInParent<Block>() == null)
-                {
-                    continue;
-                }
-
-                if (Physics.ComputePenetration(
-                        movingCollider,
-                        movingCollider.transform.position,
-                        movingCollider.transform.rotation,
-                        otherCollider,
-                        otherCollider.transform.position,
-                        otherCollider.transform.rotation,
-                        out _,
-                        out float penetrationDistance)
-                    && penetrationDistance > 0.01f)
-                {
-                    return false;
-                }
-            }
-        }
-
-        return true;
+        float floor = GetBuildFloorHeight();
+        float allowance = GetGridSize() * maximumBuildLayers + GetSelectionHalfHeight();
+        return height >= floor - 0.05f && height <= floor + allowance;
     }
 
-    private bool TryGetSurfacePlacement(Ray ray, out Vector3 placementPosition)
+    private float GetBuildFloorHeight()
     {
-        placementPosition = default;
-        RaycastHit[] hits = Physics.RaycastAll(
-            ray,
-            raycastDistance,
-            draggableLayers,
-            QueryTriggerInteraction.Ignore);
-
-        float closestHitDistance = float.PositiveInfinity;
-        Ship bestShip = null;
-        Vector3 bestPosition = default;
-
-        foreach (RaycastHit hit in hits)
-        {
-            if (draggedBlock != null
-                && hit.collider.transform.IsChildOf(draggedBlock))
-            {
-                continue;
-            }
-
-            Block targetBlock = hit.collider.GetComponentInParent<Block>();
-
-            if (targetBlock == null
-                || targetBlock == draggedBlockComponent
-                || !targetBlock.CompareTag("Block"))
-            {
-                continue;
-            }
-
-            if (draggedKing != null
-                && targetBlock.GetComponent<ChairSeat>() == null)
-            {
-                continue;
-            }
-
-            Ship targetShip = targetBlock.GetComponentInParent<Ship>();
-
-            if (targetShip == null || hit.distance >= closestHitDistance)
-            {
-                continue;
-            }
-
-            Vector3 possiblePosition;
-
-            if (draggedKing != null)
-            {
-                possiblePosition = draggedKing.GetPositionOn(targetBlock);
-            }
-            else
-            {
-                Vector3 faceDirection = GetClosestFaceDirection(
-                    hit.normal,
-                    targetShip.transform);
-                possiblePosition = targetBlock.transform.position
-                    + faceDirection * targetShip.AttachmentGridSize;
-            }
-
-            if (!IsWithinPlacementBounds(possiblePosition)
-                || (draggedKing == null
-                    && !targetShip.IsAttachmentPositionAvailable(
-                        possiblePosition,
-                        draggedBlockComponent)))
-            {
-                continue;
-            }
-
-            closestHitDistance = hit.distance;
-            bestShip = targetShip;
-            bestPosition = possiblePosition;
-            kingSupportCandidate = draggedKing == null ? null : targetBlock;
-        }
-
-        if (bestShip == null)
-        {
-            return false;
-        }
-
-        snappingShip = bestShip;
-        placementPosition = bestPosition;
-        return true;
+        Collider platformCollider = placementCenter == null ? null : placementCenter.GetComponent<Collider>();
+        return platformCollider == null
+            ? (placementCenter == null ? 0f : placementCenter.position.y)
+            : platformCollider.bounds.max.y;
     }
 
-    private Vector3 GetClosestFaceDirection(Vector3 surfaceNormal, Transform shipTransform)
+    private float GetSelectionHalfHeight() => TryGetCombinedBounds(selectedTransform, out Bounds bounds)
+        ? bounds.extents.y : GetGridSize() * 0.5f;
+
+    private void FinishPlacement()
     {
-        Vector3[] directions =
-        {
-            shipTransform.right,
-            -shipTransform.right,
-            shipTransform.up,
-            -shipTransform.up,
-            shipTransform.forward,
-            -shipTransform.forward
-        };
-
-        Vector3 closestDirection = directions[0];
-        float largestDot = float.NegativeInfinity;
-
-        foreach (Vector3 direction in directions)
-        {
-            float dot = Vector3.Dot(surfaceNormal, direction);
-
-            if (dot > largestDot)
-            {
-                largestDot = dot;
-                closestDirection = direction;
-            }
-        }
-
-        return closestDirection;
+        if (!placementActive) return;
+        if (!placementValid) RestoreSnapshot(); else CommitCurrentPosition();
+        RestoreMovingBody();
+        placementActive = false;
+        snapshot = null;
+        targetShip = null;
+        movingBody = null;
+        RefreshSelectionOutline(selectedColor);
+        SetGizmoVisible(true);
+        UpdateMoveGizmo();
     }
 
-    private void EndDrag()
+    private void CommitCurrentPosition()
     {
-        HideDragHighlights();
-
-        if (draggedBody != null)
-        {
-            draggedBody.isKinematic = previousKinematic;
-            draggedBody.useGravity = previousUseGravity;
-            if (!previousKinematic)
-            {
-                draggedBody.linearVelocity = Vector3.zero;
-                draggedBody.angularVelocity = Vector3.zero;
-            }
-        }
-
-        if (draggedShip != null)
-        {
-            draggedShip.AttachTouchingBlocks();
-        }
-        else if (draggedKing != null)
+        if (selectedKing != null)
         {
             Block support = FindKingSupportAtCurrentPosition();
-            if (support != null)
-            {
-                draggedKing.SetSupport(support);
-            }
-            else
-            {
-                draggedKing.ClearSupport();
-            }
-        }
-        else if (draggedBlockComponent != null)
-        {
-            if (snappingShip != null
-                && snappingShip.TryAttachBlock(draggedBlockComponent))
-            {
-                snappingShip.AttachTouchingBlocks();
-            }
-            else
-            {
-                Ship[] ships = Object.FindObjectsByType<Ship>(FindObjectsInactive.Exclude);
-
-                foreach (Ship ship in ships)
-                {
-                    if (ship.TryAttachBlock(draggedBlockComponent))
-                    {
-                        ship.AttachTouchingBlocks();
-                        break;
-                    }
-                }
-            }
-        }
-
-        draggedBlock = null;
-        draggedBlockComponent = null;
-        draggedKing = null;
-        kingSupportCandidate = null;
-        draggedShip = null;
-        snappingShip = null;
-        draggedBody = null;
-        axisDragging = false;
-        activeDragAxis = Vector3.zero;
-        UpdateMoveGizmoPosition();
-    }
-
-    public void SelectBlock(Block block)
-    {
-        if (block == null)
-        {
-            ClearSelection();
+            if (support != null) selectedKing.SetSupport(support); else selectedKing.ClearSupport();
             return;
         }
-
-        Ship shipOnBlock = block.GetComponent<Ship>();
-        SelectMoveTarget(
-            block,
-            null,
-            shipOnBlock != null ? shipOnBlock.transform : block.transform);
-    }
-
-    public void SelectKing(KingBuildPlacement king)
-    {
-        if (king == null)
+        if (selectedBlock == null) return;
+        Ship ship = targetShip != null ? targetShip : FindClosestShip(selectedTransform.position);
+        if (ship != null && ship.TryAttachBlock(selectedBlock))
         {
-            ClearSelection();
+            ship.AttachTouchingBlocks();
             return;
         }
+        GameObject looseRoot = GameObject.Find("Build Pieces");
+        selectedTransform.SetParent(looseRoot == null ? null : looseRoot.transform, true);
+    }
 
-        SelectMoveTarget(null, king, king.transform);
+    private void RestoreSnapshot()
+    {
+        if (snapshot == null || selectedTransform == null) return;
+        selectedTransform.SetParent(snapshot.Parent, true);
+        selectedTransform.SetPositionAndRotation(snapshot.Position, snapshot.Rotation);
+        Physics.SyncTransforms();
+        if (selectedBlock != null && snapshot.Ship != null) snapshot.Ship.AttachBlock(selectedBlock);
+        else if (selectedKing != null && snapshot.KingSupport != null) selectedKing.SetSupport(snapshot.KingSupport);
+    }
+
+    private void RestoreMovingBody()
+    {
+        if (movingBody == null) return;
+        movingBody.isKinematic = previousKinematic;
+        movingBody.useGravity = previousUseGravity;
+        if (!previousKinematic)
+        {
+            movingBody.linearVelocity = Vector3.zero;
+            movingBody.angularVelocity = Vector3.zero;
+        }
+    }
+
+    public void CancelActivePlacement()
+    {
+        if (placementActive)
+        {
+            RestoreSnapshot();
+            RestoreMovingBody();
+        }
+        placementActive = false;
+        pointerArmed = false;
+        snapshot = null;
+        targetShip = null;
+        movingBody = null;
+        RefreshSelectionOutline(selectedColor);
+        SetGizmoVisible(true);
+    }
+
+    public bool TryNudgeSelection(Vector3Int gridDirection)
+    {
+        if (selectedTransform == null || placementActive || gridDirection == Vector3Int.zero) return false;
+        BeginPlacement();
+        if (!placementActive) return false;
+        Quaternion frameRotation = targetShip == null ? Quaternion.identity : targetShip.transform.rotation;
+        Vector3 direction = frameRotation * new Vector3(gridDirection.x, gridDirection.y, gridDirection.z);
+        Vector3 target = selectedTransform.position + direction * GetGridSize();
+        activeLayerHeight = target.y;
+        ApplyPreview(target, selectedTransform.rotation);
+        bool result = placementValid;
+        FinishPlacement();
+        return result;
     }
 
     public bool RotateSelectionClockwise()
     {
-        if (selectedMoveRoot == null || draggedBlock != null)
-        {
-            return false;
-        }
-
-        Quaternion previousRotation = selectedMoveRoot.rotation;
-        Quaternion rotated = Quaternion.AngleAxis(90f, Vector3.up)
-            * previousRotation;
-        selectedMoveRoot.rotation = rotated;
-        Physics.SyncTransforms();
-
-        if (IsPlacementClear(selectedMoveRoot))
-        {
-            return true;
-        }
-
-        selectedMoveRoot.rotation = previousRotation;
-        Physics.SyncTransforms();
-        return false;
+        if (selectedTransform == null || placementActive) return false;
+        BeginPlacement();
+        if (!placementActive) return false;
+        Quaternion rotated = Quaternion.AngleAxis(90f, Vector3.up) * selectedTransform.rotation;
+        ApplyPreview(selectedTransform.position, rotated);
+        bool result = placementValid;
+        FinishPlacement();
+        return result;
     }
 
-    private void SelectMoveTarget(
-        Block block,
-        KingBuildPlacement king,
-        Transform moveRoot)
+    public void SelectBlock(Block block)
     {
-        selectedBlockComponent = block;
+        if (block == null) { ClearSelection(); return; }
+        SetSelection(block, null, block.transform);
+    }
+
+    public void SelectKing(KingBuildPlacement king)
+    {
+        if (king == null) { ClearSelection(); return; }
+        SetSelection(null, king, king.transform);
+    }
+
+    private void SetSelection(Block block, KingBuildPlacement king, Transform target)
+    {
+        if (selectedTransform == target) return;
+        CancelActivePlacement();
+        RemoveSelectionOutline();
+        selectedBlock = block;
         selectedKing = king;
-        selectedMoveRoot = moveRoot;
+        selectedTransform = target;
+        RefreshSelectionOutline(selectedColor);
         CreateMoveGizmo();
-        UpdateMoveGizmoPosition();
+        UpdateMoveGizmo();
     }
 
     private void ClearSelection()
     {
-        selectedBlockComponent = null;
+        CancelActivePlacement();
+        RemoveSelectionOutline();
+        selectedBlock = null;
         selectedKing = null;
-        selectedMoveRoot = null;
+        selectedTransform = null;
         DestroyMoveGizmo();
+    }
+
+    public bool IsPlacementClear(Transform movingRoot)
+    {
+        if (movingRoot == null) return false;
+        foreach (Collider movingCollider in movingRoot.GetComponentsInChildren<Collider>(true))
+        {
+            if (movingCollider == null || !movingCollider.enabled || movingCollider.isTrigger) continue;
+            Collider[] nearby = Physics.OverlapBox(movingCollider.bounds.center,
+                movingCollider.bounds.extents + Vector3.one * 0.015f,
+                Quaternion.identity, ~0, QueryTriggerInteraction.Ignore);
+            foreach (Collider other in nearby)
+            {
+                if (other == null || other == movingCollider || !other.enabled || other.isTrigger
+                    || other.transform.IsChildOf(movingRoot)
+                    || (other.GetComponentInParent<Block>() == null
+                        && other.GetComponentInParent<KingBuildPlacement>() == null)) continue;
+                if (Physics.ComputePenetration(movingCollider, movingCollider.transform.position,
+                        movingCollider.transform.rotation, other, other.transform.position,
+                        other.transform.rotation, out _, out float depth) && depth > 0.015f) return false;
+            }
+        }
+        return true;
+    }
+
+    private bool IsWithinPlacementBounds(Transform movingRoot)
+    {
+        if (placementCenter == null) return true;
+        if (TryGetCombinedBounds(movingRoot, out Bounds movingBounds))
+        {
+            Collider platformCollider = placementCenter.GetComponent<Collider>();
+            if (platformCollider != null)
+            {
+                Bounds platformBounds = platformCollider.bounds;
+                const float tolerance = 0.04f;
+                return movingBounds.min.x >= platformBounds.min.x - tolerance
+                    && movingBounds.max.x <= platformBounds.max.x + tolerance
+                    && movingBounds.min.z >= platformBounds.min.z - tolerance
+                    && movingBounds.max.z <= platformBounds.max.z + tolerance;
+            }
+        }
+        if (maximumPlacementDistance <= 0f) return true;
+        Vector2 offset = new(movingRoot.position.x - placementCenter.position.x,
+            movingRoot.position.z - placementCenter.position.z);
+        return offset.sqrMagnitude <= maximumPlacementDistance * maximumPlacementDistance;
+    }
+
+    private static bool TryGetCombinedBounds(Transform root, out Bounds bounds)
+    {
+        bounds = default;
+        if (root == null) return false;
+        bool hasBounds = false;
+        foreach (Collider collider in root.GetComponentsInChildren<Collider>(true))
+        {
+            if (collider == null || !collider.enabled || collider.isTrigger) continue;
+            if (!hasBounds) { bounds = collider.bounds; hasBounds = true; }
+            else bounds.Encapsulate(collider.bounds);
+        }
+        if (hasBounds) return true;
+        foreach (Renderer renderer in root.GetComponentsInChildren<Renderer>(true))
+        {
+            if (renderer == null) continue;
+            if (!hasBounds) { bounds = renderer.bounds; hasBounds = true; }
+            else bounds.Encapsulate(renderer.bounds);
+        }
+        return hasBounds;
+    }
+
+    private bool TryGetChairPlacement(Ray ray, out Vector3 position)
+    {
+        position = default;
+        float closest = float.PositiveInfinity;
+        Block bestBlock = null;
+        foreach (RaycastHit hit in Physics.RaycastAll(ray, raycastDistance, draggableLayers, QueryTriggerInteraction.Ignore))
+        {
+            if (hit.collider.transform.IsChildOf(selectedTransform)) continue;
+            Block block = hit.collider.GetComponentInParent<Block>();
+            if (block == null || block.GetComponent<ChairSeat>() == null || hit.distance >= closest) continue;
+            closest = hit.distance;
+            bestBlock = block;
+        }
+        if (bestBlock == null) return false;
+        targetShip = bestBlock.GetComponentInParent<Ship>();
+        position = selectedKing.GetPositionOn(bestBlock);
+        return true;
     }
 
     private Block FindKingSupportAtCurrentPosition()
     {
-        if (draggedKing == null)
-        {
-            return null;
-        }
-
-        if (kingSupportCandidate != null
-            && (draggedKing.GetPositionOn(kingSupportCandidate)
-                - draggedKing.transform.position).sqrMagnitude <= 0.04f)
-        {
-            return kingSupportCandidate;
-        }
-
+        if (selectedKing == null) return null;
         Block closest = null;
         float closestDistanceSquared = 0.04f;
-
         foreach (Block block in Object.FindObjectsByType<Block>(FindObjectsInactive.Exclude))
         {
-            if (block == null
-                || !block.IsAlive
-                || block.GetComponent<ChairSeat>() == null)
-            {
-                continue;
-            }
-
-            float distanceSquared =
-                (draggedKing.GetPositionOn(block) - draggedKing.transform.position)
-                .sqrMagnitude;
+            if (block == null || !block.IsAlive || block.GetComponent<ChairSeat>() == null) continue;
+            float distanceSquared = (selectedKing.GetPositionOn(block) - selectedKing.transform.position).sqrMagnitude;
             if (distanceSquared <= closestDistanceSquared)
             {
                 closestDistanceSquared = distanceSquared;
                 closest = block;
             }
         }
-
         return closest;
+    }
+
+    private Ship FindClosestShip(Vector3 position)
+    {
+        Ship closest = null;
+        float closestDistanceSquared = float.PositiveInfinity;
+        foreach (Ship ship in Object.FindObjectsByType<Ship>(FindObjectsInactive.Exclude))
+        {
+            float distanceSquared = (ship.transform.position - position).sqrMagnitude;
+            if (distanceSquared < closestDistanceSquared)
+            {
+                closestDistanceSquared = distanceSquared;
+                closest = ship;
+            }
+        }
+        return closest;
+    }
+
+    private void RefreshSelectionOutline(Color color)
+    {
+        if (selectedTransform == null) return;
+        if (selectionOutline == null)
+            selectionOutline = selectedTransform.GetComponent<BlockDragOutline>()
+                ?? selectedTransform.gameObject.AddComponent<BlockDragOutline>();
+        if (selectionOutline != null) selectionOutline.Configure(color, outlineWidth);
+    }
+
+    private void RemoveSelectionOutline()
+    {
+        if (selectionOutline == null) return;
+        DestroyGenerated(selectionOutline);
+        selectionOutline = null;
+    }
+
+    private bool TryGetGizmoDirection(Ray ray, out Vector3Int direction)
+    {
+        direction = Vector3Int.zero;
+        float closest = float.PositiveInfinity;
+        foreach (RaycastHit hit in Physics.RaycastAll(ray, raycastDistance, ~0, QueryTriggerInteraction.Collide))
+        {
+            if (!gizmoDirections.TryGetValue(hit.collider, out Vector3Int hitDirection) || hit.distance >= closest) continue;
+            closest = hit.distance;
+            direction = hitDirection;
+        }
+        return direction != Vector3Int.zero;
     }
 
     private void CreateMoveGizmo()
     {
         DestroyMoveGizmo();
-        moveGizmo = new GameObject("Block Move Arrows");
-        moveGizmo.hideFlags = HideFlags.DontSave;
-
-        CreateAxisArrow(Vector3.right, new Color(0.92f, 0.22f, 0.18f));
-        CreateAxisArrow(Vector3.up, new Color(0.28f, 0.82f, 0.3f));
-        CreateAxisArrow(Vector3.forward, new Color(0.2f, 0.48f, 0.96f));
+        if (selectedTransform == null) return;
+        moveGizmo = new GameObject("Build Move Arrows") { hideFlags = HideFlags.DontSave };
+        CreateAxisPair(Vector3Int.right, new Color(0.95f, 0.28f, 0.2f));
+        CreateAxisPair(new Vector3Int(0, 0, 1), new Color(0.24f, 0.52f, 1f));
+        // Put vertical controls beside the part. A conventional negative-Y arrow
+        // centered on a floor-level block is buried below the build platform.
+        CreateNudgeArrow(Vector3Int.up, new Color(0.3f, 0.9f, 0.38f), new Vector3(1.45f, 0.2f, 0f));
+        CreateNudgeArrow(Vector3Int.down, new Color(0.2f, 0.68f, 0.28f), new Vector3(2.05f, 1.7f, 0f));
+        GameObject hub = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        hub.name = "Move Gizmo Hub";
+        hub.transform.SetParent(moveGizmo.transform, false);
+        hub.transform.localScale = Vector3.one * 0.22f;
+        DestroyGenerated(hub.GetComponent<Collider>());
+        Material material = CreateGizmoMaterial(new Color(1f, 0.82f, 0.42f));
+        gizmoMaterials.Add(material);
+        hub.GetComponent<Renderer>().sharedMaterial = material;
     }
 
-    private void CreateAxisArrow(Vector3 axis, Color color)
+    private void CreateAxisPair(Vector3Int direction, Color color)
     {
+        CreateNudgeArrow(direction, color, Vector3.zero);
+        CreateNudgeArrow(-direction, Color.Lerp(color, Color.black, 0.2f), Vector3.zero);
+    }
+
+    private void CreateNudgeArrow(Vector3Int gridDirection, Color color, Vector3 origin)
+    {
+        Vector3 direction = new(gridDirection.x, gridDirection.y, gridDirection.z);
         Material material = CreateGizmoMaterial(color);
         gizmoMaterials.Add(material);
-
         GameObject shaft = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        shaft.name = $"{axis} Move Handle";
+        shaft.name = $"Nudge {gridDirection}";
         shaft.transform.SetParent(moveGizmo.transform, false);
-        shaft.transform.localPosition = axis * 0.65f;
-        shaft.transform.localRotation = Quaternion.FromToRotation(Vector3.up, axis);
-        shaft.transform.localScale = new Vector3(0.11f, 0.65f, 0.11f);
+        shaft.transform.localPosition = origin + direction * 0.72f;
+        shaft.transform.localRotation = Quaternion.FromToRotation(Vector3.up, direction);
+        shaft.transform.localScale = new Vector3(0.1f, 0.48f, 0.1f);
         shaft.GetComponent<Renderer>().sharedMaterial = material;
-        gizmoHandles[shaft.GetComponent<Collider>()] = axis;
-
-        GameObject head = new GameObject($"{axis} Arrow Head");
+        gizmoDirections[shaft.GetComponent<Collider>()] = gridDirection;
+        GameObject head = new($"Nudge {gridDirection} Head");
         head.transform.SetParent(moveGizmo.transform, false);
-        head.transform.localPosition = axis * 1.52f;
-        head.transform.localRotation = Quaternion.FromToRotation(Vector3.up, axis);
-
-        Mesh arrowHeadMesh = CreateConeMesh();
-        gizmoMeshes.Add(arrowHeadMesh);
-        MeshFilter filter = head.AddComponent<MeshFilter>();
-        filter.sharedMesh = arrowHeadMesh;
-        MeshRenderer renderer = head.AddComponent<MeshRenderer>();
-        renderer.sharedMaterial = material;
+        head.transform.localPosition = origin + direction * 1.34f;
+        head.transform.localRotation = Quaternion.FromToRotation(Vector3.up, direction);
+        Mesh cone = CreateConeMesh();
+        gizmoMeshes.Add(cone);
+        head.AddComponent<MeshFilter>().sharedMesh = cone;
+        head.AddComponent<MeshRenderer>().sharedMaterial = material;
         MeshCollider collider = head.AddComponent<MeshCollider>();
-        collider.sharedMesh = arrowHeadMesh;
+        collider.sharedMesh = cone;
         collider.convex = true;
-        gizmoHandles[collider] = axis;
+        gizmoDirections[collider] = gridDirection;
+    }
+
+    private void UpdateMoveGizmo()
+    {
+        if (moveGizmo == null || selectedTransform == null || placementActive) return;
+        if (buildCamera == null) buildCamera = GetComponent<Camera>();
+        if (buildCamera == null) return;
+        Vector3 center = TryGetCombinedBounds(selectedTransform, out Bounds bounds) ? bounds.center : selectedTransform.position;
+        moveGizmo.transform.position = center;
+        moveGizmo.transform.rotation = Quaternion.identity;
+        float distance = Vector3.Distance(buildCamera.transform.position, center);
+        moveGizmo.transform.localScale = Vector3.one * Mathf.Clamp(distance * 0.052f, 0.68f, 1.35f);
+    }
+
+    private void SetGizmoVisible(bool visible)
+    {
+        if (moveGizmo != null) moveGizmo.SetActive(visible);
     }
 
     private void DestroyMoveGizmo()
     {
-        gizmoHandles.Clear();
-
-        if (moveGizmo != null)
-        {
-            Destroy(moveGizmo);
-            moveGizmo = null;
-        }
-
-        foreach (Material material in gizmoMaterials)
-        {
-            if (material != null)
-            {
-                Destroy(material);
-            }
-        }
-
-        foreach (Mesh mesh in gizmoMeshes)
-        {
-            if (mesh != null)
-            {
-                Destroy(mesh);
-            }
-        }
-
+        gizmoDirections.Clear();
+        if (moveGizmo != null) { DestroyGenerated(moveGizmo); moveGizmo = null; }
+        foreach (Material material in gizmoMaterials) DestroyGenerated(material);
+        foreach (Mesh mesh in gizmoMeshes) DestroyGenerated(mesh);
         gizmoMaterials.Clear();
         gizmoMeshes.Clear();
     }
@@ -872,22 +645,17 @@ public class BlockDragController : MonoBehaviour
     private static Mesh CreateConeMesh()
     {
         const int sides = 12;
-        const float radius = 0.24f;
-        const float baseY = -0.22f;
-        const float tipY = 0.32f;
+        const float radius = 0.25f;
+        const float baseY = -0.24f;
+        const float tipY = 0.34f;
         var vertices = new Vector3[sides + 2];
         var triangles = new int[sides * 6];
         vertices[0] = new Vector3(0f, tipY, 0f);
         vertices[1] = new Vector3(0f, baseY, 0f);
-
         for (int side = 0; side < sides; side++)
         {
             float angle = side * Mathf.PI * 2f / sides;
-            vertices[side + 2] = new Vector3(
-                Mathf.Cos(angle) * radius,
-                baseY,
-                Mathf.Sin(angle) * radius);
-
+            vertices[side + 2] = new Vector3(Mathf.Cos(angle) * radius, baseY, Mathf.Sin(angle) * radius);
             int next = (side + 1) % sides;
             int triangle = side * 6;
             triangles[triangle] = 0;
@@ -897,10 +665,7 @@ public class BlockDragController : MonoBehaviour
             triangles[triangle + 4] = next + 2;
             triangles[triangle + 5] = side + 2;
         }
-
-        Mesh mesh = new Mesh { name = "Runtime Move Arrow Head" };
-        mesh.vertices = vertices;
-        mesh.triangles = triangles;
+        Mesh mesh = new() { name = "Build Nudge Arrow", vertices = vertices, triangles = triangles };
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
         return mesh;
@@ -908,143 +673,15 @@ public class BlockDragController : MonoBehaviour
 
     private static Material CreateGizmoMaterial(Color color)
     {
-        Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
-        if (shader == null)
-        {
-            shader = Shader.Find("Unlit/Color");
-        }
-
-        Material material = new Material(shader)
-        {
-            name = "Runtime Move Arrow Material",
-            color = color
-        };
-
-        if (material.HasProperty("_BaseColor"))
-        {
-            material.SetColor("_BaseColor", color);
-        }
-
+        Shader shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+        Material material = new(shader) { name = "Build Move Arrow Material", color = color };
+        if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", color);
         return material;
     }
 
-    private void UpdateMoveGizmoPosition()
+    private static void DestroyGenerated(Object generated)
     {
-        if (moveGizmo == null || selectedMoveRoot == null)
-        {
-            return;
-        }
-
-        moveGizmo.transform.position = selectedMoveRoot.position;
-        moveGizmo.transform.rotation = Quaternion.identity;
-    }
-
-    private bool IsWithinPlacementBounds(Vector3 position)
-    {
-        if (placementCenter == null || maximumPlacementDistance <= 0f)
-        {
-            return true;
-        }
-
-        Vector2 horizontalOffset = new Vector2(
-            position.x - placementCenter.position.x,
-            position.z - placementCenter.position.z);
-
-        return horizontalOffset.sqrMagnitude
-            <= maximumPlacementDistance * maximumPlacementDistance;
-    }
-
-    private Vector3 ConstrainToPlacementBounds(Vector3 position, float snapSize)
-    {
-        if (placementCenter == null
-            || maximumPlacementDistance <= 0f
-            || IsWithinPlacementBounds(position))
-        {
-            return position;
-        }
-
-        Vector3 center = placementCenter.position;
-        Vector3 constrainedPosition = position;
-
-        for (int step = 0; step < 64 && !IsWithinPlacementBounds(constrainedPosition); step++)
-        {
-            float offsetX = constrainedPosition.x - center.x;
-            float offsetZ = constrainedPosition.z - center.z;
-
-            if (Mathf.Abs(offsetX) >= Mathf.Abs(offsetZ))
-            {
-                constrainedPosition.x -= Mathf.Sign(offsetX) * snapSize;
-            }
-            else
-            {
-                constrainedPosition.z -= Mathf.Sign(offsetZ) * snapSize;
-            }
-        }
-
-        return constrainedPosition;
-    }
-
-    private void ShowDragHighlights()
-    {
-        HideDragHighlights();
-
-        if (draggedKing != null)
-        {
-            BlockDragOutline kingOutline =
-                draggedKing.gameObject.AddComponent<BlockDragOutline>();
-            kingOutline.Configure(dragHighlightColor, dragHighlightWidth);
-            activeHighlights.Add(kingOutline);
-            return;
-        }
-
-        Block[] highlightedBlocks = draggedShip != null
-            ? draggedShip.GetComponentsInChildren<Block>(true)
-            : new[] { draggedBlockComponent };
-
-        foreach (Block block in highlightedBlocks)
-        {
-            if (block == null)
-            {
-                continue;
-            }
-
-            BlockDragOutline outline =
-                block.gameObject.AddComponent<BlockDragOutline>();
-            outline.Configure(dragHighlightColor, dragHighlightWidth);
-            activeHighlights.Add(outline);
-        }
-    }
-
-    private void HideDragHighlights()
-    {
-        foreach (BlockDragOutline outline in activeHighlights)
-        {
-            if (outline != null)
-            {
-                Destroy(outline);
-            }
-        }
-
-        activeHighlights.Clear();
-    }
-
-    private Ship FindClosestShip(Vector3 position)
-    {
-        Ship closestShip = null;
-        float closestDistanceSquared = float.PositiveInfinity;
-        Ship[] ships = Object.FindObjectsByType<Ship>(FindObjectsInactive.Exclude);
-
-        foreach (Ship ship in ships)
-        {
-            float distanceSquared = (ship.transform.position - position).sqrMagnitude;
-
-            if (distanceSquared < closestDistanceSquared)
-            {
-                closestDistanceSquared = distanceSquared;
-                closestShip = ship;
-            }
-        }
-
-        return closestShip;
+        if (generated == null) return;
+        if (Application.isPlaying) Destroy(generated); else DestroyImmediate(generated);
     }
 }
