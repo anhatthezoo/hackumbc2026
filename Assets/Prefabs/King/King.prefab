@@ -202,7 +202,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c874a066c49104c45ae33faba244d671, type: 3}
   m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::RoyaltyBoat.King.KingController
-  waterDeathHeight: -2
+  requiredSubmersionDepth: 0.9
+  drowningGracePeriod: 1.5
+  minimumUprightDot: 0.3
+  capsizeGracePeriod: 1.25
 --- !u!114 &7928213034838158057
 MonoBehaviour:
   m_ObjectHideFlags: 0

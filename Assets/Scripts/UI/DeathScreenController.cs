@@ -176,6 +176,7 @@ namespace RoyaltyBoat.UI
             return cause switch
             {
                 KingDeathCause.Water => "His Majesty has gone overboard...",
+                KingDeathCause.Capsized => "The royal vessel has capsized...",
                 KingDeathCause.Lightning => "A shocking end to the royal voyage...",
                 KingDeathCause.Projectile => "The royal defenses have failed...",
                 _ => "Your royal voyage has come to an end..."
