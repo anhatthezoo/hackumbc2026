@@ -10,6 +10,15 @@ using UnityEngine.SceneManagement;
 
 namespace RoyaltyBoat.Flow
 {
+    public enum RoyalDecree
+    {
+        None = -1,
+        Business,
+        Harold,
+        Barry,
+        Xeno
+    }
+
     public static class VoyageFlow
     {
         public const string GameplaySceneName = "Voyage";
@@ -27,10 +36,12 @@ namespace RoyaltyBoat.Flow
         private static string destinationSceneName = GameplaySceneName;
         private static bool returningToBuilder;
         private static bool levelComplete;
+        private static int pendingOpeningDecree = -1;
 
         public static bool IsVoyageActive { get; private set; }
         public static bool IsRunActive { get; private set; }
         public static int CurrentLevel { get; private set; } = 1;
+        public static RoyalDecree ActiveDecree { get; private set; } = RoyalDecree.None;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetState()
@@ -45,9 +56,11 @@ namespace RoyaltyBoat.Flow
             destinationSceneName = GameplaySceneName;
             returningToBuilder = false;
             levelComplete = false;
+            pendingOpeningDecree = -1;
             IsVoyageActive = false;
             IsRunActive = false;
             CurrentLevel = 1;
+            ActiveDecree = RoyalDecree.None;
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -100,7 +113,22 @@ namespace RoyaltyBoat.Flow
 
         public static void OpenShipBuilder()
         {
-            StartNewRun();
+            StartNewRun(true);
+        }
+
+        public static bool TryConsumeOpeningDecree(out int decreeIndex)
+        {
+            decreeIndex = pendingOpeningDecree;
+            pendingOpeningDecree = -1;
+            return decreeIndex >= 0;
+        }
+
+        public static int GetLevelCompletionCashBonus(int completedLevel)
+        {
+            return ActiveDecree == RoyalDecree.Barry
+                && Mathf.Max(1, completedLevel) % 2 == 0
+                    ? 50
+                    : 0;
         }
 
         public static void ReturnToMainMenu()
@@ -316,7 +344,7 @@ namespace RoyaltyBoat.Flow
             cameraController.SetTarget(shipTransform);
         }
 
-        private static void StartNewRun()
+        private static void StartNewRun(bool showOpeningDecree = false)
         {
             UnsubscribeFromKingDeath();
 
@@ -343,6 +371,17 @@ namespace RoyaltyBoat.Flow
             levelComplete = false;
             IsVoyageActive = false;
             IsRunActive = true;
+            if (showOpeningDecree)
+            {
+                pendingOpeningDecree =
+                    new System.Random(unchecked((int)DateTime.UtcNow.Ticks)).Next(4);
+                ActiveDecree = (RoyalDecree)pendingOpeningDecree;
+            }
+            else
+            {
+                pendingOpeningDecree = -1;
+                ActiveDecree = RoyalDecree.None;
+            }
             EconomyAccess.Current.ResetBalance(StartingFunds);
             SceneManager.LoadScene(ShipBuildingSceneName);
         }
@@ -406,7 +445,7 @@ namespace RoyaltyBoat.Flow
             }
 
             Debug.Log($"The King died during level {CurrentLevel}. Restarting the run.");
-            StartNewRun();
+            StartNewRun(true);
         }
 
         private static void DisableExtraRigidbodies(Ship ship, Rigidbody rootBody)

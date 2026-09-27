@@ -51,5 +51,14 @@
         </ui:VisualElement>
 
         <ui:Label name="shop-status" class="shop-status" picking-mode="Ignore" />
+
+        <ui:VisualElement name="royal-decree-overlay" class="royal-decree-overlay royal-decree-hidden" picking-mode="Position">
+            <ui:VisualElement class="royal-decree-card" picking-mode="Position">
+                <ui:Label text="ROYAL DECREE" class="royal-decree-title" picking-mode="Ignore" />
+                <ui:VisualElement class="royal-decree-divider" picking-mode="Ignore" />
+                <ui:Label name="royal-decree-message" class="royal-decree-message" picking-mode="Ignore" />
+                <ui:Button name="royal-decree-button" text="BEGIN BUILDING" class="royal-decree-button" />
+            </ui:VisualElement>
+        </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

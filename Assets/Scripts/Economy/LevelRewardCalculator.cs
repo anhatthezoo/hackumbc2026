@@ -4,23 +4,38 @@ namespace RoyaltyBoat.Economy
 {
     public readonly struct LevelRewardResult
     {
-        public LevelRewardResult(int levelValue, int completionPay, int healthBonus)
+        public LevelRewardResult(
+            int levelValue,
+            int completionPay,
+            int healthBonus,
+            int decreeBonus = 0)
         {
             LevelValue = levelValue;
             CompletionPay = completionPay;
             HealthBonus = healthBonus;
+            DecreeBonus = decreeBonus;
         }
 
         public int LevelValue { get; }
         public int CompletionPay { get; }
         public int HealthBonus { get; }
-        public int TotalReward => CompletionPay + HealthBonus;
+        public int DecreeBonus { get; }
+        public int TotalReward => CompletionPay + HealthBonus + DecreeBonus;
+
+        public LevelRewardResult WithDecreeBonus(int decreeBonus)
+        {
+            return new LevelRewardResult(
+                LevelValue,
+                CompletionPay,
+                HealthBonus,
+                Mathf.Max(0, decreeBonus));
+        }
     }
 
     public static class LevelRewardCalculator
     {
-        private const int FirstLevelValue = 100;
-        private const int ValuePerLevel = 25;
+        private const int FirstLevelValue = 150;
+        private const int ValuePerLevel = 45;
         private const float CompletionShare = 0.25f;
 
         public static LevelRewardResult Calculate(int levelNumber, float normalizedKingHealth)

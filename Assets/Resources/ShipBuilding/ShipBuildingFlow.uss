@@ -423,6 +423,101 @@
     background-color: rgba(143, 38, 27, 0.9);
 }
 
+.royal-decree-overlay {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(18, 12, 8, 0.66);
+}
+
+.royal-decree-hidden {
+    display: none;
+}
+
+.royal-decree-card {
+    width: 720px;
+    min-height: 420px;
+    padding: 42px 58px 46px 58px;
+    align-items: center;
+    background-color: rgb(229, 139, 49);
+    border-left-width: 6px;
+    border-right-width: 6px;
+    border-top-width: 6px;
+    border-bottom-width: 10px;
+    border-left-color: rgb(255, 205, 105);
+    border-right-color: rgb(255, 205, 105);
+    border-top-color: rgb(255, 205, 105);
+    border-bottom-color: rgb(142, 67, 25);
+    border-top-left-radius: 28px;
+    border-top-right-radius: 28px;
+    border-bottom-left-radius: 28px;
+    border-bottom-right-radius: 28px;
+}
+
+.royal-decree-title {
+    color: rgb(55, 31, 18);
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
+    -unity-text-align: middle-center;
+    font-size: 62px;
+    letter-spacing: 3px;
+}
+
+.royal-decree-divider {
+    width: 76%;
+    height: 5px;
+    margin-top: 14px;
+    margin-bottom: 24px;
+    background-color: rgba(91, 43, 21, 0.58);
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    border-bottom-left-radius: 3px;
+    border-bottom-right-radius: 3px;
+}
+
+.royal-decree-message {
+    min-height: 164px;
+    color: rgb(68, 37, 20);
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/PatrickHand-Regular.ttf");
+    -unity-text-align: middle-center;
+    font-size: 34px;
+    white-space: normal;
+}
+
+.royal-decree-button {
+    width: 330px;
+    height: 72px;
+    margin-top: 24px;
+    color: rgb(255, 239, 198);
+    background-color: rgb(74, 48, 34);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 6px;
+    border-bottom-color: rgb(42, 25, 17);
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    border-bottom-left-radius: 20px;
+    border-bottom-right-radius: 20px;
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
+    -unity-text-align: middle-center;
+    font-size: 30px;
+    letter-spacing: 2px;
+}
+
+.royal-decree-button:hover {
+    background-color: rgb(91, 59, 40);
+    scale: 1.03 1.03;
+}
+
+.royal-decree-button:active {
+    translate: 0 3px;
+    scale: 0.98 0.98;
+}
+
 .screen-enter {
     opacity: 0;
     translate: 0 -18px;

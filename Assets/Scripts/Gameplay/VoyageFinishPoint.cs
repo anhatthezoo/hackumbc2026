@@ -49,7 +49,9 @@ namespace RoyaltyBoat.Gameplay
         {
             completed = true;
             float kingHealth = ResolveKingHealth();
-            LevelRewardResult reward = LevelRewardCalculator.Calculate(levelNumber, kingHealth);
+            LevelRewardResult reward = LevelRewardCalculator
+                .Calculate(levelNumber, kingHealth)
+                .WithDecreeBonus(VoyageFlow.GetLevelCompletionCashBonus(levelNumber));
             EconomyAccess.AddFunds(reward.TotalReward);
             VoyageFlow.MarkLevelComplete(levelNumber);
             GameAudio.PlaySuccess();

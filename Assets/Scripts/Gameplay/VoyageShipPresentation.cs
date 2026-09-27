@@ -231,7 +231,8 @@ namespace RoyaltyBoat.Gameplay
         private void DrawCompletionPanel()
         {
             const float width = 430f;
-            const float height = 344f;
+            float bonusOffset = completionReward.DecreeBonus > 0 ? 33f : 0f;
+            float height = 344f + bonusOffset;
             Rect panel = new Rect(
                 (Screen.width - width) * 0.5f,
                 (Screen.height - height) * 0.5f,
@@ -266,16 +267,21 @@ namespace RoyaltyBoat.Gameplay
                 $"Completion pay                  +{completionReward.CompletionPay}", labelStyle);
             GUI.Label(new Rect(panel.x + 45f, panel.y + 141f, width - 90f, 26f),
                 $"King health bonus             +{completionReward.HealthBonus}", labelStyle);
-            DrawSolidRect(new Rect(panel.x + 40f, panel.y + 176f, width - 80f, 2f),
+            if (completionReward.DecreeBonus > 0)
+            {
+                GUI.Label(new Rect(panel.x + 45f, panel.y + 174f, width - 90f, 26f),
+                    $"Barry's decree bonus          +{completionReward.DecreeBonus}", labelStyle);
+            }
+            DrawSolidRect(new Rect(panel.x + 40f, panel.y + 176f + bonusOffset, width - 80f, 2f),
                 new Color(1f, 0.84f, 0.34f, 0.7f));
-            GUI.Label(new Rect(panel.x + 20f, panel.y + 188f, width - 40f, 34f),
+            GUI.Label(new Rect(panel.x + 20f, panel.y + 188f + bonusOffset, width - 40f, 34f),
                 $"+{completionReward.TotalReward} COINS", totalStyle);
-            GUI.Label(new Rect(panel.x + 20f, panel.y + 232f, width - 40f, 28f),
+            GUI.Label(new Rect(panel.x + 20f, panel.y + 232f + bonusOffset, width - 40f, 28f),
                 $"NEW BALANCE  {EconomyAccess.Balance}", centeredLabel);
 
             string buttonText = $"RETURN TO SHOP  •  LEVEL {completedLevel + 1}";
             if (!completionTransitionRequested && GUI.Button(
-                    new Rect(panel.x + 65f, panel.y + 278f, width - 130f, 44f),
+                    new Rect(panel.x + 65f, panel.y + 278f + bonusOffset, width - 130f, 44f),
                     buttonText))
             {
                 completionTransitionRequested = true;

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using RoyaltyBoat.King;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace RoyaltyBoat.Obstacles
 {
@@ -8,12 +9,14 @@ namespace RoyaltyBoat.Obstacles
     [RequireComponent(typeof(Collider))]
     public sealed class AcidWaterVolume : MonoBehaviour
     {
-        [SerializeField, Min(0f)] private float damagePerSecond = 10f;
-        [SerializeField, Min(0.05f)] private float damageInterval = 1f;
+        [FormerlySerializedAs("damagePerSecond")]
+        [SerializeField, Min(0f)] private float damagePerHit = 10f;
+        [SerializeField, Min(0.05f)] private float damageInterval = 1.3f;
 
         private readonly Dictionary<Transform, float> nextDamageTimes = new Dictionary<Transform, float>();
 
-        public float DamagePerSecond => damagePerSecond;
+        public float DamagePerHit => damagePerHit;
+        public float DamagePerSecond => damagePerHit / damageInterval;
         public float DamageInterval => damageInterval;
 
         private void Reset()
@@ -24,7 +27,7 @@ namespace RoyaltyBoat.Obstacles
 
         private void OnValidate()
         {
-            damagePerSecond = Mathf.Max(0f, damagePerSecond);
+            damagePerHit = Mathf.Max(0f, damagePerHit);
             damageInterval = Mathf.Max(0.05f, damageInterval);
 
             Collider volume = GetComponent<Collider>();
@@ -41,7 +44,7 @@ namespace RoyaltyBoat.Obstacles
 
         private void OnTriggerStay(Collider other)
         {
-            if (damagePerSecond <= 0f)
+            if (damagePerHit <= 0f)
             {
                 return;
             }
@@ -62,7 +65,7 @@ namespace RoyaltyBoat.Obstacles
             }
 
             nextDamageTimes[damageRoot] = Time.time + damageInterval;
-            float damage = damagePerSecond * damageInterval;
+            float damage = damagePerHit;
 
             if (TryApplyGenericDamage(damageRoot, damage))
             {
@@ -91,7 +94,7 @@ namespace RoyaltyBoat.Obstacles
             }
 
             nextDamageTimes[damageTarget] = Time.time + damageInterval;
-            int damage = Mathf.Max(1, Mathf.RoundToInt(damagePerSecond * damageInterval));
+            int damage = Mathf.Max(1, Mathf.RoundToInt(damagePerHit));
             block.TakeDamage(damage);
         }
 

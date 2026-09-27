@@ -11,7 +11,7 @@ namespace RoyaltyBoat.Gameplay
     public sealed class BoatMovementController : MonoBehaviour
     {
         [Header("Automatic Movement")]
-        [SerializeField, Min(0f)] private float forwardSpeed = 14f;
+        [SerializeField, Min(0f)] private float forwardSpeed = 15.4f;
         [SerializeField, Min(0f)] private float forwardAcceleration = 8f;
 
         [Header("Up/Down Steering")]

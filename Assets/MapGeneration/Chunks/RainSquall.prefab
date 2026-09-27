@@ -247,13 +247,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d4e56902013449eaa024238ccae172d4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RoyaltyBoat.Weather.LightningStormSection
-  minimumStrikeDelay: 2.8
-  maximumStrikeDelay: 5.2
-  warningDuration: 1.05
+  minimumStrikeDelay: 2.1
+  maximumStrikeDelay: 3.8
+  warningDuration: 0.9
   boltDuration: 0.18
   targetingJitter: 1.25
-  damageRadius: 2.35
+  damageRadius: 3.25
   blockDamage: 70
   impactForce: 16
   boltHeight: 34
-  warningRadius: 2.8
+  warningRadius: 3.4

@@ -20,10 +20,29 @@ namespace RoyaltyBoat.UI
         private Label statusLabel;
         private Label shipWeightLabel;
         private Label shipCostLabel;
+        private VisualElement royalDecreeOverlay;
+        private Label royalDecreeMessage;
+        private Button royalDecreeButton;
         private CameraOrbitController orbitController;
         private readonly Dictionary<string, int> productPrices = new(StringComparer.Ordinal);
         private string displayedWeight;
         private string displayedCost;
+
+        private static readonly string[] DecreeNames =
+        {
+            "Business",
+            "Harold",
+            "Barry",
+            "Xeno"
+        };
+
+        private static readonly string[] DecreeDescriptions =
+        {
+            "Oil spills will occur more often",
+            "2x more obstacles will spawn every odd round",
+            "Gain 50 extra cash every even level.",
+            "Lightning spawns more often"
+        };
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void RegisterSceneLoadedHandler()
@@ -74,6 +93,9 @@ namespace RoyaltyBoat.UI
             statusLabel = root.Q<Label>("shop-status");
             shipWeightLabel = root.Q<Label>("ship-weight");
             shipCostLabel = root.Q<Label>("ship-cost");
+            royalDecreeOverlay = root.Q<VisualElement>("royal-decree-overlay");
+            royalDecreeMessage = root.Q<Label>("royal-decree-message");
+            royalDecreeButton = root.Q<Button>("royal-decree-button");
             CacheProductPrices();
             if (setSailButton == null)
             {
@@ -99,6 +121,10 @@ namespace RoyaltyBoat.UI
             {
                 rotateItemButton.clicked += HandleRotateItemClicked;
             }
+            if (royalDecreeButton != null)
+            {
+                royalDecreeButton.clicked += DismissRoyalDecree;
+            }
 
             Camera mainCamera = Camera.main;
             orbitController = mainCamera == null
@@ -111,7 +137,7 @@ namespace RoyaltyBoat.UI
 
             UpdateCameraSideLabel();
             UpdateShipSummary();
-            setSailButton.Focus();
+            ShowOpeningDecreeIfNeeded();
         }
 
         private void Update()
@@ -202,6 +228,36 @@ namespace RoyaltyBoat.UI
                 devMapButton.clicked -= HandleDevMapClicked;
             }
 
+            if (royalDecreeButton != null)
+            {
+                royalDecreeButton.clicked -= DismissRoyalDecree;
+            }
+
+        }
+
+        private void ShowOpeningDecreeIfNeeded()
+        {
+            if (royalDecreeOverlay == null
+                || royalDecreeMessage == null
+                || !VoyageFlow.TryConsumeOpeningDecree(out int decreeIndex))
+            {
+                royalDecreeOverlay?.AddToClassList("royal-decree-hidden");
+                setSailButton?.Focus();
+                return;
+            }
+
+            decreeIndex = Mathf.Clamp(decreeIndex, 0, DecreeNames.Length - 1);
+            string description = DecreeDescriptions[decreeIndex].TrimEnd('.');
+            royalDecreeMessage.text =
+                $"King {DecreeNames[decreeIndex]} has ordered for the exploration of the New World.\n\n{description}.";
+            royalDecreeOverlay.RemoveFromClassList("royal-decree-hidden");
+            royalDecreeButton?.Focus();
+        }
+
+        private void DismissRoyalDecree()
+        {
+            royalDecreeOverlay?.AddToClassList("royal-decree-hidden");
+            setSailButton?.Focus();
         }
 
         private void HandleSetSailClicked()

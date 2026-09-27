@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using RoyaltyBoat.Flow;
 using RoyaltyBoat.Obstacles;
+using RoyaltyBoat.Weather;
 using UnityEngine;
 
 namespace RoyaltyBoat.MapGeneration
@@ -48,7 +50,7 @@ namespace RoyaltyBoat.MapGeneration
         public int GetObstacleCount(int levelNumber)
         {
             int safeLevel = Mathf.Max(1, levelNumber);
-            long count = 3L;
+            long count = 5L;
 
             for (int level = 1; level < safeLevel; level++)
             {
@@ -57,6 +59,12 @@ namespace RoyaltyBoat.MapGeneration
                 {
                     return int.MaxValue;
                 }
+            }
+
+            if (VoyageFlow.ActiveDecree == RoyalDecree.Harold
+                && safeLevel % 2 == 1)
+            {
+                count = Math.Min(count * 2L, int.MaxValue);
             }
 
             return (int)count;
@@ -229,7 +237,7 @@ namespace RoyaltyBoat.MapGeneration
                     continue;
                 }
 
-                if (requireObstacle && !ContainsObstacle(definition))
+                if (requireObstacle && !ContainsHazardContent(definition))
                 {
                     continue;
                 }
@@ -249,7 +257,7 @@ namespace RoyaltyBoat.MapGeneration
                 {
                     if (IsCompatible(definition, levelNumber, availableLanes))
                     {
-                        if (requireObstacle && !ContainsObstacle(definition))
+                        if (requireObstacle && !ContainsHazardContent(definition))
                         {
                             continue;
                         }
@@ -278,7 +286,9 @@ namespace RoyaltyBoat.MapGeneration
 
                 float difference = Mathf.Abs(candidate.DifficultyCost - desiredCost);
                 double budgetFit = 1d / (1d + difference * 0.35d);
-                weights[i] = candidate.SelectionWeight * budgetFit;
+                weights[i] = candidate.SelectionWeight
+                    * GetDecreeSelectionMultiplier(candidate)
+                    * budgetFit;
                 totalWeight += weights[i];
             }
 
@@ -300,11 +310,41 @@ namespace RoyaltyBoat.MapGeneration
             return candidates[candidates.Count - 1];
         }
 
-        private static bool ContainsObstacle(LevelChunkDefinition definition)
+        private static bool ContainsHazardContent(LevelChunkDefinition definition)
         {
             return definition != null
                 && definition.Prefab != null
-                && definition.Prefab.GetComponentInChildren<ObstacleDescriptor>(true) != null;
+                && (definition.Prefab.GetComponentInChildren<ObstacleDescriptor>(true) != null
+                    || definition.Prefab.GetComponentInChildren<LightningStormSection>(true) != null);
+        }
+
+        private static double GetDecreeSelectionMultiplier(
+            LevelChunkDefinition definition)
+        {
+            if (definition == null || definition.Prefab == null)
+            {
+                return 1d;
+            }
+
+            if (VoyageFlow.ActiveDecree == RoyalDecree.Business)
+            {
+                foreach (ObstacleDescriptor obstacle in
+                    definition.Prefab.GetComponentsInChildren<ObstacleDescriptor>(true))
+                {
+                    if (obstacle.Kind == ObstacleKind.AcidicWater)
+                    {
+                        return 2d;
+                    }
+                }
+            }
+
+            if (VoyageFlow.ActiveDecree == RoyalDecree.Xeno
+                && definition.Prefab.GetComponentInChildren<LightningStormSection>(true) != null)
+            {
+                return 4d;
+            }
+
+            return 1d;
         }
 
         private void ApplyObstacleDensity(System.Random random)

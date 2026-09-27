@@ -16,20 +16,20 @@ namespace RoyaltyBoat.Weather
         private const string UnlitShaderName = "Universal Render Pipeline/Particles/Unlit";
 
         [Header("Timing")]
-        [SerializeField, Min(0.1f)] private float minimumStrikeDelay = 2.8f;
-        [SerializeField, Min(0.1f)] private float maximumStrikeDelay = 5.2f;
-        [SerializeField, Min(0.1f)] private float warningDuration = 1.05f;
+        [SerializeField, Min(0.1f)] private float minimumStrikeDelay = 2.1f;
+        [SerializeField, Min(0.1f)] private float maximumStrikeDelay = 3.8f;
+        [SerializeField, Min(0.1f)] private float warningDuration = 0.9f;
         [SerializeField, Min(0.02f)] private float boltDuration = 0.18f;
 
         [Header("Targeting")]
         [SerializeField, Min(0f)] private float targetingJitter = 1.25f;
-        [SerializeField, Min(0.1f)] private float damageRadius = 2.35f;
+        [SerializeField, Min(0.1f)] private float damageRadius = 3.25f;
         [SerializeField, Min(0)] private int blockDamage = 70;
         [SerializeField, Min(0f)] private float impactForce = 16f;
 
         [Header("Presentation")]
         [SerializeField, Min(2f)] private float boltHeight = 34f;
-        [SerializeField, Min(0.1f)] private float warningRadius = 2.8f;
+        [SerializeField, Min(0.1f)] private float warningRadius = 3.4f;
 
         private static Material sharedBoltMaterial;
         private static Material sharedWarningMaterial;
@@ -83,7 +83,7 @@ namespace RoyaltyBoat.Weather
             {
                 wasStormActive = true;
                 ResolveTargetShip();
-                ScheduleNextStrike(1.2f, 2.1f);
+                ScheduleNextStrike(0.8f, 1.4f);
             }
 
             if (isWarning)
@@ -129,7 +129,18 @@ namespace RoyaltyBoat.Weather
             }
 
             Vector2 jitter = Random.insideUnitCircle * targetingJitter;
-            strikePoint = target.position + new Vector3(jitter.x, 0f, jitter.y);
+            Vector3 predictedPosition = target.position;
+            Rigidbody targetBody = targetShip == null
+                ? target.GetComponentInParent<Rigidbody>()
+                : targetShip.GetComponent<Rigidbody>();
+            if (targetBody != null)
+            {
+                Vector3 planarVelocity = targetBody.linearVelocity;
+                planarVelocity.y = 0f;
+                predictedPosition += planarVelocity * warningDuration;
+            }
+
+            strikePoint = predictedPosition + new Vector3(jitter.x, 0f, jitter.y);
             strikeTime = Time.time + warningDuration;
             isWarning = true;
             warningRing.enabled = true;
@@ -170,7 +181,7 @@ namespace RoyaltyBoat.Weather
         {
             float progress = 1f - Mathf.Clamp01((strikeTime - Time.time) / warningDuration);
             float pulse = 1f + Mathf.Sin(Time.time * 18f) * 0.08f;
-            float radius = Mathf.Lerp(warningRadius * 1.35f, warningRadius * 0.72f, progress) * pulse;
+            float radius = Mathf.Lerp(warningRadius * 1.3f, warningRadius, progress) * pulse;
             Vector3 center = new Vector3(strikePoint.x, 0.45f, strikePoint.z);
 
             for (int index = 0; index < WarningSegments; index++)
