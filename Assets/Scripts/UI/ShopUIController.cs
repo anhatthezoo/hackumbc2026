@@ -226,8 +226,8 @@ namespace RoyaltyBoat.UI
                 ? buildArea.Platform.position
                 : Vector3.zero;
 
-            const int width = 7;
-            const int slots = 42;
+            const int width = 5;
+            const int slots = 25;
 
             for (int attempt = 0; attempt < slots; attempt++)
             {
@@ -235,13 +235,13 @@ namespace RoyaltyBoat.UI
                 int column = index % width;
                 int row = index / width;
                 Vector3 candidate = center + new Vector3(
-                    -3f + column,
+                    -4f + column * Ship.DefaultAttachmentGridSize,
                     1f,
-                    -3f + row);
+                    -4f + row * Ship.DefaultAttachmentGridSize);
 
                 if (!Physics.CheckBox(
                         candidate,
-                        Vector3.one * 0.46f,
+                        Vector3.one * 0.96f,
                         Quaternion.identity,
                         ~0,
                         QueryTriggerInteraction.Ignore))

@@ -271,7 +271,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BlockDragController
   draggingEnabled: 1
-  gridSize: 1
+  gridSize: 2
   raycastDistance: 100
   draggableLayers:
     serializedVersion: 2

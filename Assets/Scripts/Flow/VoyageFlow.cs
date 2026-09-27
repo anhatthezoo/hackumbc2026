@@ -100,10 +100,15 @@ namespace RoyaltyBoat.Flow
             Rigidbody body = builtShip.GetComponent<Rigidbody>();
             if (body != null)
             {
+                DisableExtraRigidbodies(builtShip, body);
+                builtShip.RefreshPhysicsMass();
                 body.linearVelocity = Vector3.zero;
                 body.angularVelocity = Vector3.zero;
                 body.isKinematic = false;
                 body.useGravity = true;
+                body.linearDamping = 0.15f;
+                body.angularDamping = 0.35f;
+                body.maxAngularVelocity = 4f;
             }
 
             SimpleBuoyantBody flatWaterBuoyancy = builtShip.GetComponent<SimpleBuoyantBody>();
@@ -120,7 +125,7 @@ namespace RoyaltyBoat.Flow
 
             if (body != null)
             {
-                body.constraints = RigidbodyConstraints.FreezeRotationY;
+                body.constraints = RigidbodyConstraints.None;
 
                 BoatMovementController movement = builtShip.GetComponent<BoatMovementController>();
                 if (movement == null)
@@ -152,6 +157,26 @@ namespace RoyaltyBoat.Flow
             }
 
             cameraController.SetTarget(shipTransform);
+        }
+
+        private static void DisableExtraRigidbodies(Ship ship, Rigidbody rootBody)
+        {
+            Rigidbody[] bodies = ship.GetComponentsInChildren<Rigidbody>(true);
+
+            foreach (Rigidbody childBody in bodies)
+            {
+                if (childBody == null || childBody == rootBody)
+                {
+                    continue;
+                }
+
+                childBody.isKinematic = true;
+                childBody.detectCollisions = false;
+                UnityEngine.Object.Destroy(childBody);
+                Debug.LogWarning(
+                    "Removed an extra child Rigidbody so the ship uses one stable compound body.",
+                    ship);
+            }
         }
 
         private static void CreateFinishPoint(ProceduralLevelGenerator generator)

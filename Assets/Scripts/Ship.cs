@@ -4,12 +4,13 @@ using UnityEngine.Serialization;
 
 public class Ship : MonoBehaviour
 {
-    public const float DefaultAttachmentGridSize = 1f;
-    public const float DefaultAttachmentSnapDistance = 0.6f;
+    public const float DefaultAttachmentGridSize = 2f;
+    public const float DefaultAttachmentSnapDistance = 1.2f;
 
     [Header("Ship Structure")]
     [SerializeField] private List<Block> blocks = new List<Block>();
     [SerializeField] private int blockCount;
+    [SerializeField, Min(0.1f)] private float massPerBlock = 1f;
     [SerializeField, Min(0.01f)] private float attachmentGridSize = DefaultAttachmentGridSize;
     [Tooltip("How close a released block must be to a valid neighboring tile.")]
     [FormerlySerializedAs("attachmentTolerance")]
@@ -23,6 +24,7 @@ public class Ship : MonoBehaviour
     public Block AnchorBlock => FindAnchorBlock();
     public IReadOnlyList<Block> Blocks => blocks;
     public int BlockCount => blockCount;
+    public float TotalMass => Mathf.Max(massPerBlock, blockCount * massPerBlock);
     public float AttachmentGridSize => attachmentGridSize;
     public bool IsAlive => CheckBoatLife();
 
@@ -33,9 +35,12 @@ public class Ship : MonoBehaviour
 
     private void OnValidate()
     {
+        massPerBlock = Mathf.Max(0.1f, massPerBlock);
+
         if (!Application.isPlaying)
         {
             CollectAttachedBlocks();
+            RefreshPhysicsMass();
         }
     }
 
@@ -64,6 +69,8 @@ public class Ship : MonoBehaviour
         {
             SubscribeToBlock(block);
         }
+
+        RefreshPhysicsMass();
     }
 
     public void RegisterBlock(Block block)
@@ -76,6 +83,7 @@ public class Ship : MonoBehaviour
         blocks.Add(block);
         SubscribeToBlock(block);
         blockCount = blocks.Count;
+        RefreshPhysicsMass();
     }
 
     public void UnregisterBlock(Block block)
@@ -87,6 +95,7 @@ public class Ship : MonoBehaviour
 
         block.Destroyed -= HandleBlockDestroyed;
         blockCount = blocks.Count;
+        RefreshPhysicsMass();
     }
 
     public bool ContainsBlock(Block block)
@@ -127,6 +136,7 @@ public class Ship : MonoBehaviour
 
         UnregisterBlock(block);
         block.transform.SetParent(null, true);
+        RefreshPhysicsMass();
         return true;
     }
 
@@ -208,6 +218,19 @@ public class Ship : MonoBehaviour
         return hasLivingStructure;
     }
 
+    public void RefreshPhysicsMass()
+    {
+        Rigidbody body = GetComponent<Rigidbody>();
+        if (body == null)
+        {
+            return;
+        }
+
+        body.mass = TotalMass;
+        body.ResetCenterOfMass();
+        body.ResetInertiaTensor();
+    }
+
     /// <summary>
     /// Moves the neutral ship container to the center of its blocks without
     /// changing any block's world position. This keeps voyage physics and the
@@ -260,6 +283,7 @@ public class Ship : MonoBehaviour
             && destroyedBlock.transform.IsChildOf(transform))
         {
             destroyedBlock.transform.SetParent(null, true);
+            RefreshPhysicsMass();
         }
     }
 

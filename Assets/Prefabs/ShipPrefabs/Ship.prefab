@@ -47,8 +47,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Ship
   blocks: []
   blockCount: 0
-  attachmentGridSize: 1
-  attachmentSnapDistance: 0.15
+  massPerBlock: 1
+  attachmentGridSize: 2
+  attachmentSnapDistance: 1.2
 --- !u!54 &4503406004672751083
 Rigidbody:
   m_ObjectHideFlags: 0

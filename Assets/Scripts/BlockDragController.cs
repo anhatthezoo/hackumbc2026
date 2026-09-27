@@ -135,7 +135,13 @@ public class BlockDragController : MonoBehaviour
 
         dragPlane = new Plane(Vector3.up, new Vector3(0f, dragHeight, 0f));
 
-        if (dragPlane.Raycast(ray, out float distance))
+        if (draggedShip == null)
+        {
+            // Blocks snap by their center, so grabbing an edge or corner does
+            // not leave the selected tile offset from the mouse cursor.
+            pointerOffset = Vector3.zero;
+        }
+        else if (dragPlane.Raycast(ray, out float distance))
         {
             pointerOffset = draggedBlock.position - ray.GetPoint(distance);
         }
