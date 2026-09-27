@@ -74,11 +74,6 @@
                     <ui:Label text="ANH PHAM" class="credit-name" />
                     <ui:Label text="TEAM MEMBER" class="credit-role" />
                 </ui:VisualElement>
-                <ui:VisualElement class="card-divider" />
-                <ui:VisualElement class="credit-row">
-                    <ui:Label text="DAVID GUAN" class="credit-name" />
-                    <ui:Label text="TEAM MEMBER" class="credit-role" />
-                </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>
