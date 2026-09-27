@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1181272551493286942}
   - component: {fileID: 5795356794965491923}
+  - component: {fileID: 2838235113735236419}
   m_Layer: 0
   m_Name: ShipBuildArea
   m_TagString: Untagged
@@ -50,6 +51,25 @@ MonoBehaviour:
   startingShip: {fileID: 4549810176250222477}
   kingPrefab: {fileID: 2602735183291549602, guid: d41da6dc6d1831f48b5eedfd472f9544, type: 3}
   kingStagingOffset: {x: -4, y: 1, z: -3}
+--- !u!114 &2838235113735236419
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2625954707416655837}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eec9d5361c8e72546beb69feceb8ebec, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::AdaptiveBuildGrid
+  centerTarget: {fileID: 6734234611550800854}
+  gridSource: {fileID: 4549810176250222477}
+  verticalOffset: 0.02
+  fallbackTileSize: 2
+  minorLineColor: {r: 0.9, g: 0.94, b: 1, a: 0.5}
+  majorLineColor: {r: 1, g: 1, b: 1, a: 0.8}
+  axisLineColor: {r: 0.92, g: 1, b: 0.96, a: 0.95}
 --- !u!1 &7167785343657855864
 GameObject:
   m_ObjectHideFlags: 0
@@ -98,7 +118,7 @@ MeshRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7167785343657855864}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1

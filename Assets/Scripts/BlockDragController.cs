@@ -25,6 +25,8 @@ public class BlockDragController : MonoBehaviour
     private Block draggedBlockComponent;
     private KingBuildPlacement draggedKing;
     private Block kingSupportCandidate;
+    private Vector3 kingCellCandidate;
+    private bool hasKingCellCandidate;
     private Ship draggedShip;
     private Ship snappingShip;
     private Rigidbody draggedBody;
@@ -154,9 +156,11 @@ public class BlockDragController : MonoBehaviour
             SelectMoveTarget(selectedBlock, null, draggedBlock);
         }
 
-        float dragHeight = snappingShip != null && snappingShip.AnchorBlock != null
-            ? snappingShip.AnchorBlock.transform.position.y
-            : draggedBlock.position.y;
+        float dragHeight = draggedKing != null
+            ? draggedBlock.position.y
+            : snappingShip != null && snappingShip.AnchorBlock != null
+                ? snappingShip.AnchorBlock.transform.position.y
+                : draggedBlock.position.y;
 
         dragPlane = new Plane(Vector3.up, new Vector3(0f, dragHeight, 0f));
 
@@ -186,6 +190,7 @@ public class BlockDragController : MonoBehaviour
         draggedBlockComponent = null;
         draggedKing = null;
         kingSupportCandidate = null;
+        hasKingCellCandidate = false;
         draggedShip = null;
         snappingShip = null;
 
@@ -225,6 +230,8 @@ public class BlockDragController : MonoBehaviour
             ? king.SupportingShip
             : FindClosestShip(king.transform.position);
         king.ClearSupport();
+        kingSupportCandidate = null;
+        hasKingCellCandidate = false;
     }
 
     private void PrepareDraggedBody()
@@ -287,6 +294,11 @@ public class BlockDragController : MonoBehaviour
     private void Drag(Vector2 pointerPosition)
     {
         Ray ray = dragCamera.ScreenPointToRay(pointerPosition);
+        if (draggedKing != null)
+        {
+            kingSupportCandidate = null;
+            hasKingCellCandidate = false;
+        }
 
         if (draggedShip == null
             && TryGetSurfacePlacement(ray, out Vector3 surfacePosition))
@@ -310,6 +322,17 @@ public class BlockDragController : MonoBehaviour
             ? gridOrigin.y
             : draggedBlock.position.y;
 
+        if (draggedKing != null)
+        {
+            Vector3 currentCell = draggedKing.GetGridCellCenter(
+                draggedBlock.position,
+                Vector3.up,
+                activeGridSize);
+            snappedHeight = gridOrigin.y
+                + Mathf.Round((currentCell.y - gridOrigin.y) / activeGridSize)
+                * activeGridSize;
+        }
+
         Vector3 snappedPosition = new Vector3(
             gridOrigin.x
                 + Mathf.Round((targetPosition.x - gridOrigin.x) / activeGridSize)
@@ -319,9 +342,21 @@ public class BlockDragController : MonoBehaviour
                 + Mathf.Round((targetPosition.z - gridOrigin.z) / activeGridSize)
                 * activeGridSize);
 
-        TryApplyPlacement(
-            ConstrainToPlacementBounds(snappedPosition, activeGridSize),
-            draggedBlock.rotation);
+        snappedPosition = ConstrainToPlacementBounds(
+            snappedPosition,
+            activeGridSize);
+
+        if (draggedKing != null)
+        {
+            kingCellCandidate = snappedPosition;
+            hasKingCellCandidate = true;
+            snappedPosition = draggedKing.GetPositionInGridCell(
+                kingCellCandidate,
+                Vector3.up,
+                activeGridSize);
+        }
+
+        TryApplyPlacement(snappedPosition, draggedBlock.rotation);
     }
 
     private bool TryGetGizmoHandleHit(Ray ray, out Vector3 axis)
@@ -411,6 +446,15 @@ public class BlockDragController : MonoBehaviour
         Vector3 targetPosition = axisDragStartPosition
             + activeDragAxis * snappedDistance;
 
+        if (draggedKing != null)
+        {
+            kingCellCandidate = draggedKing.GetGridCellCenter(
+                targetPosition,
+                snappingShip == null ? Vector3.up : snappingShip.transform.up,
+                gridStep);
+            hasKingCellCandidate = true;
+        }
+
         TryApplyPlacement(
             ConstrainToPlacementBounds(targetPosition, gridStep),
             draggedBlock.rotation);
@@ -447,7 +491,10 @@ public class BlockDragController : MonoBehaviour
         draggedBlock.SetPositionAndRotation(position, rotation);
         Physics.SyncTransforms();
 
-        if (IsPlacementClear(draggedBlock))
+        bool placementIsClear = draggedKing != null
+            ? IsKingPlacementClear()
+            : IsPlacementClear(draggedBlock);
+        if (placementIsClear)
         {
             return true;
         }
@@ -455,6 +502,45 @@ public class BlockDragController : MonoBehaviour
         draggedBlock.SetPositionAndRotation(previousPosition, previousRotation);
         Physics.SyncTransforms();
         return false;
+    }
+
+    private bool IsKingPlacementClear()
+    {
+        if (!hasKingCellCandidate)
+        {
+            return false;
+        }
+
+        float cellSize = GetActiveGridSize();
+        Vector3 halfCell = Vector3.one * (cellSize * 0.48f);
+        Quaternion gridRotation = snappingShip == null
+            ? Quaternion.identity
+            : snappingShip.transform.rotation;
+        Collider[] nearbyColliders = Physics.OverlapBox(
+            kingCellCandidate,
+            halfCell,
+            gridRotation,
+            ~0,
+            QueryTriggerInteraction.Ignore);
+
+        foreach (Collider otherCollider in nearbyColliders)
+        {
+            if (otherCollider == null
+                || !otherCollider.enabled
+                || otherCollider.isTrigger
+                || otherCollider.transform.IsChildOf(draggedKing.transform))
+            {
+                continue;
+            }
+
+            Block otherBlock = otherCollider.GetComponentInParent<Block>();
+            if (otherBlock != null && otherBlock.IsAlive)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public bool IsPlacementClear(Transform movingRoot)
@@ -524,6 +610,8 @@ public class BlockDragController : MonoBehaviour
         float closestHitDistance = float.PositiveInfinity;
         Ship bestShip = null;
         Vector3 bestPosition = default;
+        Vector3 bestKingCell = default;
+        Block bestKingSupport = null;
 
         foreach (RaycastHit hit in hits)
         {
@@ -542,12 +630,6 @@ public class BlockDragController : MonoBehaviour
                 continue;
             }
 
-            if (draggedKing != null
-                && targetBlock.GetComponent<ChairSeat>() == null)
-            {
-                continue;
-            }
-
             Ship targetShip = targetBlock.GetComponentInParent<Ship>();
 
             if (targetShip == null || hit.distance >= closestHitDistance)
@@ -556,10 +638,26 @@ public class BlockDragController : MonoBehaviour
             }
 
             Vector3 possiblePosition;
+            Vector3 possibleKingCell = default;
+            Block possibleKingSupport = null;
 
             if (draggedKing != null)
             {
-                possiblePosition = draggedKing.GetPositionOn(targetBlock);
+                Vector3 faceDirection = GetClosestFaceDirection(
+                    hit.normal,
+                    targetShip.transform);
+                possibleKingCell = targetBlock.transform.position
+                    + faceDirection * targetShip.AttachmentGridSize;
+                possiblePosition = draggedKing.GetPositionInGridCell(
+                    possibleKingCell,
+                    targetShip.transform.up,
+                    targetShip.AttachmentGridSize);
+
+                possibleKingSupport = Vector3.Dot(
+                    possibleKingCell - targetBlock.transform.position,
+                    targetShip.transform.up) > targetShip.AttachmentGridSize * 0.9f
+                    ? targetBlock
+                    : null;
             }
             else
             {
@@ -582,7 +680,8 @@ public class BlockDragController : MonoBehaviour
             closestHitDistance = hit.distance;
             bestShip = targetShip;
             bestPosition = possiblePosition;
-            kingSupportCandidate = draggedKing == null ? null : targetBlock;
+            bestKingCell = possibleKingCell;
+            bestKingSupport = possibleKingSupport;
         }
 
         if (bestShip == null)
@@ -592,6 +691,12 @@ public class BlockDragController : MonoBehaviour
 
         snappingShip = bestShip;
         placementPosition = bestPosition;
+        if (draggedKing != null)
+        {
+            kingCellCandidate = bestKingCell;
+            kingSupportCandidate = bestKingSupport;
+            hasKingCellCandidate = true;
+        }
         return true;
     }
 
@@ -681,6 +786,7 @@ public class BlockDragController : MonoBehaviour
         draggedBlockComponent = null;
         draggedKing = null;
         kingSupportCandidate = null;
+        hasKingCellCandidate = false;
         draggedShip = null;
         snappingShip = null;
         draggedBody = null;

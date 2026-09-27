@@ -62,6 +62,32 @@ namespace RoyaltyBoat.King
                 block.transform.position.z);
         }
 
+        public Vector3 GetPositionInGridCell(
+            Vector3 cellCenter,
+            Vector3 cellUp,
+            float cellSize)
+        {
+            Vector3 up = cellUp.sqrMagnitude > 0.001f
+                ? cellUp.normalized
+                : Vector3.up;
+            float rootAboveVisualBottom = GetRootAboveVisualBottom(up);
+            return cellCenter
+                + up * (rootAboveVisualBottom - Mathf.Max(0.01f, cellSize) * 0.5f);
+        }
+
+        public Vector3 GetGridCellCenter(
+            Vector3 rootPosition,
+            Vector3 cellUp,
+            float cellSize)
+        {
+            Vector3 up = cellUp.sqrMagnitude > 0.001f
+                ? cellUp.normalized
+                : Vector3.up;
+            float rootAboveVisualBottom = GetRootAboveVisualBottom(up);
+            return rootPosition
+                + up * (Mathf.Max(0.01f, cellSize) * 0.5f - rootAboveVisualBottom);
+        }
+
         public bool SetSupport(Block block)
         {
             Ship ship = block == null ? null : block.GetComponentInParent<Ship>();
@@ -140,6 +166,30 @@ namespace RoyaltyBoat.King
         private void CacheController()
         {
             controller ??= GetComponent<KingController>();
+        }
+
+        private float GetRootAboveVisualBottom(Vector3 up)
+        {
+            Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
+            if (renderers.Length == 0)
+            {
+                return 0f;
+            }
+
+            float lowestProjection = float.PositiveInfinity;
+            foreach (Renderer renderer in renderers)
+            {
+                Bounds bounds = renderer.bounds;
+                float projectedExtent =
+                    Mathf.Abs(up.x) * bounds.extents.x
+                    + Mathf.Abs(up.y) * bounds.extents.y
+                    + Mathf.Abs(up.z) * bounds.extents.z;
+                float rendererBottom = Vector3.Dot(bounds.center, up)
+                    - projectedExtent;
+                lowestProjection = Mathf.Min(lowestProjection, rendererBottom);
+            }
+
+            return Vector3.Dot(transform.position, up) - lowestProjection;
         }
     }
 }

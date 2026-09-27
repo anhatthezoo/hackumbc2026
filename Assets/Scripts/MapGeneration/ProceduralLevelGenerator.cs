@@ -356,6 +356,52 @@ namespace RoyaltyBoat.MapGeneration
                     activeObstacles.Add(duplicateDescriptor);
                 }
             }
+
+            ApplyObstacleOverlaps(random, activeObstacles);
+        }
+
+        private void ApplyObstacleOverlaps(
+            System.Random random,
+            IReadOnlyList<ObstacleDescriptor> obstacles)
+        {
+            if (ActiveLevelNumber < 3 || obstacles.Count < 2)
+            {
+                return;
+            }
+
+            float overlapChance = Mathf.Clamp01(
+                0.3f + (ActiveLevelNumber - 3) * 0.12f);
+            for (int index = 1; index < obstacles.Count; index++)
+            {
+                ObstacleDescriptor obstacle = obstacles[index];
+                if (obstacle == null || random.NextDouble() >= overlapChance)
+                {
+                    continue;
+                }
+
+                int partnerIndex = random.Next(obstacles.Count - 1);
+                if (partnerIndex >= index)
+                {
+                    partnerIndex++;
+                }
+
+                ObstacleDescriptor partner = obstacles[partnerIndex];
+                if (partner == null)
+                {
+                    continue;
+                }
+
+                float distance = Mathf.Lerp(
+                    0.75f,
+                    2.5f,
+                    (float)random.NextDouble());
+                float angle = (float)random.NextDouble() * Mathf.PI * 2f;
+                obstacle.transform.position = partner.transform.position
+                    + new Vector3(
+                        Mathf.Cos(angle) * distance,
+                        0f,
+                        Mathf.Sin(angle) * distance);
+            }
         }
 
         private int GetCatalogSelectionLevel(int levelNumber)

@@ -8,8 +8,8 @@ namespace RoyaltyBoat.Obstacles
     [RequireComponent(typeof(Collider))]
     public sealed class AcidWaterVolume : MonoBehaviour
     {
-        [SerializeField, Min(0f)] private float damagePerSecond = 20f;
-        [SerializeField, Min(0.05f)] private float damageInterval = 0.25f;
+        [SerializeField, Min(0f)] private float damagePerSecond = 10f;
+        [SerializeField, Min(0.05f)] private float damageInterval = 1f;
 
         private readonly Dictionary<Transform, float> nextDamageTimes = new Dictionary<Transform, float>();
 

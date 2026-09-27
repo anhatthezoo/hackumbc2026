@@ -146,6 +146,7 @@ public sealed class ShipBuildArea : MonoBehaviour
         Block seat = returningKing == null ? null : returningKing.SupportBlock;
         startingShip = ship;
         KingPlacement = activeKing;
+        GetComponent<AdaptiveBuildGrid>()?.SetGridSource(ship);
 
         Rigidbody shipBody = ship.GetComponent<Rigidbody>();
         if (shipBody != null)
@@ -238,6 +239,7 @@ public sealed class ShipBuildArea : MonoBehaviour
 
     private void Awake()
     {
+        GetComponent<AdaptiveBuildGrid>()?.SetGridSource(startingShip);
         SpawnKingForBuilding();
         ConfigureCamera(Camera.main);
     }

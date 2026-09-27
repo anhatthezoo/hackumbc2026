@@ -618,7 +618,7 @@ Transform:
   m_GameObject: {fileID: 335446414}
   serializedVersion: 2
   m_LocalRotation: {x: -0.10685517, y: 0.88471454, z: -0.24943197, w: -0.37900645}
-  m_LocalPosition: {x: 7.98, y: 7.38, z: 6.87}
+  m_LocalPosition: {x: 9.36, y: 8.55, z: 8.18}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -681,7 +681,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BlockDragController
   draggingEnabled: 1
-  gridSize: 2
+  gridSize: 1.3
   raycastDistance: 100
   draggableLayers:
     serializedVersion: 2
