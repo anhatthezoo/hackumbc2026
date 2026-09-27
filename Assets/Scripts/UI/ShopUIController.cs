@@ -16,8 +16,18 @@ namespace RoyaltyBoat.UI
         private ShopCatalog catalog;
         private VisualElement itemList;
         private Label balanceLabel;
+        private Label balanceShadowLabel;
+        private VisualElement moneyTextStack;
         private Label statusLabel;
+        private VisualElement detailCard;
+        private Image detailThumbnail;
+        private Label detailName;
+        private Label detailCost;
+        private Label detailDescription;
+        private readonly List<Label> detailFeatures = new();
+        private IVisualElementScheduledItem detailHideSchedule;
         private IEconomyService economy;
+        private ProductThumbnailRenderer thumbnailRenderer;
         private int spawnSequence;
 
         private sealed class PurchaseBinding
@@ -39,11 +49,32 @@ namespace RoyaltyBoat.UI
             VisualElement root = document.rootVisualElement;
             itemList = root.Q<VisualElement>("shop-items");
             balanceLabel = root.Q<Label>("money-balance");
+            balanceShadowLabel = root.Q<Label>("money-balance-shadow");
+            moneyTextStack = root.Q<VisualElement>(className: "money-text-stack");
             statusLabel = root.Q<Label>("shop-status");
+            detailCard = root.Q<VisualElement>("partDetail");
+            detailThumbnail = root.Q<Image>("detailThumbnail");
+            detailName = root.Q<Label>("detailName");
+            detailCost = root.Q<Label>("detailCost");
+            detailDescription = root.Q<Label>("detailDescription");
+            detailFeatures.Clear();
+            for (int index = 0; index < 4; index++)
+            {
+                detailFeatures.Add(root.Q<Label>($"detailFeature{index}"));
+            }
+            thumbnailRenderer = new ProductThumbnailRenderer();
+
+            ScrollView partsRail = root.Q<ScrollView>("partsRail");
+            if (partsRail != null)
+            {
+                partsRail.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
+                partsRail.verticalScrollerVisibility = ScrollerVisibility.Hidden;
+            }
 
             EconomyAccess.ServiceChanged += HandleServiceChanged;
             BindEconomy(EconomyAccess.Current);
             BuildProductList();
+            PlayEntrance(root);
         }
 
         private void OnDisable()
@@ -51,6 +82,9 @@ namespace RoyaltyBoat.UI
             EconomyAccess.ServiceChanged -= HandleServiceChanged;
             BindEconomy(null);
             ClearPurchaseBindings();
+            detailHideSchedule?.Pause();
+            thumbnailRenderer?.Dispose();
+            thumbnailRenderer = null;
         }
 
         private void HandleServiceChanged(IEconomyService service)
@@ -82,20 +116,46 @@ namespace RoyaltyBoat.UI
 
         private void RefreshBalance()
         {
-            int balance = economy?.Balance ?? 0;
-
+            string formattedBalance = $"{(economy?.Balance ?? 0):N0}";
             if (balanceLabel != null)
             {
-                balanceLabel.text = $"${balance:N0}";
+                balanceLabel.text = formattedBalance;
             }
+
+            if (balanceShadowLabel != null)
+            {
+                balanceShadowLabel.text = formattedBalance;
+            }
+
+            UpdateBalanceWidth(formattedBalance);
 
             foreach (PurchaseBinding binding in purchaseBindings)
             {
                 binding.Button.SetEnabled(
-                    binding.Product.Prefab != null
-                    && economy != null
-                    && economy.CanAfford(binding.Product.Price));
+                    binding.Product.Prefab != null);
             }
+        }
+
+        private void UpdateBalanceWidth(string formattedBalance)
+        {
+            if (moneyTextStack == null)
+            {
+                return;
+            }
+
+            moneyTextStack.RemoveFromClassList("balance-width-one");
+            moneyTextStack.RemoveFromClassList("balance-width-short");
+            moneyTextStack.RemoveFromClassList("balance-width-medium");
+            moneyTextStack.RemoveFromClassList("balance-width-long");
+
+            string widthClass = formattedBalance.Length switch
+            {
+                1 => "balance-width-one",
+                <= 3 => "balance-width-short",
+                <= 6 => "balance-width-medium",
+                _ => "balance-width-long"
+            };
+            moneyTextStack.AddToClassList(widthClass);
         }
 
         private void BuildProductList()
@@ -115,81 +175,119 @@ namespace RoyaltyBoat.UI
                 return;
             }
 
-            foreach (ShopProduct product in catalog.Products)
+            for (int index = 0; index < catalog.Products.Count; index++)
             {
-                itemList.Add(CreateProductCard(product));
+                itemList.Add(CreateProductButton(catalog.Products[index], index));
             }
 
-            SetStatus("Purchased parts appear on the build floor.", false);
+            SetStatus(string.Empty, false);
             RefreshBalance();
         }
 
-        private VisualElement CreateProductCard(ShopProduct product)
+        private Button CreateProductButton(ShopProduct product, int index)
         {
-            var card = new VisualElement();
-            card.AddToClassList("product-card");
+            var button = new Button
+            {
+                name = $"buy-{product.Id}",
+                tooltip = $"{product.DisplayName} · {product.Price:N0} coins"
+            };
+            button.AddToClassList("part-button");
+            button.AddToClassList("is-entering");
 
-            var preview = new VisualElement();
-            preview.AddToClassList("product-preview");
-            AddBlockPreview(preview);
-            card.Add(preview);
+            var preview = new Image
+            {
+                image = thumbnailRenderer.Render(product.Prefab),
+                scaleMode = ScaleMode.ScaleToFit,
+                pickingMode = PickingMode.Ignore
+            };
+            preview.AddToClassList("part-thumbnail");
+            button.Add(preview);
 
-            var copy = new VisualElement();
-            copy.AddToClassList("product-copy");
+            button.RegisterCallback<PointerEnterEvent>(_ => ShowDetail(product));
+            button.RegisterCallback<PointerLeaveEvent>(_ => HideDetailAfterDelay());
+            button.RegisterCallback<MouseEnterEvent>(_ => ShowDetail(product));
+            button.RegisterCallback<MouseLeaveEvent>(_ => HideDetailAfterDelay());
+            button.RegisterCallback<FocusInEvent>(_ => ShowDetail(product));
+            button.RegisterCallback<FocusOutEvent>(_ => HideDetailAfterDelay());
 
-            var category = new Label(product.Category);
-            category.AddToClassList("product-category");
-            copy.Add(category);
-
-            var name = new Label(product.DisplayName);
-            name.AddToClassList("product-name");
-            copy.Add(name);
-
-            var description = new Label(product.Description);
-            description.AddToClassList("product-description");
-            copy.Add(description);
-
-            var purchaseRow = new VisualElement();
-            purchaseRow.AddToClassList("purchase-row");
-
-            var price = new Label($"${product.Price:N0}");
-            price.AddToClassList("product-price");
-            purchaseRow.Add(price);
-
-            var buyButton = new Button { text = "BUY" };
-            buyButton.name = $"buy-{product.Id}";
-            buyButton.AddToClassList("product-buy-button");
             Action handler = () => Purchase(product);
-            buyButton.clicked += handler;
+            button.clicked += handler;
             purchaseBindings.Add(new PurchaseBinding
             {
                 Product = product,
-                Button = buyButton,
+                Button = button,
                 Handler = handler
             });
-            purchaseRow.Add(buyButton);
-            copy.Add(purchaseRow);
-            card.Add(copy);
-            return card;
+
+            button.schedule.Execute(
+                () => button.RemoveFromClassList("is-entering"))
+                .StartingIn(120 + index * 75);
+            return button;
         }
 
-        private static void AddBlockPreview(VisualElement preview)
+        private void ShowDetail(ShopProduct product)
         {
-            var shadow = new VisualElement();
-            shadow.AddToClassList("preview-shadow");
-            preview.Add(shadow);
+            if (detailCard == null)
+            {
+                return;
+            }
 
-            var top = new VisualElement();
-            top.AddToClassList("preview-block-top");
-            preview.Add(top);
+            detailHideSchedule?.Pause();
+            detailThumbnail.image = thumbnailRenderer.Render(product.Prefab);
+            detailName.text = product.DisplayName;
+            detailCost.text = $"Cost: {product.Price:N0}";
+            detailDescription.text = product.Description;
 
-            var front = new VisualElement();
-            front.AddToClassList("preview-block-front");
-            preview.Add(front);
+            IReadOnlyList<string> features = GetDetailFeatures(product);
+            for (int index = 0; index < detailFeatures.Count; index++)
+            {
+                if (detailFeatures[index] != null)
+                {
+                    detailFeatures[index].text = $"•  {features[index]}";
+                }
+            }
 
-            var side = new VisualElement();
-            side.AddToClassList("preview-block-side");
-            preview.Add(side);
+            detailCard.AddToClassList("part-detail-visible");
+        }
+
+        private void HideDetailAfterDelay()
+        {
+            if (detailCard == null)
+            {
+                return;
+            }
+
+            detailHideSchedule?.Pause();
+            detailHideSchedule = detailCard.schedule.Execute(
+                () => detailCard.RemoveFromClassList("part-detail-visible"))
+                .StartingIn(100);
+        }
+
+        private static IReadOnlyList<string> GetDetailFeatures(ShopProduct product)
+        {
+            var features = new List<string>
+            {
+                $"{product.Category} component"
+            };
+            Block block = product.Prefab == null
+                ? null
+                : product.Prefab.GetComponentInChildren<Block>();
+
+            if (block == null)
+            {
+                features.Add("Royal support item");
+                features.Add("Ready for your build");
+            }
+            else
+            {
+                features.Add($"{block.MaxHealth} durability");
+                features.Add(block.DamageReduction > 0
+                    ? $"{block.DamageReduction} impact armor"
+                    : "Lightweight construction");
+            }
+
+            features.Add("Buy, then drag to build");
+            return features;
         }
 
         private void Purchase(ShopProduct product)
@@ -202,7 +300,7 @@ namespace RoyaltyBoat.UI
 
             economy ??= EconomyAccess.Current;
 
-            if (!economy.TrySpend(product.Price))
+            if (economy == null || !economy.TrySpend(product.Price))
             {
                 SetStatus("Not enough royal funds.", true);
                 RefreshBalance();
@@ -241,7 +339,7 @@ namespace RoyaltyBoat.UI
                 int index = (spawnSequence + attempt) % slots;
                 int column = index % width;
                 int row = index / width;
-                Vector3 candidate = new Vector3(
+                Vector3 candidate = new(
                     center.x + (column - 2) * gridSize,
                     floorHeight + gridSize * 0.5f,
                     center.z + (row - 2) * gridSize);
@@ -284,7 +382,37 @@ namespace RoyaltyBoat.UI
             }
 
             statusLabel.text = message;
+            bool visible = !string.IsNullOrWhiteSpace(message);
+            statusLabel.EnableInClassList("shop-status-visible", visible);
             statusLabel.EnableInClassList("shop-status-error", isError);
+
+            if (visible)
+            {
+                statusLabel.schedule.Execute(() =>
+                    statusLabel.RemoveFromClassList("shop-status-visible"))
+                    .StartingIn(2200);
+            }
+        }
+
+        private static void PlayEntrance(VisualElement root)
+        {
+            root.schedule.Execute(() =>
+            {
+                root.Q<Label>("buildTitle")?.RemoveFromClassList("screen-enter");
+                root.Q<Label>("buildTitleShadow")?.RemoveFromClassList("screen-enter");
+            }).StartingIn(50);
+
+            root.schedule.Execute(() =>
+                root.Q<ScrollView>("partsRail")?.RemoveFromClassList("screen-enter"))
+                .StartingIn(110);
+
+            root.schedule.Execute(() =>
+                root.Q<VisualElement>("moneyHud")?.RemoveFromClassList("screen-enter"))
+                .StartingIn(170);
+
+            root.schedule.Execute(() =>
+                root.Q<Button>("set-sail-button")?.RemoveFromClassList("screen-enter"))
+                .StartingIn(230);
         }
 
         private void ClearPurchaseBindings()

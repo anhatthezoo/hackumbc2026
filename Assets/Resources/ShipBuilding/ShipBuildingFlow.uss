@@ -1,4 +1,11 @@
-.ship-building-overlay {
+:root {
+    --ink: rgb(255, 255, 255);
+    --sail-blue: rgb(91, 162, 235);
+    --sail-blue-hover: rgb(112, 181, 247);
+    --rail: rgba(0, 0, 0, 0.45);
+}
+
+.build-screen {
     position: absolute;
     left: 0;
     right: 0;
@@ -6,475 +13,326 @@
     bottom: 0;
 }
 
-.shop-panel,
-.ship-building-card,
-.money-hud {
-    background-color: rgba(248, 232, 190, 0.98);
-    border-left-width: 3px;
-    border-right-width: 3px;
-    border-top-width: 3px;
-    border-left-color: rgb(224, 143, 54);
-    border-right-color: rgb(224, 143, 54);
-    border-top-color: rgb(224, 143, 54);
-    border-bottom-color: rgb(154, 74, 31);
-}
-
-.shop-panel {
+.build-title {
     position: absolute;
-    left: 34px;
-    top: 34px;
-    bottom: 34px;
-    width: 390px;
-    padding: 24px 22px 19px 22px;
-    border-bottom-width: 9px;
-    border-top-left-radius: 27px;
-    border-top-right-radius: 27px;
-    border-bottom-left-radius: 27px;
-    border-bottom-right-radius: 27px;
+    /* This aligns the rendered glyph edge with the 64px rail. */
+    left: 62px;
+    top: 78.5px;
+    height: 86px;
+    color: var(--ink);
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/DarumadropOne-Regular.ttf");
+    -unity-text-align: upper-left;
+    font-size: 64px;
+    translate: 0 -43px;
+    transition-duration: 0.34s;
+    transition-timing-function: ease-out;
 }
 
-.shop-heading-row {
-    min-height: 67px;
-    flex-direction: row;
-    justify-content: space-between;
+.build-title-shadow {
+    left: 65px;
+    top: 81.5px;
+    color: rgba(0, 0, 0, 0.25);
+}
+
+.parts-rail {
+    position: absolute;
+    left: 64px;
+    top: 216px;
+    width: 160px;
+    height: 800px;
+    padding: 32px;
+    background-color: var(--rail);
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
+    overflow: hidden;
+    transition-duration: 0.38s;
+    transition-timing-function: ease-out;
+}
+
+.parts-rail .unity-scroller--horizontal,
+.parts-rail .unity-scroller--vertical {
+    display: none;
+}
+
+.parts-list {
     align-items: center;
 }
 
-.shop-eyebrow {
-    color: rgb(201, 84, 42);
-    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
-    font-size: 15px;
-    letter-spacing: 3px;
-}
-
-.shop-title {
-    margin-top: -3px;
-    color: rgb(33, 57, 79);
-    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
-    font-size: 38px;
-    letter-spacing: 2px;
-}
-
-.shop-stamp {
-    width: 83px;
-    height: 45px;
-    color: rgb(255, 239, 198);
-    background-color: rgb(206, 95, 48);
-    border-bottom-width: 5px;
-    border-bottom-color: rgb(142, 58, 34);
+.part-button {
+    width: 96px;
+    height: 96px;
+    min-width: 96px;
+    min-height: 96px;
+    margin-bottom: 32px;
+    padding: 0;
+    background-color: rgba(255, 255, 255, 0);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
     border-top-left-radius: 12px;
     border-top-right-radius: 12px;
     border-bottom-left-radius: 12px;
     border-bottom-right-radius: 12px;
-    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
-    -unity-text-align: middle-center;
-    font-size: 13px;
-    letter-spacing: 1px;
-    rotate: 3deg;
+    transition-duration: 0.16s;
+    transition-timing-function: ease-out;
 }
 
-.shop-subtitle {
-    margin-top: 3px;
-    margin-bottom: 15px;
-    color: rgb(102, 75, 55);
-    -unity-font-definition: url("project://database/Assets/UI/Fonts/PatrickHand-Regular.ttf");
-    font-size: 20px;
-    white-space: normal;
+.part-button:hover {
+    scale: 1.13 1.13;
+    translate: 8px 0;
+    background-color: rgba(255, 255, 255, 0.13);
 }
 
-.category-row {
-    height: 39px;
-    margin-bottom: 13px;
-    flex-direction: row;
+.part-button:active {
+    scale: 0.96 0.96;
+    translate: 4px 2px;
+    background-color: rgba(91, 162, 235, 0.28);
 }
 
-.category-chip {
-    height: 33px;
-    margin-right: 8px;
-    padding-left: 13px;
-    padding-right: 13px;
-    color: rgb(116, 92, 68);
-    background-color: rgb(223, 205, 161);
-    border-bottom-width: 4px;
-    border-bottom-color: rgb(176, 139, 85);
-    border-top-left-radius: 11px;
-    border-top-right-radius: 11px;
-    border-bottom-left-radius: 11px;
-    border-bottom-right-radius: 11px;
-    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
-    -unity-text-align: middle-center;
-    font-size: 13px;
-    letter-spacing: 1px;
+.part-thumbnail {
+    width: 96px;
+    height: 96px;
+    -unity-background-scale-mode: scale-to-fit;
 }
 
-.category-chip-active {
-    color: rgb(255, 239, 198);
-    background-color: rgb(65, 99, 130);
-    border-bottom-color: rgb(29, 54, 78);
-}
-
-.shop-scroll {
-    flex-grow: 1;
-    margin-left: -4px;
-    margin-right: -4px;
-}
-
-.shop-scroll .unity-scroller--horizontal {
-    display: none;
-}
-
-.shop-scroll .unity-scroller--vertical {
-    width: 10px;
-}
-
-.shop-scroll .unity-base-slider__tracker {
-    background-color: rgb(210, 184, 132);
-    border-left-width: 0;
-    border-right-width: 0;
-    border-top-width: 0;
-    border-bottom-width: 0;
-    border-top-left-radius: 5px;
-    border-top-right-radius: 5px;
-    border-bottom-left-radius: 5px;
-    border-bottom-right-radius: 5px;
-}
-
-.shop-scroll .unity-base-slider__dragger {
-    background-color: rgb(65, 99, 130);
-    border-left-width: 0;
-    border-right-width: 0;
-    border-top-width: 0;
-    border-bottom-width: 0;
-    border-top-left-radius: 5px;
-    border-top-right-radius: 5px;
-    border-bottom-left-radius: 5px;
-    border-bottom-right-radius: 5px;
-}
-
-.shop-items {
-    padding: 4px 5px 8px 4px;
-}
-
-.product-card {
-    min-height: 186px;
-    margin-bottom: 13px;
-    padding: 14px;
-    flex-direction: row;
-    background-color: rgb(231, 212, 169);
-    border-left-width: 2px;
-    border-right-width: 2px;
-    border-top-width: 2px;
-    border-bottom-width: 6px;
-    border-left-color: rgb(194, 153, 91);
-    border-right-color: rgb(194, 153, 91);
-    border-top-color: rgb(194, 153, 91);
-    border-bottom-color: rgb(161, 113, 63);
-    border-top-left-radius: 19px;
-    border-top-right-radius: 19px;
-    border-bottom-left-radius: 19px;
-    border-bottom-right-radius: 19px;
-}
-
-.product-preview {
-    position: relative;
-    width: 112px;
-    height: 116px;
-    margin-right: 15px;
-    margin-top: 17px;
-    background-color: rgb(96, 139, 153);
-    border-bottom-width: 5px;
-    border-bottom-color: rgb(47, 86, 103);
-    border-top-left-radius: 18px;
-    border-top-right-radius: 18px;
-    border-bottom-left-radius: 18px;
-    border-bottom-right-radius: 18px;
-    overflow: hidden;
-}
-
-.preview-shadow {
-    position: absolute;
-    left: 27px;
-    top: 80px;
-    width: 67px;
-    height: 19px;
-    background-color: rgba(23, 51, 64, 0.42);
-    border-top-left-radius: 50%;
-    border-top-right-radius: 50%;
-    border-bottom-left-radius: 50%;
-    border-bottom-right-radius: 50%;
-}
-
-.preview-block-top {
-    position: absolute;
-    left: 26px;
-    top: 28px;
-    width: 54px;
-    height: 17px;
-    background-color: rgb(181, 91, 39);
-    rotate: -4deg;
-}
-
-.preview-block-front {
-    position: absolute;
-    left: 27px;
-    top: 43px;
-    width: 54px;
-    height: 47px;
-    background-color: rgb(143, 58, 24);
-    border-bottom-left-radius: 4px;
-}
-
-.preview-block-side {
-    position: absolute;
-    left: 81px;
-    top: 38px;
-    width: 15px;
-    height: 47px;
-    background-color: rgb(100, 38, 22);
-    rotate: 2deg;
-}
-
-.product-copy {
-    flex-grow: 1;
-    min-width: 0;
-}
-
-.product-category {
-    color: rgb(201, 84, 42);
-    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
-    font-size: 12px;
-    letter-spacing: 2px;
-}
-
-.product-name {
-    margin-top: -1px;
-    color: rgb(33, 57, 79);
-    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
-    font-size: 24px;
-}
-
-.product-description {
-    height: 48px;
-    margin-top: 2px;
-    color: rgb(100, 75, 56);
-    -unity-font-definition: url("project://database/Assets/UI/Fonts/PatrickHand-Regular.ttf");
-    font-size: 17px;
-    white-space: normal;
-}
-
-.purchase-row {
-    height: 48px;
-    margin-top: 7px;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.product-price {
-    color: rgb(33, 57, 79);
-    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
-    font-size: 26px;
-}
-
-.product-buy-button {
-    width: 94px;
-    height: 43px;
-    color: rgb(29, 52, 75);
-    background-color: rgb(255, 190, 54);
-    border-left-width: 0;
-    border-right-width: 0;
-    border-top-width: 0;
-    border-bottom-width: 5px;
-    border-bottom-color: rgb(202, 103, 27);
-    border-top-left-radius: 13px;
-    border-top-right-radius: 13px;
-    border-bottom-left-radius: 13px;
-    border-bottom-right-radius: 13px;
-    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
-    -unity-text-align: middle-center;
-    font-size: 19px;
-    letter-spacing: 2px;
-    transition-property: scale, translate, background-color;
-    transition-duration: 0.08s;
-}
-
-.product-buy-button:hover {
-    scale: 1.04 1.04;
-    translate: 0 -2px;
-    background-color: rgb(255, 207, 82);
-}
-
-.product-buy-button:active {
-    scale: 0.97 0.97;
-    translate: 0 2px;
-}
-
-.product-buy-button:disabled {
-    color: rgb(117, 111, 95);
-    background-color: rgb(190, 177, 144);
-    border-bottom-color: rgb(139, 123, 94);
-}
-
-.shop-status {
-    min-height: 27px;
-    margin-top: 8px;
-    color: rgb(67, 94, 70);
-    -unity-font-definition: url("project://database/Assets/UI/Fonts/PatrickHand-Regular.ttf");
-    -unity-text-align: middle-center;
-    font-size: 18px;
-    white-space: normal;
-}
-
-.shop-status-error {
-    color: rgb(176, 55, 36);
+.part-button.is-entering {
+    opacity: 0;
+    translate: -22px 0;
+    scale: 0.82 0.82;
 }
 
 .money-hud {
     position: absolute;
-    right: 40px;
-    top: 32px;
-    min-width: 230px;
-    height: 92px;
-    padding: 11px 21px 12px 21px;
-    border-bottom-width: 7px;
-    border-top-left-radius: 22px;
-    border-top-right-radius: 22px;
-    border-bottom-left-radius: 22px;
-    border-bottom-right-radius: 22px;
-    align-items: flex-end;
-}
-
-.money-caption {
-    color: rgb(102, 75, 55);
-    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
-    font-size: 14px;
-    letter-spacing: 3px;
-}
-
-.money-value-row {
+    right: 48px;
+    top: 9px;
+    width: 364px;
+    height: 140px;
     flex-direction: row;
     align-items: center;
+    justify-content: flex-end;
+    rotate: 5deg;
+    transition-duration: 0.4s;
+    transition-timing-function: ease-out;
 }
 
-.money-icon {
-    margin-right: 9px;
-    color: rgb(230, 119, 37);
-    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
-    font-size: 25px;
+.coin-icon {
+    width: 80px;
+    height: 80px;
+    margin-right: 16px;
+    background-image: url("project://database/Assets/Textures/Icons/CoinIconWhite.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.money-text-stack {
+    position: relative;
+    height: 109px;
+}
+
+.money-text-stack.balance-width-one {
+    width: 48px;
+}
+
+.money-text-stack.balance-width-short {
+    width: 120px;
+}
+
+.money-text-stack.balance-width-medium {
+    width: 220px;
+}
+
+.money-text-stack.balance-width-long {
+    width: 260px;
 }
 
 .money-balance {
-    color: rgb(33, 57, 79);
-    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
-    font-size: 38px;
-    letter-spacing: 1px;
-}
-
-.ship-building-card {
     position: absolute;
-    right: 40px;
-    bottom: 34px;
-    width: 380px;
-    padding: 20px 22px 22px 22px;
-    border-bottom-width: 9px;
-    border-top-left-radius: 25px;
-    border-top-right-radius: 25px;
-    border-bottom-left-radius: 25px;
-    border-bottom-right-radius: 25px;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 109px;
+    color: var(--ink);
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/DarumadropOne-Regular.ttf");
+    -unity-text-align: middle-right;
+    font-size: 64px;
 }
 
-.ship-building-title {
-    height: 54px;
-    color: rgb(33, 57, 79);
-    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
-    -unity-text-align: middle-center;
-    font-size: 39px;
-    letter-spacing: 3px;
+.money-balance-shadow {
+    left: auto;
+    right: -3px;
+    top: 3px;
+    color: rgba(0, 0, 0, 0.25);
 }
 
-.ship-building-subtitle {
-    margin-top: -3px;
-    margin-bottom: 15px;
-    color: rgb(102, 75, 55);
-    -unity-font-definition: url("project://database/Assets/UI/Fonts/PatrickHand-Regular.ttf");
-    -unity-text-align: middle-center;
-    font-size: 21px;
-    white-space: normal;
-}
-
-.camera-angle-button,
-.rotate-item-button,
-.dev-map-button,
-.set-sail-button {
+.sail-button {
+    position: absolute;
+    right: 64px;
+    bottom: 64px;
+    height: 104px;
+    width: 291px;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink);
+    background-color: var(--sail-blue);
     border-left-width: 0;
     border-right-width: 0;
     border-top-width: 0;
-    border-top-left-radius: 17px;
-    border-top-right-radius: 17px;
-    border-bottom-left-radius: 17px;
-    border-bottom-right-radius: 17px;
-    -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
+    border-bottom-width: 0;
+    border-top-left-radius: 52px;
+    border-top-right-radius: 52px;
+    border-bottom-left-radius: 52px;
+    border-bottom-right-radius: 52px;
+    transition-duration: 0.18s;
+    transition-timing-function: ease-out;
+}
+
+.sail-button:hover {
+    scale: 1.06 1.06;
+    translate: 0 -6px;
+    background-color: var(--sail-blue-hover);
+}
+
+.sail-button:active {
+    scale: 0.96 0.96;
+    translate: 0 2px;
+    background-color: rgb(72, 143, 216);
+}
+
+.sail-button:disabled {
+    opacity: 0.5;
+}
+
+.sail-icon {
+    width: 72px;
+    height: 72px;
+    background-image: url("project://database/Assets/Textures/Icons/BoatIcon.png");
+    -unity-background-scale-mode: scale-to-fit;
+    scale: -1 1;
+    margin-right: 10px;
+}
+
+.sail-label {
+    width: 97px;
+    height: 72px;
+    color: var(--ink);
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/DarumadropOne-Regular.ttf");
     -unity-text-align: middle-center;
-    letter-spacing: 2px;
-    transition-property: scale, translate, background-color;
-    transition-duration: 0.08s;
+    font-size: 48px;
 }
 
-.camera-angle-button,
-.rotate-item-button {
-    height: 58px;
-    margin-bottom: 12px;
-    color: rgb(255, 239, 198);
-    background-color: rgb(65, 99, 130);
-    border-bottom-width: 6px;
-    border-bottom-color: rgb(29, 54, 78);
-    font-size: 21px;
+.sail-content {
+    width: 179px;
+    height: 72px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
 }
 
-.dev-map-button {
-    height: 52px;
-    margin-bottom: 12px;
-    color: rgb(255, 239, 198);
-    background-color: rgb(190, 72, 45);
-    border-bottom-width: 6px;
-    border-bottom-color: rgb(122, 42, 34);
-    font-size: 20px;
+.part-detail-card {
+    position: absolute;
+    left: 240px;
+    top: 216px;
+    width: 560px;
+    padding: 16px;
+    background-color: rgba(0, 0, 0, 0.55);
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    opacity: 0;
+    visibility: hidden;
+    translate: -16px 0;
+    transition-duration: 0.16s;
+    transition-timing-function: ease-out;
 }
 
-.set-sail-button {
-    height: 76px;
-    color: rgb(29, 52, 75);
-    background-color: rgb(255, 190, 54);
-    border-bottom-width: 7px;
-    border-bottom-color: rgb(202, 103, 27);
-    font-size: 34px;
+.part-detail-card.part-detail-visible {
+    opacity: 1;
+    visibility: visible;
+    translate: 0 0;
 }
 
-.camera-angle-button:hover,
-.rotate-item-button:hover,
-.dev-map-button:hover,
-.set-sail-button:hover {
-    scale: 1.02 1.02;
-    translate: 0 -2px;
+.part-detail-header {
+    min-height: 96px;
+    flex-direction: row;
+    align-items: flex-end;
 }
 
-.camera-angle-button:hover,
-.rotate-item-button:hover {
-    background-color: rgb(78, 116, 151);
+.detail-thumbnail {
+    width: 96px;
+    height: 96px;
+    margin-right: 24px;
+    -unity-background-scale-mode: scale-to-fit;
 }
 
-.dev-map-button:hover {
-    background-color: rgb(214, 86, 50);
+.detail-copy {
+    flex-grow: 1;
+    justify-content: flex-end;
 }
 
-.set-sail-button:hover {
-    background-color: rgb(255, 207, 82);
+.detail-name,
+.detail-cost,
+.detail-description,
+.detail-feature {
+    color: var(--ink);
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/DarumadropOne-Regular.ttf");
+    font-size: 32px;
 }
 
-.camera-angle-button:active,
-.rotate-item-button:active,
-.dev-map-button:active,
-.set-sail-button:active {
-    scale: 0.98 0.98;
-    translate: 0 3px;
+.detail-name {
+    margin-bottom: -12px;
+}
+
+.detail-description {
+    margin-top: 10px;
+    padding-left: 24px;
+    padding-right: 24px;
+    white-space: normal;
+}
+
+.detail-features {
+    margin-top: 8px;
+    padding-left: 48px;
+}
+
+.detail-feature {
+    height: 40px;
+    white-space: normal;
+}
+
+.shop-status {
+    position: absolute;
+    left: 480px;
+    right: 480px;
+    bottom: 74px;
+    min-height: 58px;
+    padding: 12px 24px;
+    display: none;
+    color: var(--ink);
+    background-color: rgba(0, 0, 0, 0.68);
+    border-top-left-radius: 18px;
+    border-top-right-radius: 18px;
+    border-bottom-left-radius: 18px;
+    border-bottom-right-radius: 18px;
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/DarumadropOne-Regular.ttf");
+    -unity-text-align: middle-center;
+    font-size: 24px;
+    white-space: normal;
+}
+
+.shop-status-visible {
+    display: flex;
+}
+
+.shop-status-error {
+    background-color: rgba(143, 38, 27, 0.9);
+}
+
+.screen-enter {
+    opacity: 0;
+    translate: 0 -18px;
+    scale: 0.96 0.96;
 }

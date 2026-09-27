@@ -1,45 +1,45 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
-    <Style src="project://database/Assets/Resources/ShipBuilding/ShipBuildingFlow.uss" />
+    <ui:Style src="ShipBuildingFlow.uss" />
+    <ui:VisualElement name="buildScreen" class="build-screen" picking-mode="Ignore">
+        <ui:Label name="buildTitleShadow" text="BUILD" class="build-title build-title-shadow screen-enter" picking-mode="Ignore" />
+        <ui:Label name="buildTitle" text="BUILD" class="build-title screen-enter" picking-mode="Ignore" />
 
-    <ui:VisualElement class="ship-building-overlay" picking-mode="Ignore">
-        <ui:VisualElement class="shop-panel" picking-mode="Position">
-            <ui:VisualElement class="shop-heading-row">
-                <ui:VisualElement>
-                    <ui:Label text="ROYAL SUPPLY" class="shop-eyebrow" />
-                    <ui:Label text="SHIP PARTS" class="shop-title" />
+        <ui:ScrollView name="partsRail" class="parts-rail screen-enter" mode="Vertical" picking-mode="Position">
+            <ui:VisualElement name="shop-items" class="parts-list" />
+        </ui:ScrollView>
+
+        <ui:VisualElement name="moneyHud" class="money-hud screen-enter" picking-mode="Ignore">
+            <ui:VisualElement class="coin-icon" picking-mode="Ignore" />
+            <ui:VisualElement class="money-text-stack" picking-mode="Ignore">
+                <ui:Label name="money-balance-shadow" text="0" class="money-balance money-balance-shadow" picking-mode="Ignore" />
+                <ui:Label name="money-balance" text="0" class="money-balance" picking-mode="Ignore" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:Button name="set-sail-button" class="sail-button screen-enter" tooltip="Launch your finished ship">
+            <ui:VisualElement class="sail-content" picking-mode="Ignore">
+                <ui:VisualElement class="sail-icon" picking-mode="Ignore" />
+                <ui:Label name="set-sail-label" text="SAIL" class="sail-label" picking-mode="Ignore" />
+            </ui:VisualElement>
+        </ui:Button>
+
+        <ui:VisualElement name="partDetail" class="part-detail-card" picking-mode="Ignore">
+            <ui:VisualElement class="part-detail-header" picking-mode="Ignore">
+                <ui:Image name="detailThumbnail" class="detail-thumbnail" picking-mode="Ignore" />
+                <ui:VisualElement class="detail-copy" picking-mode="Ignore">
+                    <ui:Label name="detailName" text="Item Name" class="detail-name" picking-mode="Ignore" />
+                    <ui:Label name="detailCost" text="Cost: 1000" class="detail-cost" picking-mode="Ignore" />
                 </ui:VisualElement>
-                <ui:Label text="DRY DOCK" class="shop-stamp" />
             </ui:VisualElement>
-
-            <ui:Label text="Buy a part, then drag it into your design." class="shop-subtitle" />
-
-            <ui:VisualElement class="category-row">
-                <ui:Label text="STRUCTURE" class="category-chip category-chip-active" />
-                <ui:Label text="MORE SOON" class="category-chip" />
-            </ui:VisualElement>
-
-            <ui:ScrollView name="shop-scroll" class="shop-scroll" mode="Vertical">
-                <ui:VisualElement name="shop-items" class="shop-items" />
-            </ui:ScrollView>
-
-            <ui:Label name="shop-status" text="Purchased parts appear on the build floor." class="shop-status" />
-        </ui:VisualElement>
-
-        <ui:VisualElement class="money-hud" picking-mode="Ignore">
-            <ui:Label text="ROYAL FUNDS" class="money-caption" />
-            <ui:VisualElement class="money-value-row">
-                <ui:Label text="◆" class="money-icon" />
-                <ui:Label name="money-balance" text="$0" class="money-balance" />
+            <ui:Label name="detailDescription" class="detail-description" picking-mode="Ignore" />
+            <ui:VisualElement class="detail-features" picking-mode="Ignore">
+                <ui:Label name="detailFeature0" class="detail-feature" picking-mode="Ignore" />
+                <ui:Label name="detailFeature1" class="detail-feature" picking-mode="Ignore" />
+                <ui:Label name="detailFeature2" class="detail-feature" picking-mode="Ignore" />
+                <ui:Label name="detailFeature3" class="detail-feature" picking-mode="Ignore" />
             </ui:VisualElement>
         </ui:VisualElement>
 
-        <ui:VisualElement class="ship-building-card" picking-mode="Position">
-            <ui:Label text="ROYAL SHIPYARD" class="ship-building-title" />
-            <ui:Label text="Select a part, use the arrows to move it, and press R to rotate" class="ship-building-subtitle" />
-            <ui:Button name="camera-angle-button" text="FLIP SIDE  •  V" class="camera-angle-button" />
-            <ui:Button name="rotate-item-button" text="ROTATE ITEM  •  R" class="rotate-item-button" />
-            <ui:Button name="dev-map-button" text="DEV MAP" class="dev-map-button" tooltip="Launch the dense weather and obstacle test course" />
-            <ui:Button name="set-sail-button" text="SET SAIL" class="set-sail-button" />
-        </ui:VisualElement>
+        <ui:Label name="shop-status" class="shop-status" picking-mode="Ignore" />
     </ui:VisualElement>
 </ui:UXML>

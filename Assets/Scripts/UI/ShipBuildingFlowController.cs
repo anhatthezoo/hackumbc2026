@@ -69,7 +69,11 @@ namespace RoyaltyBoat.UI
                 return;
             }
 
-            setSailButton.text = $"SET SAIL  •  LEVEL {VoyageFlow.CurrentLevel}";
+            Label sailLabel = root.Q<Label>("set-sail-label");
+            if (sailLabel != null)
+            {
+                sailLabel.text = "SAIL";
+            }
             setSailButton.clicked += HandleSetSailClicked;
             if (devMapButton != null)
             {
