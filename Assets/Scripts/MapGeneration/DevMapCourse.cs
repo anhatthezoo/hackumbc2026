@@ -19,6 +19,17 @@ namespace RoyaltyBoat.MapGeneration
         private void Awake()
         {
             ConfigureObstacleDamage();
+            RavineCourseBoundary ravine =
+                GetComponent<RavineCourseBoundary>();
+            if (ravine == null)
+            {
+                ravine = gameObject.AddComponent<RavineCourseBoundary>();
+            }
+
+            ravine.Generate(
+                finishX,
+                MapGenerationDefaults.CourseWidth,
+                8675309);
         }
 
         public void ConfigureObstacleDamage()

@@ -122,6 +122,13 @@ namespace RoyaltyBoat.MapGeneration
 
             AppendChunk(catalog.CooldownChunk, generatedChunks.Count, ref cursor);
             GeneratedLength = cursor;
+
+            RavineCourseBoundary ravine =
+                rootObject.AddComponent<RavineCourseBoundary>();
+            ravine.Generate(
+                GeneratedLength,
+                MapGenerationDefaults.CourseWidth,
+                combinedSeed);
             CourseGenerated?.Invoke(ActiveRunSeed, ActiveLevelNumber, GeneratedLength);
         }
 

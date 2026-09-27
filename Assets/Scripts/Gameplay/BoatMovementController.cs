@@ -16,7 +16,6 @@ namespace RoyaltyBoat.Gameplay
         [Header("Up/Down Steering")]
         [SerializeField, Min(0f)] private float lateralSpeed = 9f;
         [SerializeField, Min(0f)] private float lateralAcceleration = 18f;
-        [SerializeField, Min(1f)] private float courseHalfWidth = 25f;
 
         [Header("Iceberg Collision")]
         [SerializeField, Range(0f, 1.5f)] private float icebergBounceMultiplier = 0.65f;
@@ -63,12 +62,6 @@ namespace RoyaltyBoat.Gameplay
                 velocity.z,
                 steering * lateralSpeed,
                 lateralAcceleration * Time.fixedDeltaTime);
-
-            if (Mathf.Abs(body.position.z) >= courseHalfWidth &&
-                Mathf.Sign(velocity.z) == Mathf.Sign(body.position.z))
-            {
-                velocity.z = 0f;
-            }
 
             body.linearVelocity = velocity;
             previousPlanarVelocity = new Vector3(velocity.x, 0f, velocity.z);
@@ -147,7 +140,6 @@ namespace RoyaltyBoat.Gameplay
             forwardAcceleration = Mathf.Max(0f, forwardAcceleration);
             lateralSpeed = Mathf.Max(0f, lateralSpeed);
             lateralAcceleration = Mathf.Max(0f, lateralAcceleration);
-            courseHalfWidth = Mathf.Max(1f, courseHalfWidth);
             icebergBounceMultiplier = Mathf.Clamp(icebergBounceMultiplier, 0f, 1.5f);
             minimumIcebergBounceSpeed = Mathf.Max(0f, minimumIcebergBounceSpeed);
             icebergControlLockDuration = Mathf.Max(0f, icebergControlLockDuration);
