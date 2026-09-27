@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using RoyaltyBoat.Obstacles;
+using RoyaltyBoat.MapGeneration;
 
 
 namespace RoyaltyBoat.Gameplay
@@ -27,6 +28,7 @@ namespace RoyaltyBoat.Gameplay
 
 
         private Rigidbody body;
+        private RavineCourseBoundary course;
 
         public float ForwardSpeed => forwardSpeed;
         public float LateralSpeed => lateralSpeed;
@@ -34,6 +36,7 @@ namespace RoyaltyBoat.Gameplay
         private void Awake()
         {
             body = GetComponent<Rigidbody>();
+            course = FindAnyObjectByType<RavineCourseBoundary>();
         }
 
         private void FixedUpdate()
@@ -52,16 +55,34 @@ namespace RoyaltyBoat.Gameplay
                 return;
             }
 
+            if (course == null)
+            {
+                course = FindAnyObjectByType<RavineCourseBoundary>();
+            }
+
             float steering = ReadSteering();
             Vector3 velocity = body.linearVelocity;
-            velocity.x = Mathf.MoveTowards(
-                velocity.x,
-                forwardSpeed,
-                forwardAcceleration * Time.fixedDeltaTime);
-            velocity.z = Mathf.MoveTowards(
-                velocity.z,
-                steering * lateralSpeed,
-                lateralAcceleration * Time.fixedDeltaTime);
+            Vector3 forward = Vector3.right;
+            if (course != null)
+            {
+                float courseDistance = course.transform.InverseTransformPoint(body.position).x;
+                forward = course.transform.TransformDirection(
+                    course.GetCourseTangent(courseDistance));
+                forward.y = 0f;
+                forward.Normalize();
+            }
+
+            Vector3 across = new Vector3(-forward.z, 0f, forward.x);
+            Vector3 planarVelocity = new Vector3(velocity.x, 0f, velocity.z);
+            Vector3 desiredPlanarVelocity = forward * forwardSpeed
+                + across * (steering * lateralSpeed);
+            planarVelocity = Vector3.MoveTowards(
+                planarVelocity,
+                desiredPlanarVelocity,
+                Mathf.Max(forwardAcceleration, lateralAcceleration)
+                    * Time.fixedDeltaTime);
+            velocity.x = planarVelocity.x;
+            velocity.z = planarVelocity.z;
 
             body.linearVelocity = velocity;
             previousPlanarVelocity = new Vector3(velocity.x, 0f, velocity.z);

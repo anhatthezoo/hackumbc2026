@@ -26,6 +26,7 @@ public class Ship : MonoBehaviour
     public int BlockCount => blockCount;
     public float TotalMass => Mathf.Max(massPerBlock, blockCount * massPerBlock);
     public float AttachmentGridSize => attachmentGridSize;
+    public float BuildScaleRatio => attachmentGridSize / DefaultAttachmentGridSize;
     public bool IsAlive => CheckBoatLife();
 
     /// <summary>

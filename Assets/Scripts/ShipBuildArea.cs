@@ -10,7 +10,73 @@ public sealed class ShipBuildArea : MonoBehaviour
 
     public Transform Platform => platform;
     public Ship StartingShip => startingShip;
+    public float AttachmentGridSize => startingShip == null
+        ? Ship.DefaultAttachmentGridSize
+        : startingShip.AttachmentGridSize;
     public KingBuildPlacement KingPlacement { get; private set; }
+
+    public void ConfigureLoosePart(GameObject part)
+    {
+        if (part == null)
+        {
+            return;
+        }
+
+        float scaleRatio = startingShip == null
+            ? 1f
+            : startingShip.BuildScaleRatio;
+        part.transform.localScale *= scaleRatio;
+
+        GameObject loosePartsRoot = GameObject.Find("Build Pieces");
+        if (loosePartsRoot != null)
+        {
+            part.transform.SetParent(loosePartsRoot.transform, true);
+        }
+
+        Physics.SyncTransforms();
+        Collider partCollider = part.GetComponentInChildren<Collider>();
+        if (partCollider == null)
+        {
+            return;
+        }
+
+        float floorHeight = GetBuildFloorHeight(loosePartsRoot, part);
+        part.transform.position += Vector3.up
+            * (floorHeight - partCollider.bounds.min.y);
+        Physics.SyncTransforms();
+    }
+
+    public float GetBuildFloorHeight()
+    {
+        return GetBuildFloorHeight(GameObject.Find("Build Pieces"), null);
+    }
+
+    private float GetBuildFloorHeight(GameObject loosePartsRoot, GameObject ignoredPart)
+    {
+        if (loosePartsRoot != null)
+        {
+            foreach (Block block in loosePartsRoot.GetComponentsInChildren<Block>(true))
+            {
+                if (block == null || block.gameObject == ignoredPart)
+                {
+                    continue;
+                }
+
+                Collider blockCollider = block.GetComponentInChildren<Collider>();
+                if (blockCollider != null)
+                {
+                    return blockCollider.bounds.min.y;
+                }
+            }
+        }
+
+        Collider platformCollider = platform == null
+            ? null
+            : platform.GetComponent<Collider>();
+        return platformCollider == null
+            ? (platform == null ? 0f : platform.position.y)
+            : platformCollider.bounds.max.y;
+    }
 
     /// <summary>
     /// Collects every block positioned over the build platform into the neutral

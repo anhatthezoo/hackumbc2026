@@ -215,6 +215,7 @@ namespace RoyaltyBoat.UI
                 spawnPosition,
                 Quaternion.identity);
             purchasedPart.name = product.DisplayName;
+            FindAnyObjectByType<ShipBuildArea>()?.ConfigureLoosePart(purchasedPart);
             SetStatus($"{product.DisplayName} added to the floor.", false);
             RefreshBalance();
         }
@@ -225,6 +226,12 @@ namespace RoyaltyBoat.UI
             Vector3 center = buildArea != null && buildArea.Platform != null
                 ? buildArea.Platform.position
                 : Vector3.zero;
+            float gridSize = buildArea == null
+                ? Ship.DefaultAttachmentGridSize
+                : buildArea.AttachmentGridSize;
+            float floorHeight = buildArea == null
+                ? 0f
+                : buildArea.GetBuildFloorHeight();
 
             const int width = 5;
             const int slots = 25;
@@ -234,17 +241,28 @@ namespace RoyaltyBoat.UI
                 int index = (spawnSequence + attempt) % slots;
                 int column = index % width;
                 int row = index / width;
-                Vector3 candidate = center + new Vector3(
-                    -4f + column * Ship.DefaultAttachmentGridSize,
-                    1f,
-                    -4f + row * Ship.DefaultAttachmentGridSize);
+                Vector3 candidate = new Vector3(
+                    center.x + (column - 2) * gridSize,
+                    floorHeight + gridSize * 0.5f,
+                    center.z + (row - 2) * gridSize);
 
-                if (!Physics.CheckBox(
-                        candidate,
-                        Vector3.one * 0.96f,
-                        Quaternion.identity,
-                        ~0,
-                        QueryTriggerInteraction.Ignore))
+                Collider[] overlaps = Physics.OverlapBox(
+                    candidate,
+                    Vector3.one * (gridSize * 0.48f),
+                    Quaternion.identity,
+                    ~0,
+                    QueryTriggerInteraction.Ignore);
+                bool occupied = false;
+                foreach (Collider overlap in overlaps)
+                {
+                    if (overlap.GetComponentInParent<Block>() != null)
+                    {
+                        occupied = true;
+                        break;
+                    }
+                }
+
+                if (!occupied)
                 {
                     spawnSequence = index + 1;
                     return candidate;
@@ -252,7 +270,10 @@ namespace RoyaltyBoat.UI
             }
 
             spawnSequence++;
-            return center + new Vector3(0f, 1f + spawnSequence, 0f);
+            return new Vector3(
+                center.x,
+                floorHeight + gridSize * (0.5f + spawnSequence),
+                center.z);
         }
 
         private void SetStatus(string message, bool isError)

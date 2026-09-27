@@ -23,10 +23,13 @@ namespace RoyaltyBoat.MapGeneration
         [SerializeField, Min(0f)] private float endExtension = 48f;
         [SerializeField, Min(4f)] private float cliffHeight = 18f;
         [SerializeField, Min(24f)] private float outerBankDepth = 88f;
+        [SerializeField, Min(30f)] private float splineKnotSpacing = 72f;
+        [SerializeField, Min(0f)] private float splineBendStrength = 42f;
         [SerializeField] private int generationSeed = 12345;
 
         private readonly List<Mesh> generatedMeshes = new List<Mesh>();
         private readonly List<Material> generatedMaterials = new List<Material>();
+        private readonly List<Vector2> courseSplineKnots = new List<Vector2>();
         private Transform generatedRoot;
 
         public float CourseLength => courseLength;
@@ -44,6 +47,7 @@ namespace RoyaltyBoat.MapGeneration
         public void Rebuild()
         {
             ClearGenerated();
+            BuildCourseSpline();
 
             GameObject rootObject = new GameObject(GeneratedName);
             generatedRoot = rootObject.transform;
@@ -73,7 +77,7 @@ namespace RoyaltyBoat.MapGeneration
                 float x = startX + totalLength * progress;
                 Vector3 center = GetCourseCenter(x);
                 Vector3 tangent = GetCourseTangent(x);
-                Vector3 bankAcross = Vector3.forward;
+                Vector3 bankAcross = new Vector3(-tangent.z, 0f, tangent.x);
                 float detailNoise =
                     FractalNoise(x, side * 67f, 1, 3, 0.047f);
                 float bankSquiggle =
@@ -426,13 +430,64 @@ namespace RoyaltyBoat.MapGeneration
 
         private float GetRawCourseOffset(float x)
         {
-            float broadMeander =
-                (FractalNoise(x, 0f, 210, 3, 0.0032f) - 0.5f) * 100f;
-            float irregularMeander =
-                (FractalNoise(x, 0f, 211, 2, 0.0095f) - 0.5f) * 28f;
-            float phase = Mathf.Repeat(generationSeed * 0.00071f, Mathf.PI * 2f);
-            float sweepingBend = Mathf.Sin(x * 0.011f + phase) * 10f;
-            return broadMeander + irregularMeander + sweepingBend;
+            if (courseSplineKnots.Count < 4)
+            {
+                BuildCourseSpline();
+            }
+
+            float firstX = courseSplineKnots[1].x;
+            float splinePosition = (x - firstX) / splineKnotSpacing + 1f;
+            int segment = Mathf.Clamp(
+                Mathf.FloorToInt(splinePosition),
+                1,
+                courseSplineKnots.Count - 3);
+            float t = Mathf.Clamp01(splinePosition - segment);
+
+            float p0 = courseSplineKnots[segment - 1].y;
+            float p1 = courseSplineKnots[segment].y;
+            float p2 = courseSplineKnots[segment + 1].y;
+            float p3 = courseSplineKnots[segment + 2].y;
+            return CatmullRom(p0, p1, p2, p3, t);
+        }
+
+        private void BuildCourseSpline()
+        {
+            courseSplineKnots.Clear();
+
+            float spacing = Mathf.Max(30f, splineKnotSpacing);
+            float startX = -endExtension - spacing * 2f;
+            float endX = courseLength + endExtension + spacing * 2f;
+            int knotCount = Mathf.CeilToInt((endX - startX) / spacing) + 1;
+            var random = new System.Random(generationSeed);
+            float phaseA = (float)random.NextDouble() * Mathf.PI * 2f;
+            float phaseB = (float)random.NextDouble() * Mathf.PI * 2f;
+            float previousOffset = 0f;
+
+            for (int index = 0; index < knotCount; ++index)
+            {
+                float knotX = startX + index * spacing;
+                float broadBend = Mathf.Sin(index * 0.82f + phaseA) * splineBendStrength;
+                float secondaryBend = Mathf.Sin(index * 1.47f + phaseB)
+                    * splineBendStrength * 0.28f;
+                float randomVariation = ((float)random.NextDouble() * 2f - 1f)
+                    * splineBendStrength * 0.22f;
+                float targetOffset = broadBend + secondaryBend + randomVariation;
+                float offset = index == 0
+                    ? targetOffset
+                    : Mathf.Lerp(previousOffset, targetOffset, 0.68f);
+                courseSplineKnots.Add(new Vector2(knotX, offset));
+                previousOffset = offset;
+            }
+        }
+
+        private static float CatmullRom(float p0, float p1, float p2, float p3, float t)
+        {
+            float t2 = t * t;
+            float t3 = t2 * t;
+            return 0.5f * ((2f * p1)
+                + (-p0 + p2) * t
+                + (2f * p0 - 5f * p1 + 4f * p2 - p3) * t2
+                + (-p0 + 3f * p1 - 3f * p2 + p3) * t3);
         }
 
         private float GetMountainHeight(
@@ -636,6 +691,8 @@ namespace RoyaltyBoat.MapGeneration
             endExtension = Mathf.Max(0f, endExtension);
             cliffHeight = Mathf.Max(4f, cliffHeight);
             outerBankDepth = Mathf.Max(24f, outerBankDepth);
+            splineKnotSpacing = Mathf.Max(30f, splineKnotSpacing);
+            splineBendStrength = Mathf.Max(0f, splineBendStrength);
         }
     }
 }

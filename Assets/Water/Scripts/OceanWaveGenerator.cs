@@ -51,6 +51,11 @@ public sealed class OceanWaveGenerator : MonoBehaviour
     [SerializeField, Min(0.1f)] private float _waterDepth = 16f;
     [SerializeField] private CascadeSettings[] _cascades = CreateDefaultCascades();
 
+    [Header("Natural Wave Profile")]
+    [SerializeField, Range(0.5f, 1f)] private float _waveHeightScale = 0.84f;
+    [SerializeField, Range(1f, 2f)] private float _wavelengthScale = 1.5f;
+    [SerializeField, Range(0.5f, 1f)] private float _surfaceDetailScale = 0.9f;
+
     private RenderTexture _initialSpectrum;
     private RenderTexture _displacement;
     private RenderTexture _normalFoam;
@@ -144,10 +149,10 @@ public sealed class OceanWaveGenerator : MonoBehaviour
             {
                 CascadeSettings cascade = _cascades[cascadeIndex];
                 scale = new Vector4(
-                    1f / cascade.tileLength.x,
-                    1f / cascade.tileLength.y,
-                    cascade.displacementScale,
-                    cascade.normalScale);
+                    1f / (cascade.tileLength.x * _wavelengthScale),
+                    1f / (cascade.tileLength.y * _wavelengthScale),
+                    cascade.displacementScale * _waveHeightScale,
+                    cascade.normalScale * _surfaceDetailScale);
 
                 if (_cascadeBlendStartTimes != null && _cascadeBlendDurations != null)
                 {
@@ -303,6 +308,9 @@ public sealed class OceanWaveGenerator : MonoBehaviour
     {
         _updatesPerSecond = Mathf.Max(1f, _updatesPerSecond);
         _waterDepth = Mathf.Max(0.1f, _waterDepth);
+        _waveHeightScale = Mathf.Clamp(_waveHeightScale, 0.5f, 1f);
+        _wavelengthScale = Mathf.Clamp(_wavelengthScale, 1f, 2f);
+        _surfaceDetailScale = Mathf.Clamp(_surfaceDetailScale, 0.5f, 1f);
 
         if (_cascades == null || _cascades.Length == 0)
         {
@@ -605,7 +613,11 @@ public sealed class OceanWaveGenerator : MonoBehaviour
             cascade.seed.y);
         _compute.SetVector(
             "_TileLength",
-            new Vector4(cascade.tileLength.x, cascade.tileLength.y, 0f, 0f));
+            new Vector4(
+                cascade.tileLength.x * _wavelengthScale,
+                cascade.tileLength.y * _wavelengthScale,
+                0f,
+                0f));
         _compute.SetFloat("_Alpha", alpha);
         _compute.SetFloat("_PeakFrequency", peakFrequency);
         _compute.SetFloat("_WindSpeed", cascade.windSpeed);
@@ -635,7 +647,11 @@ public sealed class OceanWaveGenerator : MonoBehaviour
         _compute.SetInt("_CascadeIndex", cascadeIndex);
         _compute.SetVector(
             "_TileLength",
-            new Vector4(cascade.tileLength.x, cascade.tileLength.y, 0f, 0f));
+            new Vector4(
+                cascade.tileLength.x * _wavelengthScale,
+                cascade.tileLength.y * _wavelengthScale,
+                0f,
+                0f));
         _compute.SetFloat("_Depth", _waterDepth);
         _compute.SetFloat("_SimulationTime", cascade.simulationTime);
         _compute.SetFloat("_Whitecap", cascade.whitecap);
@@ -703,10 +719,10 @@ public sealed class OceanWaveGenerator : MonoBehaviour
                 {
                     CascadeSettings cascade = _cascades[cascadeIndex];
                     scale = new Vector4(
-                        1f / cascade.tileLength.x,
-                        1f / cascade.tileLength.y,
-                        cascade.displacementScale,
-                        cascade.normalScale);
+                        1f / (cascade.tileLength.x * _wavelengthScale),
+                        1f / (cascade.tileLength.y * _wavelengthScale),
+                        cascade.displacementScale * _waveHeightScale,
+                        cascade.normalScale * _surfaceDetailScale);
                 }
 
                 _propertyBlock.SetVector(CascadeScaleIds[cascadeIndex], scale);

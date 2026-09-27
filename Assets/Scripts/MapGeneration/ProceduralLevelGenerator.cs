@@ -129,7 +129,48 @@ namespace RoyaltyBoat.MapGeneration
                 GeneratedLength,
                 MapGenerationDefaults.CourseWidth,
                 combinedSeed);
+            AlignChunksToCourse(ravine);
             CourseGenerated?.Invoke(ActiveRunSeed, ActiveLevelNumber, GeneratedLength);
+        }
+
+        public Vector3 GetCourseCenter(float distance)
+        {
+            RavineCourseBoundary ravine = generatedRoot == null
+                ? null
+                : generatedRoot.GetComponent<RavineCourseBoundary>();
+            return ravine == null
+                ? new Vector3(distance, 0f, 0f)
+                : ravine.GetCourseCenter(distance);
+        }
+
+        public Vector3 GetCourseTangent(float distance)
+        {
+            RavineCourseBoundary ravine = generatedRoot == null
+                ? null
+                : generatedRoot.GetComponent<RavineCourseBoundary>();
+            return ravine == null ? Vector3.right : ravine.GetCourseTangent(distance);
+        }
+
+        private void AlignChunksToCourse(RavineCourseBoundary ravine)
+        {
+            foreach (GeneratedChunkInstance chunk in generatedChunks)
+            {
+                if (chunk.Instance == null)
+                {
+                    continue;
+                }
+
+                Vector3 start = ravine.GetCourseCenter(chunk.StartX);
+                Vector3 end = ravine.GetCourseCenter(chunk.EndX);
+                Vector3 direction = end - start;
+                direction.y = 0f;
+
+                Transform chunkTransform = chunk.Instance.transform;
+                chunkTransform.localPosition = start;
+                chunkTransform.localRotation = direction.sqrMagnitude > 0.001f
+                    ? Quaternion.FromToRotation(Vector3.right, direction.normalized)
+                    : Quaternion.identity;
+            }
         }
 
         public void ClearLevel()

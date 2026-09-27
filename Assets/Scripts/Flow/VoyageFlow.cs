@@ -162,7 +162,8 @@ namespace RoyaltyBoat.Flow
             }
 
             Transform shipTransform = builtShip.transform;
-            shipTransform.localScale = Vector3.one * 2.5f;
+            float buildScaleRatio = Mathf.Max(0.01f, builtShip.BuildScaleRatio);
+            shipTransform.localScale = Vector3.one * (2.5f / buildScaleRatio);
             shipTransform.SetPositionAndRotation(new Vector3(0f, 0.5f, 0f), Quaternion.identity);
 
             if (builtKing != null)
@@ -270,10 +271,30 @@ namespace RoyaltyBoat.Flow
                 generator.GeneratedChunks[generator.GeneratedChunks.Count - 1];
             float finishX = Mathf.Lerp(cooldown.StartX, cooldown.EndX, 0.75f);
 
-            CreateFinishPoint(generator.GeneratedRoot, finishX, generator.ActiveLevelNumber);
+            CreateFinishPoint(
+                generator.GeneratedRoot,
+                finishX,
+                generator.ActiveLevelNumber,
+                generator.GetCourseCenter(finishX),
+                generator.GetCourseTangent(finishX));
         }
 
         private static void CreateFinishPoint(Transform parent, float finishX, int levelNumber)
+        {
+            CreateFinishPoint(
+                parent,
+                finishX,
+                levelNumber,
+                new Vector3(finishX, 0f, 0f),
+                Vector3.right);
+        }
+
+        private static void CreateFinishPoint(
+            Transform parent,
+            float finishX,
+            int levelNumber,
+            Vector3 courseCenter,
+            Vector3 courseTangent)
         {
             if (builtShip == null || parent == null)
             {
@@ -283,7 +304,10 @@ namespace RoyaltyBoat.Flow
 
             GameObject finishObject = new GameObject("Royal Finish Gate");
             finishObject.transform.SetParent(parent, false);
-            finishObject.transform.localPosition = new Vector3(finishX, 0f, 0f);
+            finishObject.transform.localPosition = courseCenter;
+            finishObject.transform.localRotation = Quaternion.FromToRotation(
+                Vector3.right,
+                courseTangent);
 
             finishObject.AddComponent<BoxCollider>();
             VoyageFinishPoint finishPoint = finishObject.AddComponent<VoyageFinishPoint>();

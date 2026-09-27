@@ -82,8 +82,12 @@ namespace RoyaltyBoat.Gameplay
                     positionSmoothTime);
             }
 
+            Vector3 travelDirection = targetBody != null
+                && new Vector3(targetBody.linearVelocity.x, 0f, targetBody.linearVelocity.z).sqrMagnitude > 0.1f
+                    ? new Vector3(targetBody.linearVelocity.x, 0f, targetBody.linearVelocity.z).normalized
+                    : Vector3.right;
             Vector3 focusPoint = target.position
-                + Vector3.right * lookAheadDistance
+                + travelDirection * lookAheadDistance
                 + Vector3.up * focusHeight;
             Quaternion desiredRotation = Quaternion.LookRotation(
                 focusPoint - basePosition,
