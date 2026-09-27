@@ -1,4 +1,5 @@
 using RoyaltyBoat.Flow;
+using RoyaltyBoat.King;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -12,6 +13,7 @@ namespace RoyaltyBoat.UI
         private Button setSailButton;
         private Button devMapButton;
         private Button cameraAngleButton;
+        private Button rotateItemButton;
         private Label statusLabel;
         private CameraOrbitController orbitController;
 
@@ -59,6 +61,7 @@ namespace RoyaltyBoat.UI
             setSailButton = root.Q<Button>("set-sail-button");
             devMapButton = root.Q<Button>("dev-map-button");
             cameraAngleButton = root.Q<Button>("camera-angle-button");
+            rotateItemButton = root.Q<Button>("rotate-item-button");
             statusLabel = root.Q<Label>("shop-status");
             if (setSailButton == null)
             {
@@ -74,6 +77,10 @@ namespace RoyaltyBoat.UI
             if (cameraAngleButton != null)
             {
                 cameraAngleButton.clicked += HandleCameraAngleClicked;
+            }
+            if (rotateItemButton != null)
+            {
+                rotateItemButton.clicked += HandleRotateItemClicked;
             }
 
             Camera mainCamera = Camera.main;
@@ -110,6 +117,11 @@ namespace RoyaltyBoat.UI
                 cameraAngleButton.clicked -= HandleCameraAngleClicked;
             }
 
+            if (rotateItemButton != null)
+            {
+                rotateItemButton.clicked -= HandleRotateItemClicked;
+            }
+
             if (devMapButton != null)
             {
                 devMapButton.clicked -= HandleDevMapClicked;
@@ -130,6 +142,18 @@ namespace RoyaltyBoat.UI
         private void HandleCameraAngleClicked()
         {
             ToggleCameraAngle();
+        }
+
+        private void HandleRotateItemClicked()
+        {
+            Camera mainCamera = Camera.main;
+            BlockDragController dragController = mainCamera == null
+                ? null
+                : mainCamera.GetComponent<BlockDragController>();
+            if (dragController == null || !dragController.RotateSelectionClockwise())
+            {
+                ShowLaunchError("Select an item with enough room to rotate it.");
+            }
         }
 
         private void ToggleCameraAngle()
@@ -174,6 +198,21 @@ namespace RoyaltyBoat.UI
                 string noun = disconnectedBlockCount == 1 ? "part is" : "parts are";
                 ShowLaunchError(
                     $"{disconnectedBlockCount} {noun} disconnected. Join every part before launch.");
+                return false;
+            }
+
+            KingBuildPlacement king = buildArea != null
+                ? buildArea.KingPlacement
+                : FindAnyObjectByType<KingBuildPlacement>();
+            if (king == null)
+            {
+                ShowLaunchError("The King is missing from the shipyard.");
+                return false;
+            }
+
+            if (!king.IsPlaced || king.SupportingShip != ship)
+            {
+                ShowLaunchError("Place the King on top of a connected ship part before launch.");
                 return false;
             }
 

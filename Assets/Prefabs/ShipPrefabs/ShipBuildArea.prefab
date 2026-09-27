@@ -48,6 +48,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ShipBuildArea
   platform: {fileID: 6734234611550800854}
   startingShip: {fileID: 4549810176250222477}
+  kingPrefab: {fileID: 2602735183291549602, guid: d41da6dc6d1831f48b5eedfd472f9544, type: 3}
+  kingStagingOffset: {x: -4, y: 1, z: -3}
 --- !u!1 &7167785343657855864
 GameObject:
   m_ObjectHideFlags: 0

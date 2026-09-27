@@ -1,12 +1,16 @@
+using RoyaltyBoat.King;
 using UnityEngine;
 
 public sealed class ShipBuildArea : MonoBehaviour
 {
     [SerializeField] private Transform platform;
     [SerializeField] private Ship startingShip;
+    [SerializeField] private KingController kingPrefab;
+    [SerializeField] private Vector3 kingStagingOffset = new Vector3(-4f, 1f, -3f);
 
     public Transform Platform => platform;
     public Ship StartingShip => startingShip;
+    public KingBuildPlacement KingPlacement { get; private set; }
 
     /// <summary>
     /// Collects every block positioned over the build platform into the neutral
@@ -67,7 +71,34 @@ public sealed class ShipBuildArea : MonoBehaviour
 
     private void Awake()
     {
+        SpawnKingForBuilding();
         ConfigureCamera(Camera.main);
+    }
+
+    private void SpawnKingForBuilding()
+    {
+        KingPlacement = FindAnyObjectByType<KingBuildPlacement>();
+        if (KingPlacement != null || kingPrefab == null)
+        {
+            return;
+        }
+
+        Vector3 stagingPosition = platform == null
+            ? transform.TransformPoint(kingStagingOffset)
+            : platform.position + kingStagingOffset;
+        KingController king = Instantiate(
+            kingPrefab,
+            stagingPosition,
+            Quaternion.identity);
+        king.name = "King";
+
+        KingPlacement = king.GetComponent<KingBuildPlacement>();
+        if (KingPlacement == null)
+        {
+            KingPlacement = king.gameObject.AddComponent<KingBuildPlacement>();
+        }
+
+        KingPlacement.EnterBuildMode(stagingPosition, Quaternion.identity);
     }
 
     public void ConfigureCamera(Camera targetCamera)

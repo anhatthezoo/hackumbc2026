@@ -8,6 +8,9 @@ namespace RoyaltyBoat.King
     [RequireComponent(typeof(KingBoatLink))]
     public sealed class KingController : MonoBehaviour
     {
+        [Header("Water Failure")]
+        [SerializeField] private float waterDeathHeight = -2f;
+
         public Rigidbody Body { get; private set; }
         public KingHealth Health { get; private set; }
         public KingBoatLink BoatLink { get; private set; }
@@ -19,12 +22,26 @@ namespace RoyaltyBoat.King
             CacheComponents();
         }
 
+        private void FixedUpdate()
+        {
+            if (Health != null
+                && Health.IsAlive
+                && !Body.isKinematic
+                && transform.position.y <= waterDeathHeight)
+            {
+                NotifyFellIntoWater();
+            }
+        }
+
         public void PrepareForBuild(Vector3 worldPosition, Quaternion worldRotation)
         {
             CacheComponents();
             transform.SetPositionAndRotation(worldPosition, worldRotation);
-            Body.linearVelocity = Vector3.zero;
-            Body.angularVelocity = Vector3.zero;
+            if (!Body.isKinematic)
+            {
+                Body.linearVelocity = Vector3.zero;
+                Body.angularVelocity = Vector3.zero;
+            }
             Health.ResetHealth();
             BoatLink.Disconnect();
         }

@@ -15,19 +15,22 @@ public class ObstacleDamage : MonoBehaviour
     {
         damage = Mathf.Max(0, damageAmount);
 
-        if (!makeCollidersNonBlocking)
-        {
-            return;
-        }
-
         foreach (Collider obstacleCollider in GetComponentsInChildren<Collider>(true))
         {
-            if (obstacleCollider is MeshCollider meshCollider && !meshCollider.convex)
+            Collider damageCollider = obstacleCollider;
+            if (makeCollidersNonBlocking &&
+                obstacleCollider is MeshCollider meshCollider &&
+                !meshCollider.convex)
             {
                 Mesh sharedMesh = meshCollider.sharedMesh;
                 meshCollider.enabled = false;
 
-                BoxCollider triggerVolume = meshCollider.gameObject.AddComponent<BoxCollider>();
+                BoxCollider triggerVolume = meshCollider.GetComponent<BoxCollider>();
+                if (triggerVolume == null)
+                {
+                    triggerVolume = meshCollider.gameObject.AddComponent<BoxCollider>();
+                }
+
                 if (sharedMesh != null)
                 {
                     triggerVolume.center = sharedMesh.bounds.center;
@@ -35,10 +38,21 @@ public class ObstacleDamage : MonoBehaviour
                 }
 
                 triggerVolume.isTrigger = true;
-                continue;
+                damageCollider = triggerVolume;
+            }
+            else if (makeCollidersNonBlocking)
+            {
+                obstacleCollider.isTrigger = true;
             }
 
-            obstacleCollider.isTrigger = true;
+            ObstacleDamageRelay relay =
+                damageCollider.GetComponent<ObstacleDamageRelay>();
+            if (relay == null)
+            {
+                relay = damageCollider.gameObject.AddComponent<ObstacleDamageRelay>();
+            }
+
+            relay.Configure(this);
         }
     }
 

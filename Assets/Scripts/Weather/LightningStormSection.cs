@@ -52,6 +52,8 @@ namespace RoyaltyBoat.Weather
         public bool IsWarning => isWarning;
         public bool IsBoltVisible => isBoltVisible;
         public Vector3 PendingStrikePoint => strikePoint;
+        public int BlockDamage => blockDamage;
+        public float DamageRadius => damageRadius;
 
         private void Awake()
         {

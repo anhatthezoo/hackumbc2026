@@ -1,5 +1,6 @@
 using System;
 using RoyaltyBoat.Gameplay;
+using RoyaltyBoat.King;
 using RoyaltyBoat.MapGeneration;
 using RoyaltyBoat.Obstacles;
 using RoyaltyBoat.Water;
@@ -15,6 +16,10 @@ namespace RoyaltyBoat.Flow
         public const string ShipBuildingSceneName = "ShipBuilding";
 
         private static Ship builtShip;
+        private static KingBuildPlacement builtKing;
+        private static Vector3 builtKingLocalPosition;
+        private static Quaternion builtKingLocalRotation;
+        private static Vector3 builtKingScale;
         private static int runSeed;
         private static string destinationSceneName = GameplaySceneName;
 
@@ -24,6 +29,10 @@ namespace RoyaltyBoat.Flow
         private static void ResetState()
         {
             builtShip = null;
+            builtKing = null;
+            builtKingLocalPosition = Vector3.zero;
+            builtKingLocalRotation = Quaternion.identity;
+            builtKingScale = Vector3.one;
             runSeed = 0;
             destinationSceneName = GameplaySceneName;
             IsVoyageActive = false;
@@ -72,8 +81,19 @@ namespace RoyaltyBoat.Flow
 
         public static void OpenShipBuilder()
         {
+            if (builtKing != null)
+            {
+                UnityEngine.Object.Destroy(builtKing.gameObject);
+            }
+
+            if (builtShip != null)
+            {
+                UnityEngine.Object.Destroy(builtShip.gameObject);
+            }
+
             IsVoyageActive = false;
             builtShip = null;
+            builtKing = null;
             destinationSceneName = GameplaySceneName;
             SceneManager.LoadScene(ShipBuildingSceneName);
         }
@@ -105,11 +125,27 @@ namespace RoyaltyBoat.Flow
                 return false;
             }
 
+            KingBuildPlacement king =
+                UnityEngine.Object.FindAnyObjectByType<KingBuildPlacement>();
+            if (king == null || !king.IsPlaced || king.SupportingShip != ship)
+            {
+                Debug.LogError("Cannot launch until the King is placed on the connected ship.");
+                return false;
+            }
+
             ship.CenterRootOnStructure();
+            builtKingLocalPosition = ship.transform.InverseTransformPoint(
+                king.transform.position);
+            builtKingLocalRotation = Quaternion.Inverse(ship.transform.rotation)
+                * king.transform.rotation;
+            builtKingScale = king.transform.localScale;
             ship.transform.SetParent(null, true);
             UnityEngine.Object.DontDestroyOnLoad(ship.gameObject);
+            king.transform.SetParent(null, true);
+            UnityEngine.Object.DontDestroyOnLoad(king.gameObject);
 
             builtShip = ship;
+            builtKing = king;
             runSeed = unchecked((int)DateTime.UtcNow.Ticks);
             destinationSceneName = useDevMap ? DevMapSceneName : GameplaySceneName;
             IsVoyageActive = true;
@@ -129,15 +165,25 @@ namespace RoyaltyBoat.Flow
             shipTransform.localScale = Vector3.one * 2.5f;
             shipTransform.SetPositionAndRotation(new Vector3(0f, 0.5f, 0f), Quaternion.identity);
 
+            if (builtKing != null)
+            {
+                Transform kingTransform = builtKing.transform;
+                kingTransform.localScale = builtKingScale * 2.5f;
+                kingTransform.SetPositionAndRotation(
+                    shipTransform.TransformPoint(builtKingLocalPosition),
+                    shipTransform.rotation * builtKingLocalRotation);
+                builtKing.EnterVoyage(builtShip);
+            }
+
             Rigidbody body = builtShip.GetComponent<Rigidbody>();
             if (body != null)
             {
                 DisableExtraRigidbodies(builtShip, body);
                 builtShip.RefreshPhysicsMass();
-                body.linearVelocity = Vector3.zero;
-                body.angularVelocity = Vector3.zero;
                 body.isKinematic = false;
                 body.useGravity = true;
+                body.linearVelocity = Vector3.zero;
+                body.angularVelocity = Vector3.zero;
                 body.linearDamping = 0.15f;
                 body.angularDamping = 0.35f;
                 body.maxAngularVelocity = 4f;

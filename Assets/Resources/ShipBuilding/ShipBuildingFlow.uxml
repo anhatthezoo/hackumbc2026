@@ -35,8 +35,9 @@
 
         <ui:VisualElement class="ship-building-card" picking-mode="Position">
             <ui:Label text="ROYAL SHIPYARD" class="ship-building-title" />
-            <ui:Label text="Select a part, then drag the colored arrows to move it • V flips sides" class="ship-building-subtitle" />
+            <ui:Label text="Select a part, use the arrows to move it, and press R to rotate" class="ship-building-subtitle" />
             <ui:Button name="camera-angle-button" text="FLIP SIDE  •  V" class="camera-angle-button" />
+            <ui:Button name="rotate-item-button" text="ROTATE ITEM  •  R" class="rotate-item-button" />
             <ui:Button name="dev-map-button" text="DEV MAP" class="dev-map-button" tooltip="Launch the dense weather and obstacle test course" />
             <ui:Button name="set-sail-button" text="SET SAIL" class="set-sail-button" />
         </ui:VisualElement>

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using RoyaltyBoat.King;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -22,6 +23,8 @@ public class BlockDragController : MonoBehaviour
     private Camera dragCamera;
     private Transform draggedBlock;
     private Block draggedBlockComponent;
+    private KingBuildPlacement draggedKing;
+    private Block kingSupportCandidate;
     private Ship draggedShip;
     private Ship snappingShip;
     private Rigidbody draggedBody;
@@ -31,6 +34,7 @@ public class BlockDragController : MonoBehaviour
     private bool previousUseGravity;
     private Transform selectedMoveRoot;
     private Block selectedBlockComponent;
+    private KingBuildPlacement selectedKing;
     private GameObject moveGizmo;
     private readonly Dictionary<Collider, Vector3> gizmoHandles =
         new Dictionary<Collider, Vector3>();
@@ -102,6 +106,14 @@ public class BlockDragController : MonoBehaviour
             EndDrag();
         }
 
+        Keyboard keyboard = Keyboard.current;
+        if (keyboard != null
+            && keyboard.rKey.wasPressedThisFrame
+            && draggedBlock == null)
+        {
+            RotateSelectionClockwise();
+        }
+
         UpdateMoveGizmoPosition();
     }
 
@@ -121,22 +133,26 @@ public class BlockDragController : MonoBehaviour
             return;
         }
 
-        if (!TryGetClosestBlockHit(ray, out RaycastHit hit))
+        if (!TryGetClosestDraggableHit(
+                ray,
+                out RaycastHit hit,
+                out Block selectedBlock,
+                out KingBuildPlacement selectedKingPlacement))
         {
             ClearSelection();
             return;
         }
 
-        Block selectedBlock = hit.collider.GetComponentInParent<Block>();
-
-        if (selectedBlock == null || !selectedBlock.CompareTag("Block"))
+        if (selectedKingPlacement != null)
         {
-            ClearSelection();
-            return;
+            ConfigureDraggedTarget(selectedKingPlacement);
+            SelectMoveTarget(null, selectedKingPlacement, draggedBlock);
         }
-
-        ConfigureDraggedTarget(selectedBlock);
-        SelectMoveTarget(selectedBlock, draggedBlock);
+        else
+        {
+            ConfigureDraggedTarget(selectedBlock);
+            SelectMoveTarget(selectedBlock, null, draggedBlock);
+        }
 
         float dragHeight = snappingShip != null && snappingShip.AnchorBlock != null
             ? snappingShip.AnchorBlock.transform.position.y
@@ -168,6 +184,8 @@ public class BlockDragController : MonoBehaviour
     {
         draggedBlock = null;
         draggedBlockComponent = null;
+        draggedKing = null;
+        kingSupportCandidate = null;
         draggedShip = null;
         snappingShip = null;
 
@@ -196,6 +214,19 @@ public class BlockDragController : MonoBehaviour
         }
     }
 
+    private void ConfigureDraggedTarget(KingBuildPlacement king)
+    {
+        draggedBlock = king.transform;
+        draggedBlockComponent = null;
+        draggedKing = king;
+        kingSupportCandidate = king.SupportBlock;
+        draggedShip = null;
+        snappingShip = king.SupportingShip != null
+            ? king.SupportingShip
+            : FindClosestShip(king.transform.position);
+        king.ClearSupport();
+    }
+
     private void PrepareDraggedBody()
     {
         draggedBody = draggedBlock.GetComponent<Rigidbody>();
@@ -204,41 +235,53 @@ public class BlockDragController : MonoBehaviour
         {
             previousKinematic = draggedBody.isKinematic;
             previousUseGravity = draggedBody.useGravity;
-            draggedBody.linearVelocity = Vector3.zero;
-            draggedBody.angularVelocity = Vector3.zero;
+            if (!draggedBody.isKinematic)
+            {
+                draggedBody.linearVelocity = Vector3.zero;
+                draggedBody.angularVelocity = Vector3.zero;
+            }
             draggedBody.useGravity = false;
             draggedBody.isKinematic = true;
         }
     }
 
-    private bool TryGetClosestBlockHit(Ray ray, out RaycastHit blockHit)
+    private bool TryGetClosestDraggableHit(
+        Ray ray,
+        out RaycastHit draggableHit,
+        out Block selectedBlock,
+        out KingBuildPlacement selectedKingPlacement)
     {
-        blockHit = default;
+        draggableHit = default;
+        selectedBlock = null;
+        selectedKingPlacement = null;
         RaycastHit[] hits = Physics.RaycastAll(
             ray,
             raycastDistance,
             draggableLayers,
             QueryTriggerInteraction.Ignore);
         float closestDistance = float.PositiveInfinity;
-        bool foundBlock = false;
+        bool foundDraggable = false;
 
         foreach (RaycastHit hit in hits)
         {
             Block block = hit.collider.GetComponentInParent<Block>();
+            KingBuildPlacement king =
+                hit.collider.GetComponentInParent<KingBuildPlacement>();
 
-            if (block == null
-                || !block.CompareTag("Block")
+            if ((king == null && (block == null || !block.CompareTag("Block")))
                 || hit.distance >= closestDistance)
             {
                 continue;
             }
 
             closestDistance = hit.distance;
-            blockHit = hit;
-            foundBlock = true;
+            draggableHit = hit;
+            selectedBlock = block;
+            selectedKingPlacement = king;
+            foundDraggable = true;
         }
 
-        return foundBlock;
+        return foundDraggable;
     }
 
     private void Drag(Vector2 pointerPosition)
@@ -310,12 +353,20 @@ public class BlockDragController : MonoBehaviour
 
     private void BeginAxisDrag(Ray pointerRay, Vector3 axis)
     {
-        if (selectedBlockComponent == null || selectedMoveRoot == null)
+        if ((selectedBlockComponent == null && selectedKing == null)
+            || selectedMoveRoot == null)
         {
             return;
         }
 
-        ConfigureDraggedTarget(selectedBlockComponent);
+        if (selectedKing != null)
+        {
+            ConfigureDraggedTarget(selectedKing);
+        }
+        else
+        {
+            ConfigureDraggedTarget(selectedBlockComponent);
+        }
         PrepareDraggedBody();
         axisDragging = true;
         activeDragAxis = axis.normalized;
@@ -498,16 +549,26 @@ public class BlockDragController : MonoBehaviour
                 continue;
             }
 
-            Vector3 faceDirection = GetClosestFaceDirection(
-                hit.normal,
-                targetShip.transform);
-            Vector3 possiblePosition = targetBlock.transform.position
-                + faceDirection * targetShip.AttachmentGridSize;
+            Vector3 possiblePosition;
+
+            if (draggedKing != null)
+            {
+                possiblePosition = draggedKing.GetPositionOn(targetBlock);
+            }
+            else
+            {
+                Vector3 faceDirection = GetClosestFaceDirection(
+                    hit.normal,
+                    targetShip.transform);
+                possiblePosition = targetBlock.transform.position
+                    + faceDirection * targetShip.AttachmentGridSize;
+            }
 
             if (!IsWithinPlacementBounds(possiblePosition)
-                || !targetShip.IsAttachmentPositionAvailable(
-                    possiblePosition,
-                    draggedBlockComponent))
+                || (draggedKing == null
+                    && !targetShip.IsAttachmentPositionAvailable(
+                        possiblePosition,
+                        draggedBlockComponent)))
             {
                 continue;
             }
@@ -515,6 +576,7 @@ public class BlockDragController : MonoBehaviour
             closestHitDistance = hit.distance;
             bestShip = targetShip;
             bestPosition = possiblePosition;
+            kingSupportCandidate = draggedKing == null ? null : targetBlock;
         }
 
         if (bestShip == null)
@@ -564,13 +626,28 @@ public class BlockDragController : MonoBehaviour
         {
             draggedBody.isKinematic = previousKinematic;
             draggedBody.useGravity = previousUseGravity;
-            draggedBody.linearVelocity = Vector3.zero;
-            draggedBody.angularVelocity = Vector3.zero;
+            if (!previousKinematic)
+            {
+                draggedBody.linearVelocity = Vector3.zero;
+                draggedBody.angularVelocity = Vector3.zero;
+            }
         }
 
         if (draggedShip != null)
         {
             draggedShip.AttachTouchingBlocks();
+        }
+        else if (draggedKing != null)
+        {
+            Block support = FindKingSupportAtCurrentPosition();
+            if (support != null)
+            {
+                draggedKing.SetSupport(support);
+            }
+            else
+            {
+                draggedKing.ClearSupport();
+            }
         }
         else if (draggedBlockComponent != null)
         {
@@ -596,6 +673,8 @@ public class BlockDragController : MonoBehaviour
 
         draggedBlock = null;
         draggedBlockComponent = null;
+        draggedKing = null;
+        kingSupportCandidate = null;
         draggedShip = null;
         snappingShip = null;
         draggedBody = null;
@@ -615,12 +694,51 @@ public class BlockDragController : MonoBehaviour
         Ship shipOnBlock = block.GetComponent<Ship>();
         SelectMoveTarget(
             block,
+            null,
             shipOnBlock != null ? shipOnBlock.transform : block.transform);
     }
 
-    private void SelectMoveTarget(Block block, Transform moveRoot)
+    public void SelectKing(KingBuildPlacement king)
+    {
+        if (king == null)
+        {
+            ClearSelection();
+            return;
+        }
+
+        SelectMoveTarget(null, king, king.transform);
+    }
+
+    public bool RotateSelectionClockwise()
+    {
+        if (selectedMoveRoot == null || draggedBlock != null)
+        {
+            return false;
+        }
+
+        Quaternion previousRotation = selectedMoveRoot.rotation;
+        Quaternion rotated = Quaternion.AngleAxis(90f, Vector3.up)
+            * previousRotation;
+        selectedMoveRoot.rotation = rotated;
+        Physics.SyncTransforms();
+
+        if (IsPlacementClear(selectedMoveRoot))
+        {
+            return true;
+        }
+
+        selectedMoveRoot.rotation = previousRotation;
+        Physics.SyncTransforms();
+        return false;
+    }
+
+    private void SelectMoveTarget(
+        Block block,
+        KingBuildPlacement king,
+        Transform moveRoot)
     {
         selectedBlockComponent = block;
+        selectedKing = king;
         selectedMoveRoot = moveRoot;
         CreateMoveGizmo();
         UpdateMoveGizmoPosition();
@@ -629,8 +747,46 @@ public class BlockDragController : MonoBehaviour
     private void ClearSelection()
     {
         selectedBlockComponent = null;
+        selectedKing = null;
         selectedMoveRoot = null;
         DestroyMoveGizmo();
+    }
+
+    private Block FindKingSupportAtCurrentPosition()
+    {
+        if (draggedKing == null)
+        {
+            return null;
+        }
+
+        if (kingSupportCandidate != null
+            && (draggedKing.GetPositionOn(kingSupportCandidate)
+                - draggedKing.transform.position).sqrMagnitude <= 0.04f)
+        {
+            return kingSupportCandidate;
+        }
+
+        Block closest = null;
+        float closestDistanceSquared = 0.04f;
+
+        foreach (Block block in Object.FindObjectsByType<Block>(FindObjectsInactive.Exclude))
+        {
+            if (block == null || !block.IsAlive)
+            {
+                continue;
+            }
+
+            float distanceSquared =
+                (draggedKing.GetPositionOn(block) - draggedKing.transform.position)
+                .sqrMagnitude;
+            if (distanceSquared <= closestDistanceSquared)
+            {
+                closestDistanceSquared = distanceSquared;
+                closest = block;
+            }
+        }
+
+        return closest;
     }
 
     private void CreateMoveGizmo()
@@ -823,6 +979,15 @@ public class BlockDragController : MonoBehaviour
     private void ShowDragHighlights()
     {
         HideDragHighlights();
+
+        if (draggedKing != null)
+        {
+            BlockDragOutline kingOutline =
+                draggedKing.gameObject.AddComponent<BlockDragOutline>();
+            kingOutline.Configure(dragHighlightColor, dragHighlightWidth);
+            activeHighlights.Add(kingOutline);
+            return;
+        }
 
         Block[] highlightedBlocks = draggedShip != null
             ? draggedShip.GetComponentsInChildren<Block>(true)

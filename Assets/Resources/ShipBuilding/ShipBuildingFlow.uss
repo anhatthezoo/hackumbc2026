@@ -403,6 +403,7 @@
 }
 
 .camera-angle-button,
+.rotate-item-button,
 .dev-map-button,
 .set-sail-button {
     border-left-width: 0;
@@ -419,7 +420,8 @@
     transition-duration: 0.08s;
 }
 
-.camera-angle-button {
+.camera-angle-button,
+.rotate-item-button {
     height: 58px;
     margin-bottom: 12px;
     color: rgb(255, 239, 198);
@@ -449,13 +451,15 @@
 }
 
 .camera-angle-button:hover,
+.rotate-item-button:hover,
 .dev-map-button:hover,
 .set-sail-button:hover {
     scale: 1.02 1.02;
     translate: 0 -2px;
 }
 
-.camera-angle-button:hover {
+.camera-angle-button:hover,
+.rotate-item-button:hover {
     background-color: rgb(78, 116, 151);
 }
 
@@ -468,6 +472,7 @@
 }
 
 .camera-angle-button:active,
+.rotate-item-button:active,
 .dev-map-button:active,
 .set-sail-button:active {
     scale: 0.98 0.98;
