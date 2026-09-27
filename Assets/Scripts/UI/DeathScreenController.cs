@@ -1,4 +1,5 @@
 using System;
+using RoyaltyBoat.Audio;
 using RoyaltyBoat.King;
 using UnityEngine;
 using UnityEngine.Events;
@@ -77,6 +78,7 @@ namespace RoyaltyBoat.UI
 
         public void Show(KingDeathCause cause = KingDeathCause.Unknown)
         {
+            bool wasVisible = IsVisible;
             if (overlay == null)
             {
                 CacheVisualElements();
@@ -86,6 +88,10 @@ namespace RoyaltyBoat.UI
             overlay.RemoveFromClassList("is-hidden");
             overlay.BringToFront();
             tryAgainButton.Focus();
+            if (!wasVisible)
+            {
+                GameAudio.PlayFailure();
+            }
         }
 
         public void Hide()
@@ -101,6 +107,7 @@ namespace RoyaltyBoat.UI
         private void CacheVisualElements()
         {
             VisualElement root = uiDocument.rootVisualElement;
+            GameAudio.BindUi(root);
             overlay = root.Q<VisualElement>("death-screen");
             crownHost = root.Q<VisualElement>("crown-host");
             tryAgainButton = root.Q<Button>("try-again-button");

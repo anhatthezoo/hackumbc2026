@@ -1,4 +1,5 @@
 using RoyaltyBoat.Flow;
+using RoyaltyBoat.Audio;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -63,6 +64,7 @@ namespace RoyaltyBoat.UI
         private void OnEnable()
         {
             VisualElement root = document.rootVisualElement;
+            GameAudio.BindUi(root);
             overlay = root.Q<VisualElement>("pause-overlay");
             pauseScreen = root.Q<VisualElement>("pause-screen");
             settingsScreen = root.Q<VisualElement>("pause-settings-screen");

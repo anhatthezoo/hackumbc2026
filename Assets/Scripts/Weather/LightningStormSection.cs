@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using RoyaltyBoat.Gameplay;
 using RoyaltyBoat.King;
+using RoyaltyBoat.Audio;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -199,6 +200,7 @@ namespace RoyaltyBoat.Weather
             flashLight.transform.position = strikePoint + Vector3.up * 8f;
             flashLight.intensity = 22f;
             flashLight.enabled = true;
+            GameAudio.PlayLightning(strikePoint);
 
             ApplyStrikeDamage();
 

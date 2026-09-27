@@ -1,4 +1,5 @@
 using RoyaltyBoat.Economy;
+using RoyaltyBoat.Audio;
 using RoyaltyBoat.Flow;
 using RoyaltyBoat.King;
 using UnityEngine;
@@ -51,6 +52,7 @@ namespace RoyaltyBoat.Gameplay
             LevelRewardResult reward = LevelRewardCalculator.Calculate(levelNumber, kingHealth);
             EconomyAccess.AddFunds(reward.TotalReward);
             VoyageFlow.MarkLevelComplete(levelNumber);
+            GameAudio.PlaySuccess();
 
             BoatMovementController movement = targetShip.GetComponent<BoatMovementController>();
             if (movement != null)

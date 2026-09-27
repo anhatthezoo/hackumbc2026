@@ -1,4 +1,6 @@
 using UnityEngine;
+using RoyaltyBoat.Audio;
+using RoyaltyBoat.Obstacles;
 
 [DisallowMultipleComponent]
 public class ObstacleDamage : MonoBehaviour
@@ -129,10 +131,21 @@ public class ObstacleDamage : MonoBehaviour
         block.TakeDamage(amount);
         remainingHits--;
 
+        ObstacleDescriptor descriptor = GetComponent<ObstacleDescriptor>();
+        bool isIceberg = descriptor != null && descriptor.Kind == ObstacleKind.Iceberg;
+
         if (remainingHits <= 0)
         {
             isDepleted = true;
+            if (isIceberg)
+            {
+                GameAudio.PlayIcebergBreak(transform.position);
+            }
             Destroy(gameObject);
+        }
+        else if (isIceberg)
+        {
+            GameAudio.PlayIceCrash(block.transform.position);
         }
 
         return true;

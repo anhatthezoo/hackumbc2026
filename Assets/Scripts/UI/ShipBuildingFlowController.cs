@@ -1,4 +1,5 @@
 using RoyaltyBoat.Flow;
+using RoyaltyBoat.Audio;
 using RoyaltyBoat.King;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -58,6 +59,7 @@ namespace RoyaltyBoat.UI
         private void OnEnable()
         {
             VisualElement root = GetComponent<UIDocument>().rootVisualElement;
+            GameAudio.BindUi(root);
             setSailButton = root.Q<Button>("set-sail-button");
             devMapButton = root.Q<Button>("dev-map-button");
             cameraAngleButton = root.Q<Button>("camera-angle-button");

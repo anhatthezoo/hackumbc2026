@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using RoyaltyBoat.Audio;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -50,6 +51,8 @@ namespace RoyaltyBoat.Water
         private bool hasOceanSamples;
         private int requestVersion;
         private int cachedBlockCount = -1;
+        private bool wasAirborne;
+        private float nextSplashTime;
 
         public bool HasOceanSamples => hasOceanSamples;
         public int BuoyancyPointCount => hullSamples.Length;
@@ -156,6 +159,7 @@ namespace RoyaltyBoat.Water
                 : Vector3.down;
             Matrix4x4 localToWorld = transform.localToWorldMatrix;
             float totalSubmergedShare = 0f;
+            float downwardEntrySpeed = Mathf.Max(0f, -body.linearVelocity.y);
 
             for (int index = 0; index < hullSamples.Length; ++index)
             {
@@ -221,6 +225,23 @@ namespace RoyaltyBoat.Water
             if (totalSubmergedShare < targetSubmergedFraction * 0.2f)
             {
                 LimitSurfaceExitSpeed(gravityDirection);
+            }
+
+            bool aboveWater = totalSubmergedShare < 0.01f &&
+                              body.worldCenterOfMass.y > AverageSurfaceHeight + 0.35f;
+            if (aboveWater)
+            {
+                wasAirborne = true;
+            }
+            else if (wasAirborne && totalSubmergedShare > 0.06f)
+            {
+                if (downwardEntrySpeed > 0.8f && Time.time >= nextSplashTime)
+                {
+                    GameAudio.PlaySplash(body.worldCenterOfMass);
+                    nextSplashTime = Time.time + 0.8f;
+                }
+
+                wasAirborne = false;
             }
         }
 

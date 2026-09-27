@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using RoyaltyBoat.Economy;
+using RoyaltyBoat.Audio;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -47,6 +48,7 @@ namespace RoyaltyBoat.UI
         {
             document ??= GetComponent<UIDocument>();
             VisualElement root = document.rootVisualElement;
+            GameAudio.BindUi(root);
             itemList = root.Q<VisualElement>("shop-items");
             balanceLabel = root.Q<Label>("money-balance");
             balanceShadowLabel = root.Q<Label>("money-balance-shadow");

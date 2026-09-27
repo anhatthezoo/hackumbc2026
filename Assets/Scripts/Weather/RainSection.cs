@@ -1,4 +1,5 @@
 using RoyaltyBoat.Gameplay;
+using RoyaltyBoat.Audio;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -94,6 +95,7 @@ namespace RoyaltyBoat.Weather
             }
 
             isRaining = enabled;
+            GameAudio.SetRain(this, enabled);
             SetEmitterState(rainfall, enabled);
             SetEmitterState(surfaceSplashes, enabled);
         }

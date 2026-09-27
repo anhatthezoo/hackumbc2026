@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using RoyaltyBoat.Audio;
 using UnityEngine;
 
 namespace RoyaltyBoat.Obstacles
@@ -181,7 +182,6 @@ namespace RoyaltyBoat.Obstacles
                         + RandomRange(random, -patchSpacing * 0.18f, patchSpacing * 0.18f));
             }
 
-            int audioClusterIndex = fireClusterCount / 2;
             for (int index = 0; index < fireClusterCount; ++index)
             {
                 Vector2 patchCenter = patchCenters[index % patchCount];
@@ -239,7 +239,7 @@ namespace RoyaltyBoat.Obstacles
                 AudioSource[] audioSources = cluster.GetComponentsInChildren<AudioSource>(true);
                 for (int audioIndex = 0; audioIndex < audioSources.Length; ++audioIndex)
                 {
-                    audioSources[audioIndex].enabled = index == audioClusterIndex;
+                    audioSources[audioIndex].enabled = false;
                 }
             }
 
@@ -262,6 +262,8 @@ namespace RoyaltyBoat.Obstacles
                 fireLight.shadows = LightShadows.None;
                 fireLights.Add(fireLight);
             }
+
+            GameAudio.SetFire(this, transform, true);
         }
 
         private void AnimateFire()
@@ -286,6 +288,11 @@ namespace RoyaltyBoat.Obstacles
 
         private void DestroyFire()
         {
+            if (Application.isPlaying)
+            {
+                GameAudio.SetFire(this, transform, false);
+            }
+
             if (fireRoot != null)
             {
                 if (Application.isPlaying)

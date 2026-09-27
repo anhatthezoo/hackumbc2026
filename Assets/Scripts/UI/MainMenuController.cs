@@ -1,4 +1,5 @@
 using RoyaltyBoat.Flow;
+using RoyaltyBoat.Audio;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -56,6 +57,7 @@ namespace RoyaltyBoat.UI
         private void OnEnable()
         {
             VisualElement root = document.rootVisualElement;
+            GameAudio.BindUi(root);
             mainScreen = root.Q<VisualElement>("main-screen");
             settingsScreen = root.Q<VisualElement>("settings-screen");
             creditsScreen = root.Q<VisualElement>("credits-screen");
