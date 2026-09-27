@@ -13,6 +13,10 @@ public class BlockDragController : MonoBehaviour
     [SerializeField, Min(0.1f)] private float raycastDistance = 100f;
     [SerializeField] private LayerMask draggableLayers = ~0;
 
+    [Header("King Placement")]
+    [Tooltip("How close the pointer ray can be to a throne before the King snaps onto it, measured in grid cells.")]
+    [SerializeField, Min(0.25f)] private float kingChairSnapRadiusInCells = 1.35f;
+
     [Header("Placement Bounds")]
     [SerializeField] private Transform placementCenter;
     [SerializeField, Min(0f)] private float maximumPlacementDistance = 9f;
@@ -607,6 +611,13 @@ public class BlockDragController : MonoBehaviour
     private bool TryGetSurfacePlacement(Ray ray, out Vector3 placementPosition)
     {
         placementPosition = default;
+
+        if (draggedKing != null
+            && TryGetMagneticChairPlacement(ray, out placementPosition))
+        {
+            return true;
+        }
+
         RaycastHit[] hits = Physics.RaycastAll(
             ray,
             raycastDistance,
@@ -649,6 +660,11 @@ public class BlockDragController : MonoBehaviour
 
             if (draggedKing != null)
             {
+                if (targetBlock.GetComponent<ChairSeat>() == null)
+                {
+                    continue;
+                }
+
                 Vector3 faceDirection = GetClosestFaceDirection(
                     hit.normal,
                     targetShip.transform);
@@ -703,6 +719,82 @@ public class BlockDragController : MonoBehaviour
             kingSupportCandidate = bestKingSupport;
             hasKingCellCandidate = true;
         }
+        return true;
+    }
+
+    private bool TryGetMagneticChairPlacement(
+        Ray pointerRay,
+        out Vector3 placementPosition)
+    {
+        placementPosition = default;
+        if (draggedKing == null)
+        {
+            return false;
+        }
+
+        Block closestChair = null;
+        Ship closestShip = null;
+        Vector3 closestCell = default;
+        Vector3 closestPosition = default;
+        float closestDistance = float.PositiveInfinity;
+
+        foreach (Block block in Object.FindObjectsByType<Block>(FindObjectsInactive.Exclude))
+        {
+            if (block == null
+                || !block.IsAlive
+                || block.GetComponent<ChairSeat>() == null)
+            {
+                continue;
+            }
+
+            Ship targetShip = block.GetComponentInParent<Ship>();
+            if (targetShip == null)
+            {
+                continue;
+            }
+
+            float cellSize = targetShip.AttachmentGridSize;
+            Vector3 seatPosition = draggedKing.GetPositionOn(block);
+            Vector3 seatCell = block.transform.position
+                + targetShip.transform.up * cellSize;
+            float alongRay = Vector3.Dot(
+                block.transform.position - pointerRay.origin,
+                pointerRay.direction);
+            if (alongRay < 0f)
+            {
+                continue;
+            }
+
+            Vector3 closestPoint = pointerRay.GetPoint(alongRay);
+            float distance = Vector3.Distance(block.transform.position, closestPoint);
+            float snapRadius = cellSize * kingChairSnapRadiusInCells;
+            if (distance > snapRadius || distance >= closestDistance)
+            {
+                continue;
+            }
+
+            if (!IsWithinPlacementBounds(seatPosition))
+            {
+                continue;
+            }
+
+            closestDistance = distance;
+            closestChair = block;
+            closestShip = targetShip;
+            closestCell = seatCell;
+            closestPosition = seatPosition;
+        }
+
+        if (closestChair == null)
+        {
+            return false;
+        }
+
+        snappingShip = closestShip;
+        kingCellCandidate = closestCell;
+        kingSupportCandidate = closestChair;
+        hasKingCellCandidate = true;
+        placementPosition = closestPosition;
         return true;
     }
 

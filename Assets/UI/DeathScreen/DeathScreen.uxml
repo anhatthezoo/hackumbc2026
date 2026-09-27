@@ -9,8 +9,8 @@
             </ui:VisualElement>
             <ui:Label name="subtitle" text="Your royal voyage has come to an end..." class="death-subtitle" />
             <ui:VisualElement class="button-stack">
-                <ui:Button name="try-again-button" text="TRY AGAIN" class="death-button death-button-primary" />
-                <ui:Button name="return-to-dock-button" text="RETURN TO DOCK" class="death-button death-button-secondary" />
+                <ui:Button name="try-again-button" text="BUILD AGAIN" class="death-button death-button-primary" />
+                <ui:Button name="return-to-dock-button" text="RETURN TO TITLE" class="death-button death-button-secondary" />
             </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>
