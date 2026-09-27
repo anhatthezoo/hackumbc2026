@@ -67,9 +67,10 @@
 
 .menu-panel {
     position: absolute;
-    left: 5.5%;
+    left: 50%;
     top: 37%;
     width: 540px;
+    translate: -50% 0;
 }
 
 .menu-button,
@@ -363,7 +364,7 @@
 }
 
 .main-screen.is-compact .menu-panel {
-    left: 4%;
+    left: 50%;
     width: 450px;
 }
 

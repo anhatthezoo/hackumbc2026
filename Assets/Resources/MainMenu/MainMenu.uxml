@@ -1,87 +1,84 @@
-<ui:UXML xmlns:ui="UnityEngine.UIElements">
-    <Style src="project://database/Assets/Resources/MainMenu/MainMenu.uss" />
-
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/Resources/MainMenu/MainMenu.uss?fileID=7433441132597879392&amp;guid=b62f123409b8f4d52ad4b3b83061197d&amp;type=3#MainMenu"/>
     <ui:VisualElement name="main-screen" class="screen main-screen">
-        <ui:VisualElement class="top-shade" picking-mode="Ignore" />
-        <ui:VisualElement class="title-area" picking-mode="Ignore">
+        <ui:VisualElement picking-mode="Ignore" class="top-shade"/>
+        <ui:VisualElement picking-mode="Ignore" class="title-area">
             <ui:VisualElement class="title-stack">
-                <ui:Label text="GAME NAME" class="game-title title-shadow" />
-                <ui:Label text="GAME NAME" class="game-title title-face" />
+                <ui:Label text="KINGSHIP" class="game-title title-shadow"/>
+                <ui:Label text="KINGSHIP" class="game-title title-face"/>
             </ui:VisualElement>
         </ui:VisualElement>
         <ui:VisualElement class="menu-panel">
-            <ui:Button name="start-button" text="▶  PLAY" class="menu-button primary-button" />
-            <ui:Button name="settings-button" text="⚙  SETTINGS" class="menu-button secondary-button" />
-            <ui:Button name="credits-button" text="●  CREDITS" class="menu-button secondary-button" />
-            <ui:Button name="quit-button" text="↪  QUIT" class="menu-button secondary-button" />
+            <ui:Button name="start-button" text="▶  PLAY" class="menu-button primary-button"/>
+            <ui:Button name="settings-button" text="⚙  SETTINGS" class="menu-button secondary-button"/>
+            <ui:Button name="credits-button" text="●  CREDITS" class="menu-button secondary-button"/>
+            <ui:Button name="quit-button" text="↪  QUIT" class="menu-button secondary-button"/>
         </ui:VisualElement>
     </ui:VisualElement>
-
     <ui:VisualElement name="settings-screen" class="screen modal-screen is-hidden">
-        <ui:Button name="settings-back-button" text="‹  BACK" class="back-button" />
-        <ui:VisualElement class="modal-heading" picking-mode="Ignore">
-            <ui:Label text="SETTINGS" class="screen-title" />
-            <ui:Label text="MAKE THE VOYAGE YOUR OWN" class="screen-subtitle" />
+        <ui:Button name="settings-back-button" text="‹  BACK" class="back-button"/>
+        <ui:VisualElement picking-mode="Ignore" class="modal-heading">
+            <ui:Label text="SETTINGS" class="screen-title"/>
+            <ui:Label text="MAKE THE VOYAGE YOUR OWN" class="screen-subtitle"/>
         </ui:VisualElement>
         <ui:VisualElement class="settings-card">
             <ui:VisualElement class="setting-row">
-                <ui:Label text="MASTER VOLUME" class="setting-label" />
-                <ui:Slider name="volume-slider" low-value="0" high-value="1" value="1" class="volume-slider" />
+                <ui:Label text="MASTER VOLUME" class="setting-label"/>
+                <ui:Slider name="volume-slider" low-value="0" high-value="1" value="1" class="volume-slider"/>
             </ui:VisualElement>
-            <ui:VisualElement class="card-divider" />
+            <ui:VisualElement class="card-divider"/>
             <ui:VisualElement class="setting-row">
-                <ui:Label text="FULLSCREEN" class="setting-label" />
-                <ui:Toggle name="fullscreen-toggle" class="fullscreen-toggle" />
+                <ui:Label text="FULLSCREEN" class="setting-label"/>
+                <ui:Toggle name="fullscreen-toggle" class="fullscreen-toggle"/>
             </ui:VisualElement>
-            <ui:VisualElement class="card-divider" />
+            <ui:VisualElement class="card-divider"/>
             <ui:VisualElement class="setting-row">
-                <ui:Label text="RESOLUTION" class="setting-label" />
-                <ui:DropdownField name="resolution-dropdown" class="setting-dropdown" />
+                <ui:Label text="RESOLUTION" class="setting-label"/>
+                <ui:DropdownField name="resolution-dropdown" class="setting-dropdown"/>
             </ui:VisualElement>
-            <ui:VisualElement class="card-divider" />
+            <ui:VisualElement class="card-divider"/>
             <ui:VisualElement class="setting-row">
-                <ui:Label text="V-SYNC" class="setting-label" />
-                <ui:Toggle name="vsync-toggle" class="setting-toggle" />
+                <ui:Label text="V-SYNC" class="setting-label"/>
+                <ui:Toggle name="vsync-toggle" class="setting-toggle"/>
             </ui:VisualElement>
-            <ui:VisualElement class="card-divider" />
+            <ui:VisualElement class="card-divider"/>
             <ui:VisualElement class="setting-row">
-                <ui:Label text="ANTI-ALIASING" class="setting-label" />
-                <ui:DropdownField name="anti-aliasing-dropdown" class="setting-dropdown" />
+                <ui:Label text="ANTI-ALIASING" class="setting-label"/>
+                <ui:DropdownField name="anti-aliasing-dropdown" class="setting-dropdown"/>
             </ui:VisualElement>
-            <ui:VisualElement class="card-divider" />
+            <ui:VisualElement class="card-divider"/>
             <ui:VisualElement class="setting-row">
-                <ui:Label text="CAMERA SHAKE" class="setting-label" />
-                <ui:Slider name="camera-shake-slider" low-value="0" high-value="1" value="0.65" class="setting-slider" />
+                <ui:Label text="CAMERA SHAKE" class="setting-label"/>
+                <ui:Slider name="camera-shake-slider" low-value="0" high-value="1" value="0.65" class="setting-slider"/>
             </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>
-
     <ui:VisualElement name="credits-screen" class="screen modal-screen is-hidden">
-        <ui:Button name="credits-back-button" text="‹  BACK" class="back-button" />
-        <ui:VisualElement class="modal-heading" picking-mode="Ignore">
-            <ui:Label text="CREDITS" class="screen-title" />
-            <ui:Label text="THE CREW BEHIND THE VOYAGE" class="screen-subtitle" />
+        <ui:Button name="credits-back-button" text="‹  BACK" class="back-button"/>
+        <ui:VisualElement picking-mode="Ignore" class="modal-heading">
+            <ui:Label text="CREDITS" class="screen-title"/>
+            <ui:Label text="THE CREW BEHIND THE VOYAGE" class="screen-subtitle"/>
         </ui:VisualElement>
         <ui:VisualElement class="credits-card">
             <ui:VisualElement class="credit-row">
-                <ui:Label text="DYLAN SIMMONS" class="credit-name" />
-                <ui:Label text="TEAM MEMBER" class="credit-role" />
+                <ui:Label text="DYLAN SIMMONS" class="credit-name"/>
+                <ui:Label text="TEAM MEMBER" class="credit-role"/>
             </ui:VisualElement>
-            <ui:VisualElement class="card-divider" />
+            <ui:VisualElement class="card-divider"/>
             <ui:VisualElement class="credit-row">
-                <ui:Label text="JACOB HAUPTMAN" class="credit-name" />
-                <ui:Label text="TEAM MEMBER" class="credit-role" />
+                <ui:Label text="JACOB HAUPTMAN" class="credit-name"/>
+                <ui:Label text="TEAM MEMBER" class="credit-role"/>
             </ui:VisualElement>
-            <ui:VisualElement class="card-divider" />
+            <ui:VisualElement class="card-divider"/>
             <ui:VisualElement class="credit-row">
-                <ui:Label text="ANH PHAM" class="credit-name" />
-                <ui:Label text="TEAM MEMBER" class="credit-role" />
+                <ui:Label text="ANH PHAM" class="credit-name"/>
+                <ui:Label text="TEAM MEMBER" class="credit-role"/>
             </ui:VisualElement>
         </ui:VisualElement>
         <ui:VisualElement class="technology-credit">
-            <ui:Label text="OCEAN TECHNOLOGY" class="technology-heading" />
-            <ui:Button name="ocean-credit-button" text="GodotOceanWaves by Ethan Truong / 2Retr0 — MIT License  ↗" class="technology-link" />
+            <ui:Label text="OCEAN TECHNOLOGY" class="technology-heading"/>
+            <ui:Button name="ocean-credit-button" text="GodotOceanWaves by Ethan Truong / 2Retr0 — MIT License  ↗" class="technology-link"/>
         </ui:VisualElement>
-        <ui:Label text="MADE WITH UNITY" class="made-with" />
+        <ui:Label text="MADE WITH UNITY" class="made-with"/>
     </ui:VisualElement>
 </ui:UXML>
