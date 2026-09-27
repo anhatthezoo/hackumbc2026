@@ -21,10 +21,15 @@ public sealed class ObstacleDamageRelay : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        TryDamage(collision.collider);
+        TryDamage(collision.collider, ObstacleDamage.GetImpactSpeed(collision));
     }
 
     private void TryDamage(Collider other)
+    {
+        TryDamage(other, null);
+    }
+
+    private void TryDamage(Collider other, float? impactSpeed)
     {
         if (source == null || other == null)
         {
@@ -34,7 +39,14 @@ public sealed class ObstacleDamageRelay : MonoBehaviour
         Block block = other.GetComponentInParent<Block>();
         if (block != null)
         {
-            source.TryDamage(block);
+            if (impactSpeed.HasValue)
+            {
+                source.TryDamage(block, impactSpeed.Value);
+            }
+            else
+            {
+                source.TryDamage(block);
+            }
         }
     }
 }

@@ -6,6 +6,9 @@ public class ObstacleDamage : MonoBehaviour
 {
     [SerializeField, Min(0)] private int damage = 10;
     [SerializeField, Min(0f)] private float repeatDamageCooldown = 0.75f;
+    [SerializeField, Min(0.01f)] private float fullDamageImpactSpeed = 14f;
+    [SerializeField, Min(0f)] private float minimumDamageImpactSpeed = 0.75f;
+    [SerializeField, Min(1f)] private float maximumDamageMultiplier = 2f;
 
     private readonly Dictionary<Block, float> nextDamageTimes = new Dictionary<Block, float>();
 
@@ -44,6 +47,10 @@ public class ObstacleDamage : MonoBehaviour
             {
                 obstacleCollider.isTrigger = true;
             }
+            else
+            {
+                obstacleCollider.isTrigger = false;
+            }
 
             ObstacleDamageRelay relay =
                 damageCollider.GetComponent<ObstacleDamageRelay>();
@@ -58,7 +65,50 @@ public class ObstacleDamage : MonoBehaviour
 
     public bool TryDamage(Block block)
     {
-        if (block == null || damage <= 0)
+        return TryApplyDamage(block, damage);
+    }
+
+    public bool TryDamage(Block block, float impactSpeed)
+    {
+        if (impactSpeed < minimumDamageImpactSpeed)
+        {
+            return false;
+        }
+
+        float multiplier = Mathf.Clamp(
+            impactSpeed / fullDamageImpactSpeed,
+            0f,
+            maximumDamageMultiplier);
+        int impactDamage = Mathf.CeilToInt(damage * multiplier);
+        return TryApplyDamage(block, impactDamage);
+    }
+
+    public static float GetImpactSpeed(Collision collision)
+    {
+        if (collision == null)
+        {
+            return 0f;
+        }
+
+        Vector3 relativeVelocity = collision.relativeVelocity;
+        float impactSpeed = 0f;
+
+        for (int i = 0; i < collision.contactCount; i++)
+        {
+            float closingSpeed = Mathf.Abs(Vector3.Dot(
+                relativeVelocity,
+                collision.GetContact(i).normal));
+            impactSpeed = Mathf.Max(impactSpeed, closingSpeed);
+        }
+
+        return collision.contactCount > 0
+            ? impactSpeed
+            : relativeVelocity.magnitude;
+    }
+
+    private bool TryApplyDamage(Block block, int amount)
+    {
+        if (block == null || amount <= 0)
         {
             return false;
         }
@@ -69,7 +119,7 @@ public class ObstacleDamage : MonoBehaviour
         }
 
         nextDamageTimes[block] = Time.time + repeatDamageCooldown;
-        block.TakeDamage(damage);
+        block.TakeDamage(amount);
         return true;
     }
 
@@ -82,5 +132,8 @@ public class ObstacleDamage : MonoBehaviour
     {
         damage = Mathf.Max(0, damage);
         repeatDamageCooldown = Mathf.Max(0f, repeatDamageCooldown);
+        fullDamageImpactSpeed = Mathf.Max(0.01f, fullDamageImpactSpeed);
+        minimumDamageImpactSpeed = Mathf.Max(0f, minimumDamageImpactSpeed);
+        maximumDamageMultiplier = Mathf.Max(1f, maximumDamageMultiplier);
     }
 }

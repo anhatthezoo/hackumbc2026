@@ -322,13 +322,6 @@ public class Ship : MonoBehaviour
     private void HandleBlockDestroyed(Block destroyedBlock)
     {
         UnregisterBlock(destroyedBlock);
-
-        if (destroyedBlock != null
-            && destroyedBlock.transform.IsChildOf(transform))
-        {
-            destroyedBlock.transform.SetParent(null, true);
-            RefreshPhysicsMass();
-        }
     }
 
     private bool TryFindAttachmentPosition(Block candidate, out Vector3 attachmentPosition)
