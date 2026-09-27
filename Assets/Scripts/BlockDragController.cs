@@ -20,6 +20,7 @@ public class BlockDragController : MonoBehaviour
     [SerializeField, Min(0.001f)] private float dragHighlightWidth = 0.045f;
 
     private Camera dragCamera;
+    private AdaptiveBuildGrid buildGrid;
     private Transform draggedBlock;
     private Block draggedBlockComponent;
     private Ship draggedShip;
@@ -55,6 +56,7 @@ public class BlockDragController : MonoBehaviour
     private void Awake()
     {
         dragCamera = GetComponent<Camera>();
+        buildGrid = Object.FindAnyObjectByType<AdaptiveBuildGrid>();
     }
 
     private void Update()
@@ -93,12 +95,7 @@ public class BlockDragController : MonoBehaviour
     {
         Ray ray = dragCamera.ScreenPointToRay(pointerPosition);
 
-        if (!Physics.Raycast(
-                ray,
-                out RaycastHit hit,
-                raycastDistance,
-                draggableLayers,
-                QueryTriggerInteraction.Ignore))
+        if (!TryGetClosestBlockHit(ray, out RaycastHit hit))
         {
             return;
         }
@@ -134,20 +131,7 @@ public class BlockDragController : MonoBehaviour
             draggedBlock = selectedBlock.transform;
         }
 
-        float dragHeight = snappingShip != null && snappingShip.CoreBlock != null
-            ? snappingShip.CoreBlock.transform.position.y
-            : draggedBlock.position.y;
-
-        dragPlane = new Plane(Vector3.up, new Vector3(0f, dragHeight, 0f));
-
-        if (dragPlane.Raycast(ray, out float distance))
-        {
-            pointerOffset = draggedBlock.position - ray.GetPoint(distance);
-        }
-        else
-        {
-            pointerOffset = Vector3.zero;
-        }
+        ConfigureDragPlane(ray);
 
         draggedBody = draggedBlock.GetComponent<Rigidbody>();
 
@@ -163,6 +147,36 @@ public class BlockDragController : MonoBehaviour
 
         Drag(pointerPosition);
         ShowDragHighlights();
+    }
+
+    private bool TryGetClosestBlockHit(Ray ray, out RaycastHit blockHit)
+    {
+        blockHit = default;
+        RaycastHit[] hits = Physics.RaycastAll(
+            ray,
+            raycastDistance,
+            draggableLayers,
+            QueryTriggerInteraction.Ignore);
+        float closestDistance = float.PositiveInfinity;
+        bool foundBlock = false;
+
+        foreach (RaycastHit hit in hits)
+        {
+            Block block = hit.collider.GetComponentInParent<Block>();
+
+            if (block == null
+                || !block.CompareTag("Block")
+                || hit.distance >= closestDistance)
+            {
+                continue;
+            }
+
+            closestDistance = hit.distance;
+            blockHit = hit;
+            foundBlock = true;
+        }
+
+        return foundBlock;
     }
 
     private void Drag(Vector2 pointerPosition)
@@ -183,30 +197,113 @@ public class BlockDragController : MonoBehaviour
         }
 
         Vector3 targetPosition = ray.GetPoint(distance) + pointerOffset;
-        Vector3 gridOrigin = snappingShip != null && snappingShip.CoreBlock != null
-            ? snappingShip.CoreBlock.transform.position
-            : Vector3.zero;
-
         float activeGridSize = snappingShip != null
             ? snappingShip.AttachmentGridSize
             : gridSize;
 
-        float snappedHeight = snappingShip != null
-            ? gridOrigin.y
-            : draggedBlock.position.y;
-
-        Vector3 snappedPosition = new Vector3(
-            gridOrigin.x
-                + Mathf.Round((targetPosition.x - gridOrigin.x) / activeGridSize)
-                * activeGridSize,
-            snappedHeight,
-            gridOrigin.z
-                + Mathf.Round((targetPosition.z - gridOrigin.z) / activeGridSize)
-                * activeGridSize);
+        Vector3 snappedPosition = SnapToGrid(targetPosition, activeGridSize);
 
         draggedBlock.position = ConstrainToPlacementBounds(
             snappedPosition,
             activeGridSize);
+    }
+
+    private void ConfigureDragPlane(Ray pointerRay)
+    {
+        Vector3 planeNormal = GetDragPlaneNormal();
+        Vector3 planePoint = draggedBlock.position;
+
+        if (draggedShip == null
+            && snappingShip != null
+            && snappingShip.CoreBlock != null)
+        {
+            planePoint = snappingShip.CoreBlock.transform.position;
+        }
+
+        dragPlane = new Plane(planeNormal, planePoint);
+
+        if (dragPlane.Raycast(pointerRay, out float distance))
+        {
+            pointerOffset = Vector3.ProjectOnPlane(
+                draggedBlock.position - pointerRay.GetPoint(distance),
+                planeNormal);
+        }
+        else
+        {
+            pointerOffset = Vector3.zero;
+        }
+    }
+
+    private Vector3 GetDragPlaneNormal()
+    {
+        if (draggedShip != null)
+        {
+            return Vector3.up;
+        }
+
+        if (buildGrid == null)
+        {
+            buildGrid = Object.FindAnyObjectByType<AdaptiveBuildGrid>();
+        }
+
+        if (buildGrid != null)
+        {
+            return buildGrid.transform.forward.normalized;
+        }
+
+        Vector3 cameraForward = dragCamera.transform.forward;
+        Vector3 absoluteForward = new Vector3(
+            Mathf.Abs(cameraForward.x),
+            Mathf.Abs(cameraForward.y),
+            Mathf.Abs(cameraForward.z));
+
+        if (absoluteForward.y >= absoluteForward.x
+            && absoluteForward.y >= absoluteForward.z)
+        {
+            return Vector3.up;
+        }
+
+        return absoluteForward.x >= absoluteForward.z
+            ? Vector3.right
+            : Vector3.forward;
+    }
+
+    private Vector3 SnapToGrid(Vector3 targetPosition, float snapSize)
+    {
+        if (draggedShip != null)
+        {
+            return new Vector3(
+                Mathf.Round(targetPosition.x / snapSize) * snapSize,
+                draggedBlock.position.y,
+                Mathf.Round(targetPosition.z / snapSize) * snapSize);
+        }
+
+        if (snappingShip == null || snappingShip.CoreBlock == null)
+        {
+            return new Vector3(
+                Mathf.Round(targetPosition.x / snapSize) * snapSize,
+                Mathf.Round(targetPosition.y / snapSize) * snapSize,
+                Mathf.Round(targetPosition.z / snapSize) * snapSize);
+        }
+
+        Transform shipTransform = snappingShip.transform;
+        Vector3 gridOrigin = snappingShip.CoreBlock.transform.position;
+        Vector3 relativePosition = targetPosition - gridOrigin;
+
+        float snappedRight = Mathf.Round(
+            Vector3.Dot(relativePosition, shipTransform.right) / snapSize)
+            * snapSize;
+        float snappedUp = Mathf.Round(
+            Vector3.Dot(relativePosition, shipTransform.up) / snapSize)
+            * snapSize;
+        float snappedForward = Mathf.Round(
+            Vector3.Dot(relativePosition, shipTransform.forward) / snapSize)
+            * snapSize;
+
+        return gridOrigin
+            + shipTransform.right * snappedRight
+            + shipTransform.up * snappedUp
+            + shipTransform.forward * snappedForward;
     }
 
     private bool TryGetSurfacePlacement(Ray ray, out Vector3 placementPosition)
