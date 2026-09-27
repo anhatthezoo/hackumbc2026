@@ -13,8 +13,10 @@ public class CameraOrbitController : MonoBehaviour
     [SerializeField, Min(0.01f)] private float zoomSensitivity = 0.01f;
     [SerializeField] private float minimumPitch = -75f;
     [SerializeField] private float maximumPitch = 85f;
+    [Tooltip("Starting orthographic camera size. Lower values appear closer.")]
+    [SerializeField, Min(0.1f)] private float startingOrthographicSize = 9f;
     [SerializeField, Min(1f)] private float minimumZoom = 4f;
-    [SerializeField, Min(1f)] private float maximumZoom = 30f;
+    [SerializeField, Min(1f)] private float maximumZoom = 12f;
 
     private Camera orbitCamera;
     private float yaw;
@@ -41,7 +43,34 @@ public class CameraOrbitController : MonoBehaviour
     private void Awake()
     {
         orbitCamera = GetComponent<Camera>();
+
+        if (orbitCamera.orthographic)
+        {
+            orbitCamera.orthographicSize = Mathf.Clamp(
+                startingOrthographicSize,
+                minimumZoom,
+                maximumZoom);
+        }
+
         InitializeFromCurrentView();
+    }
+
+    private void OnValidate()
+    {
+        maximumZoom = Mathf.Max(maximumZoom, minimumZoom);
+        startingOrthographicSize = Mathf.Clamp(
+            startingOrthographicSize,
+            minimumZoom,
+            maximumZoom);
+
+        Camera cameraComponent = GetComponent<Camera>();
+
+        if (!Application.isPlaying
+            && cameraComponent != null
+            && cameraComponent.orthographic)
+        {
+            cameraComponent.orthographicSize = startingOrthographicSize;
+        }
     }
 
     private void LateUpdate()
@@ -89,9 +118,13 @@ public class CameraOrbitController : MonoBehaviour
     private void InitializeFromCurrentView()
     {
         Vector3 offset = transform.position - FocusPosition;
-        distance = Mathf.Max(offset.magnitude, minimumZoom);
+        float currentDistance = offset.magnitude;
+        distance = Mathf.Clamp(
+            currentDistance,
+            minimumZoom,
+            maximumZoom);
 
-        if (offset.sqrMagnitude < 0.001f)
+        if (currentDistance < 0.001f)
         {
             yaw = 0f;
             pitch = 45f;
@@ -99,15 +132,25 @@ public class CameraOrbitController : MonoBehaviour
         }
 
         yaw = Mathf.Atan2(-offset.x, -offset.z) * Mathf.Rad2Deg;
-        pitch = Mathf.Asin(offset.y / distance) * Mathf.Rad2Deg;
+        float verticalDirection = Mathf.Clamp(
+            offset.y / currentDistance,
+            -1f,
+            1f);
+        pitch = Mathf.Asin(verticalDirection) * Mathf.Rad2Deg;
         pitch = Mathf.Clamp(pitch, minimumPitch, maximumPitch);
     }
 
     private void ApplyOrbit()
     {
+        if (!float.IsFinite(distance)
+            || !float.IsFinite(yaw)
+            || !float.IsFinite(pitch))
+        {
+            InitializeFromCurrentView();
+        }
+
         Quaternion orbitRotation = Quaternion.Euler(pitch, yaw, 0f);
-        transform.position =
-            FocusPosition + orbitRotation * new Vector3(0f, 0f, -distance);
+        transform.position = FocusPosition + orbitRotation * new Vector3(0f, 0f, -distance);
         transform.LookAt(FocusPosition, Vector3.up);
     }
 }

@@ -76,36 +76,15 @@ public sealed class AdaptiveBuildGrid : MonoBehaviour
             RebuildGrid();
         }
 
-        transform.position = centerTarget.position + Vector3.up * verticalOffset;
+        bool cameraIsAbove = activeCamera.transform.position.y
+            >= centerTarget.position.y;
 
-        Vector3 cameraDirection =
-            activeCamera.transform.position - transform.position;
-        Vector3 absoluteDirection = new Vector3(
-            Mathf.Abs(cameraDirection.x),
-            Mathf.Abs(cameraDirection.y),
-            Mathf.Abs(cameraDirection.z));
-
-        if (absoluteDirection.y >= absoluteDirection.x
-            && absoluteDirection.y >= absoluteDirection.z)
-        {
-            transform.rotation = Quaternion.Euler(
-                cameraDirection.y >= 0f ? 90f : -90f,
-                0f,
-                0f);
-        }
-        else if (absoluteDirection.x >= absoluteDirection.z)
-        {
-            transform.rotation = Quaternion.Euler(
-                0f,
-                cameraDirection.x >= 0f ? 90f : -90f,
-                0f);
-        }
-        else
-        {
-            transform.rotation = cameraDirection.z >= 0f
-                ? Quaternion.identity
-                : Quaternion.Euler(0f, 180f, 0f);
-        }
+        transform.rotation = Quaternion.Euler(
+            cameraIsAbove ? 90f : -90f,
+            0f,
+            0f);
+        transform.position = centerTarget.position
+            + Vector3.up * verticalOffset;
     }
 
     [ContextMenu("Rebuild Grid")]

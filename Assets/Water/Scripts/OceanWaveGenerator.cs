@@ -48,7 +48,7 @@ public sealed class OceanWaveGenerator : MonoBehaviour
     [Header("Simulation")]
     [SerializeField] private QualityPreset _qualityPreset = QualityPreset.Balanced512;
     [SerializeField, Range(1f, 60f)] private float _updatesPerSecond = 30f;
-    [SerializeField, Min(0.1f)] private float _waterDepth = 20f;
+    [SerializeField, Min(0.1f)] private float _waterDepth = 16f;
     [SerializeField] private CascadeSettings[] _cascades = CreateDefaultCascades();
 
     private RenderTexture _initialSpectrum;

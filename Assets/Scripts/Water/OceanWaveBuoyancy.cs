@@ -9,10 +9,10 @@ namespace RoyaltyBoat.Water
     {
         private const int SampleCount = 4;
 
-        [SerializeField, Min(0.05f)] private float floatDepth = 0.9f;
-        [SerializeField, Min(0f)] private float buoyancyMultiplier = 2.2f;
-        [SerializeField, Min(0f)] private float waterDrag = 2.5f;
-        [SerializeField, Min(0f)] private float waterAngularDrag = 1f;
+        private float floatDepth = 0.15f;
+        private float buoyancyMultiplier = 4.2f;
+        private float waterDrag = 2.5f;
+        private float waterAngularDrag = 1f;
 
         private readonly Vector3[] localBuoyancyPoints = new Vector3[SampleCount];
         private readonly Vector2[] samplePositions = new Vector2[SampleCount];
