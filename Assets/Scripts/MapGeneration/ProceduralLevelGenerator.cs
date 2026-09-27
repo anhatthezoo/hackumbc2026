@@ -239,7 +239,7 @@ namespace RoyaltyBoat.MapGeneration
             chunkObject.name = $"{index:00} - {authoring.ChunkId}";
             chunkObject.transform.localPosition = new Vector3(cursor, 0f, 0f);
             chunkObject.transform.localRotation = Quaternion.identity;
-            ConfigureNonBlockingObstacles(chunkObject);
+            ConfigureObstacleCollisions(chunkObject);
 
             LevelChunkAuthoring instance = chunkObject.GetComponent<LevelChunkAuthoring>();
             float start = cursor;
@@ -247,7 +247,7 @@ namespace RoyaltyBoat.MapGeneration
             generatedChunks.Add(new GeneratedChunkInstance(index, start, cursor, definition, instance));
         }
 
-        private static void ConfigureNonBlockingObstacles(GameObject chunkObject)
+        private static void ConfigureObstacleCollisions(GameObject chunkObject)
         {
             foreach (ObstacleDescriptor descriptor in
                 chunkObject.GetComponentsInChildren<ObstacleDescriptor>(true))
