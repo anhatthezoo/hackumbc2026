@@ -36,81 +36,103 @@ public static class MapGenerationContentBuilder
         EnsureFolders();
 
         GameObject opening = BuildChunk("OpenWater", "open-water", LaneMask.All, LaneMask.All,
-            Route(0f, 0f, 80f, 0f));
+            Route(0f, 0f, 160f, 0f));
         GameObject cooldown = BuildChunk("Cooldown", "cooldown", LaneMask.All, LaneMask.All,
-            Route(0f, 0f, 80f, 0f));
+            Route(0f, 0f, 160f, 0f));
 
         GameObject icebergSlalom = BuildChunk(
             "IcebergSlalom",
             "iceberg-slalom",
             LaneMask.All,
             LaneMask.All,
-            Route(0f, 0f, 16f, 14f, 34f, -14f, 54f, 14f, 80f, 0f),
-            Place("Iceberg", 17f, -14f, 12f),
-            Place("Iceberg", 36f, 14f, -18f),
-            Place("Iceberg", 56f, -14f, 20f));
+            Route(0f, 0f, 28f, 18f, 58f, -18f, 92f, 20f, 126f, -18f, 160f, 0f),
+            Place("Iceberg", 20f, -24f, 12f),
+            Place("Iceberg", 36f, 7f, -18f),
+            Place("Iceberg", 50f, 25f, 20f),
+            Place("Iceberg", 70f, -13f, -12f),
+            Place("Iceberg", 92f, -26f, 17f),
+            Place("Iceberg", 108f, 5f, -22f),
+            Place("Iceberg", 128f, 24f, 14f),
+            Place("Iceberg", 146f, -14f, -16f));
 
         GameObject debrisField = BuildChunk(
             "DebrisField",
             "debris-field",
             LaneMask.All,
             LaneMask.All,
-            Route(0f, 0f, 18f, 11f, 36f, -11f, 56f, 10f, 80f, 0f),
-            Place("FloatingLog", 17f, -10f, 24f),
-            Place("DebrisCluster", 31f, 12f, -15f),
-            Place("FloatingLog", 45f, 2f, -28f),
-            Place("DebrisCluster", 61f, -13f, 21f));
+            Route(0f, 0f, 28f, 14f, 62f, -15f, 98f, 16f, 132f, -14f, 160f, 0f),
+            Place("FloatingLog", 18f, -25f, 24f),
+            Place("FloatingLog", 32f, 13f, -15f),
+            Place("DebrisCluster", 48f, -4f, -28f),
+            Place("FloatingLog", 63f, 26f, 21f),
+            Place("DebrisCluster", 79f, -22f, 8f),
+            Place("FloatingLog", 94f, 4f, -30f),
+            Place("FloatingLog", 110f, 22f, 16f),
+            Place("DebrisCluster", 126f, -8f, -18f),
+            Place("FloatingLog", 142f, -26f, 27f),
+            Place("DebrisCluster", 150f, 16f, -10f));
 
         GameObject acidSafeRight = BuildChunk(
             "AcidSafeRight",
             "acid-safe-right",
             LaneMask.All,
-            LaneMask.Right,
-            Route(0f, 0f, 16f, 18f, 64f, 18f, 80f, 18f),
-            Place("AcidicWater", 25f, -9f, 0f),
-            Place("AcidicWater", 47f, -9f, 0f),
-            Place("AcidicWater", 67f, -9f, 0f));
+            LaneMask.All,
+            Route(0f, 0f, 24f, 0f, 66f, 0f, 92f, 0f, 136f, 0f, 160f, 0f),
+            Place("AcidicWater", 45f, 0f, 0f),
+            Place("AcidicWater", 115f, 0f, 0f));
 
         GameObject narrowPassage = BuildChunk(
             "NarrowIcebergPassage",
             "narrow-iceberg-passage",
             LaneMask.All,
             LaneMask.Center,
-            Route(0f, 0f, 80f, 0f),
-            Place("Iceberg", 30f, -15f, 10f),
-            Place("Iceberg", 30f, 15f, -12f),
-            Place("Iceberg", 54f, -15f, -8f),
-            Place("Iceberg", 54f, 15f, 14f));
+            Route(0f, 0f, 160f, 0f),
+            Place("Iceberg", 26f, -25f, 10f),
+            Place("Iceberg", 26f, 25f, -12f),
+            Place("Iceberg", 58f, -19f, -8f),
+            Place("Iceberg", 58f, 19f, 14f),
+            Place("Iceberg", 92f, -25f, 16f),
+            Place("Iceberg", 92f, 25f, -16f),
+            Place("Iceberg", 126f, -19f, -10f),
+            Place("Iceberg", 126f, 19f, 12f));
 
         GameObject iceAndDebris = BuildChunk(
             "IceAndDebris",
             "ice-and-debris",
             LaneMask.All,
             LaneMask.Left | LaneMask.Center,
-            Route(0f, 0f, 18f, -15f, 45f, -15f, 62f, 0f, 80f, 0f),
-            Place("Iceberg", 23f, 11f, 16f),
-            Place("FloatingLog", 38f, -5f, -20f),
-            Place("DebrisCluster", 52f, 12f, 10f),
-            Place("Iceberg", 66f, -15f, -11f));
+            Route(0f, 0f, 30f, -18f, 72f, -18f, 104f, 16f, 138f, 16f, 160f, 0f),
+            Place("Iceberg", 20f, 23f, 16f),
+            Place("FloatingLog", 34f, -8f, -20f),
+            Place("DebrisCluster", 48f, -25f, 10f),
+            Place("Iceberg", 64f, 8f, -11f),
+            Place("FloatingLog", 80f, 25f, 26f),
+            Place("DebrisCluster", 96f, -17f, -12f),
+            Place("Iceberg", 114f, -27f, 18f),
+            Place("FloatingLog", 128f, 5f, -24f),
+            Place("DebrisCluster", 142f, 24f, 14f),
+            Place("Iceberg", 151f, -8f, -9f));
 
         GameObject acidDebris = BuildChunk(
             "AcidDebrisGauntlet",
             "acid-debris-gauntlet",
             LaneMask.All,
             LaneMask.Left | LaneMask.Right,
-            Route(0f, 0f, 16f, -18f, 38f, -18f, 56f, 18f, 80f, 18f),
-            Place("AcidicWater", 24f, 8f, 0f),
-            Place("AcidicWater", 55f, -8f, 0f),
-            Place("FloatingLog", 37f, -14f, 32f),
-            Place("DebrisCluster", 67f, 15f, -18f));
+            Route(0f, 0f, 24f, 0f, 66f, 0f, 88f, -20f, 124f, 18f, 160f, 0f),
+            Place("AcidicWater", 42f, 0f, 0f),
+            Place("FloatingLog", 78f, -25f, 32f),
+            Place("DebrisCluster", 82f, 0f, -18f),
+            Place("FloatingLog", 86f, 25f, 18f),
+            Place("AcidicWater", 126f, 0f, 0f));
 
         GameObject ghostShipEncounter = BuildChunk(
             "GhostShipEncounter",
             "ghost-ship-encounter",
             LaneMask.All,
             LaneMask.All,
-            Route(0f, 0f, 18f, 11f, 42f, 15f, 64f, 4f, 80f, 0f),
-            Place("GhostShip", 24f, -22f, 0f));
+            Route(0f, 0f, 34f, 12f, 78f, 18f, 118f, 5f, 160f, 0f),
+            Place("GhostShip", 48f, -24f, 0f),
+            Place("GhostShip", 116f, 24f, 180f));
 
         LevelChunkDefinition openingDefinition = BuildDefinition("OpenWater", opening, 1f, 0f, 1, 99, 0);
         LevelChunkDefinition cooldownDefinition = BuildDefinition("Cooldown", cooldown, 1f, 0f, 1, 99, 0);
@@ -205,14 +227,21 @@ public static class MapGenerationContentBuilder
 
         float cursor = 0f;
         var ids = new List<string>();
-        foreach (GeneratedChunkInstance chunk in generator.GeneratedChunks)
+        for (int index = 0; index < generator.GeneratedChunks.Count; ++index)
         {
+            GeneratedChunkInstance chunk = generator.GeneratedChunks[index];
             if (!Mathf.Approximately(chunk.StartX, cursor))
             {
-                throw new InvalidOperationException($"Chunk {chunk.Index} is not contiguous with its predecessor.");
+                throw new InvalidOperationException($"Chunk {chunk.Index} does not begin at the expected course position.");
             }
             cursor = chunk.EndX;
             ids.Add(chunk.ChunkId);
+
+            bool isHazard = index > 0 && index < generator.GeneratedChunks.Count - 1;
+            if (isHazard)
+            {
+                cursor += generator.HazardChunkGap;
+            }
         }
 
         if (!Mathf.Approximately(generator.GeneratedLength, cursor))

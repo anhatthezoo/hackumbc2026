@@ -74,7 +74,12 @@ Shader "Ocean/Godot Ocean Water URP"
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
         #define MAX_CASCADES 8
+        #define MAX_OIL_SLICKS 32
         #define PI 3.14159265358979323846
+
+        int _OilSlickCount;
+        float4 _OilSlickData[MAX_OIL_SLICKS];
+        float4 _OilSlickParams[MAX_OIL_SLICKS];
 
         TEXTURE2D_ARRAY(_DisplacementArray);
         SAMPLER(sampler_DisplacementArray);
@@ -230,6 +235,50 @@ Shader "Ocean/Godot Ocean Water URP"
                 HashNoise(cell + 1.0),
                 fractional.x);
             return lerp(bottom, top, fractional.y);
+        }
+
+        float SampleOilSlickMask(float2 worldXZ, out float sheen)
+        {
+            float mask = 0.0;
+            sheen = 0.0;
+            int slickCount = clamp(_OilSlickCount, 0, MAX_OIL_SLICKS);
+
+            [loop]
+            for (int index = 0; index < slickCount; ++index)
+            {
+                float4 data = _OilSlickData[index];
+                float4 parameters = _OilSlickParams[index];
+                float2 radii = max(data.zw, float2(0.1, 0.1));
+                float2 offset = worldXZ - data.xy;
+                float2 normalizedOffset = offset / radii;
+                if (max(abs(normalizedOffset.x), abs(normalizedOffset.y)) > 1.45)
+                {
+                    continue;
+                }
+                float distanceFromCenter = length(normalizedOffset);
+                float broadNoise = ValueNoise(
+                    worldXZ * 0.12 + parameters.z * float2(3.17, 5.31));
+                float detailNoise = ValueNoise(
+                    worldXZ * 0.42 - parameters.z * float2(1.73, 2.29));
+                float boundary = 1.0
+                    + (broadNoise - 0.5) * parameters.y
+                    + (detailNoise - 0.5) * parameters.y * 0.35;
+                float localMask = 1.0 - smoothstep(
+                    boundary - parameters.x,
+                    boundary + parameters.x,
+                    distanceFromCenter);
+                localMask *= parameters.w;
+                mask = max(mask, localMask);
+
+                float filmBands = 0.5 + 0.5 * sin(
+                    offset.x * 0.58
+                    + offset.y * 0.41
+                    + broadNoise * 7.0
+                    + parameters.z);
+                sheen = max(sheen, filmBands * localMask);
+            }
+
+            return saturate(mask);
         }
 
         float MicroWaveHeight(float2 waterUV)
@@ -565,6 +614,21 @@ Shader "Ocean/Godot Ocean Water URP"
             half3 foamSkylight = _FoamColor.rgb
                 * (0.52 + 0.28 * saturate(normalWS.y));
             color = lerp(color, max(color, foamSkylight), foamFactor * 0.82);
+
+            // Oil is applied to the displaced ocean itself, rather than rendered
+            // as a second flat plane. Noisy world-space masks give every slick a
+            // soft, irregular edge while preserving the underlying wave motion.
+            float oilSheen;
+            float oilMask = SampleOilSlickMask(input.positionWS.xz, oilSheen);
+            half3 oilBase = half3(0.012, 0.009, 0.008);
+            half3 filmColor = lerp(
+                half3(0.07, 0.025, 0.045),
+                half3(0.035, 0.075, 0.065),
+                oilSheen);
+            half3 oilColor = oilBase
+                + filmColor * oilSheen * 0.32
+                + environmentReflection * (0.12 + 0.12 * oilSheen);
+            color = lerp(color, oilColor, oilMask);
 
             color = MixFog(color, input.fogFactor);
             return half4(color, 1.0);
