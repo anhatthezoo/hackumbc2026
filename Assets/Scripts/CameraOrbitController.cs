@@ -62,6 +62,11 @@ public class CameraOrbitController : MonoBehaviour
         SetBuildSide(BuildViewSide.NearSide, true);
     }
 
+    private void OnValidate()
+    {
+        maximumZoom = Mathf.Max(maximumZoom, minimumZoom);
+    }
+
     private void LateUpdate()
     {
         Mouse mouse = Mouse.current;

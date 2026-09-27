@@ -48,7 +48,7 @@
     height: 160px;
     -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
     -unity-text-align: middle-center;
-    font-size: 118px;
+    font-size: 130px;
     letter-spacing: 6px;
     white-space: nowrap;
 }
@@ -93,7 +93,7 @@
 .menu-button {
     height: 114px;
     margin-bottom: 21px;
-    font-size: 46px;
+    font-size: 51px;
 }
 
 .primary-button {
@@ -101,7 +101,7 @@
     color: rgb(28, 55, 88);
     background-color: rgb(255, 191, 57);
     border-bottom-color: rgb(211, 111, 26);
-    font-size: 70px;
+    font-size: 77px;
 }
 
 .secondary-button {
@@ -157,7 +157,7 @@
     color: rgb(28, 55, 88);
     background-color: rgb(255, 204, 88);
     border-bottom-color: rgb(202, 112, 28);
-    font-size: 29px;
+    font-size: 32px;
 }
 
 .modal-heading {
@@ -172,7 +172,7 @@
     -unity-text-outline-width: 3px;
     -unity-text-outline-color: rgb(214, 112, 31);
     -unity-text-align: middle-center;
-    font-size: 78px;
+    font-size: 86px;
     letter-spacing: 7px;
 }
 
@@ -181,7 +181,7 @@
     color: rgb(255, 239, 197);
     -unity-font-definition: url("project://database/Assets/UI/Fonts/PatrickHand-Regular.ttf");
     -unity-text-align: middle-center;
-    font-size: 27px;
+    font-size: 30px;
     letter-spacing: 4px;
 }
 
@@ -217,7 +217,7 @@
 .credit-name {
     color: rgb(31, 56, 84);
     -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
-    font-size: 30px;
+    font-size: 33px;
     letter-spacing: 2px;
 }
 
@@ -258,7 +258,7 @@
 .fullscreen-toggle,
 .setting-toggle {
     width: 62px;
-    font-size: 24px;
+    font-size: 27px;
 }
 
 .setting-button {
@@ -267,7 +267,7 @@
     color: rgb(255, 239, 198);
     background-color: rgb(66, 99, 134);
     border-bottom-color: rgb(35, 62, 91);
-    font-size: 23px;
+    font-size: 26px;
 }
 
 .setting-dropdown {
@@ -275,7 +275,7 @@
     height: 54px;
     color: rgb(255, 239, 198);
     -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
-    font-size: 22px;
+    font-size: 25px;
 }
 
 .setting-dropdown .unity-base-field__input {
@@ -309,14 +309,14 @@
 .credit-role {
     color: rgb(69, 103, 139);
     -unity-font-definition: url("project://database/Assets/UI/Fonts/PatrickHand-Regular.ttf");
-    font-size: 24px;
+    font-size: 27px;
 }
 
 .made-with {
     margin-top: 8px;
     color: rgb(255, 239, 190);
     -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
-    font-size: 19px;
+    font-size: 22px;
     letter-spacing: 3px;
 }
 
@@ -329,7 +329,7 @@
     color: rgb(255, 226, 143);
     -unity-font-definition: url("project://database/Assets/UI/Fonts/LilitaOne-Regular.ttf");
     -unity-text-align: middle-center;
-    font-size: 18px;
+    font-size: 21px;
     letter-spacing: 3px;
 }
 
@@ -350,7 +350,7 @@
     border-bottom-left-radius: 12px;
     border-bottom-right-radius: 12px;
     -unity-font-definition: url("project://database/Assets/UI/Fonts/PatrickHand-Regular.ttf");
-    font-size: 19px;
+    font-size: 22px;
 }
 
 .main-screen.is-compact .title-area {
@@ -359,7 +359,7 @@
 }
 
 .main-screen.is-compact .game-title {
-    font-size: 76px;
+    font-size: 84px;
 }
 
 .main-screen.is-compact .menu-panel {

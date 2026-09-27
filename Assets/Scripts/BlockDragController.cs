@@ -93,12 +93,7 @@ public class BlockDragController : MonoBehaviour
     {
         Ray ray = dragCamera.ScreenPointToRay(pointerPosition);
 
-        if (!Physics.Raycast(
-                ray,
-                out RaycastHit hit,
-                raycastDistance,
-                draggableLayers,
-                QueryTriggerInteraction.Ignore))
+        if (!TryGetClosestBlockHit(ray, out RaycastHit hit))
         {
             return;
         }
@@ -163,6 +158,36 @@ public class BlockDragController : MonoBehaviour
 
         Drag(pointerPosition);
         ShowDragHighlights();
+    }
+
+    private bool TryGetClosestBlockHit(Ray ray, out RaycastHit blockHit)
+    {
+        blockHit = default;
+        RaycastHit[] hits = Physics.RaycastAll(
+            ray,
+            raycastDistance,
+            draggableLayers,
+            QueryTriggerInteraction.Ignore);
+        float closestDistance = float.PositiveInfinity;
+        bool foundBlock = false;
+
+        foreach (RaycastHit hit in hits)
+        {
+            Block block = hit.collider.GetComponentInParent<Block>();
+
+            if (block == null
+                || !block.CompareTag("Block")
+                || hit.distance >= closestDistance)
+            {
+                continue;
+            }
+
+            closestDistance = hit.distance;
+            blockHit = hit;
+            foundBlock = true;
+        }
+
+        return foundBlock;
     }
 
     private void Drag(Vector2 pointerPosition)

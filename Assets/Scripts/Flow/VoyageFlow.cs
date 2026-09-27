@@ -49,6 +49,7 @@ namespace RoyaltyBoat.Flow
 
             generator.GenerateLevel(runSeed, 1);
             PlaceBuiltShipOnWater();
+            CreateFinishPoint(generator);
         }
 
         public static void OpenShipBuilder()
@@ -93,6 +94,7 @@ namespace RoyaltyBoat.Flow
             }
 
             Transform shipTransform = builtShip.transform;
+            shipTransform.localScale = Vector3.one * 2.5f;
             shipTransform.SetPositionAndRotation(new Vector3(0f, 0.5f, 0f), Quaternion.identity);
 
             Rigidbody body = builtShip.GetComponent<Rigidbody>();
@@ -119,7 +121,22 @@ namespace RoyaltyBoat.Flow
             if (body != null)
             {
                 body.constraints = RigidbodyConstraints.FreezeRotationY;
+
+                BoatMovementController movement = builtShip.GetComponent<BoatMovementController>();
+                if (movement == null)
+                {
+                    builtShip.gameObject.AddComponent<BoatMovementController>();
+                }
             }
+
+            VoyageShipPresentation presentation =
+                builtShip.GetComponent<VoyageShipPresentation>();
+            if (presentation == null)
+            {
+                presentation = builtShip.gameObject.AddComponent<VoyageShipPresentation>();
+            }
+
+            presentation.Configure(builtShip);
 
             Camera gameplayCamera = Camera.main;
             if (gameplayCamera == null)
@@ -135,6 +152,28 @@ namespace RoyaltyBoat.Flow
             }
 
             cameraController.SetTarget(shipTransform);
+        }
+
+        private static void CreateFinishPoint(ProceduralLevelGenerator generator)
+        {
+            if (builtShip == null || generator.GeneratedRoot == null ||
+                generator.GeneratedChunks.Count == 0)
+            {
+                Debug.LogError("Cannot place the finish point without a generated course and ship.");
+                return;
+            }
+
+            GeneratedChunkInstance cooldown =
+                generator.GeneratedChunks[generator.GeneratedChunks.Count - 1];
+            float finishX = Mathf.Lerp(cooldown.StartX, cooldown.EndX, 0.75f);
+
+            GameObject finishObject = new GameObject("Royal Finish Gate");
+            finishObject.transform.SetParent(generator.GeneratedRoot, false);
+            finishObject.transform.localPosition = new Vector3(finishX, 0f, 0f);
+
+            finishObject.AddComponent<BoxCollider>();
+            VoyageFinishPoint finishPoint = finishObject.AddComponent<VoyageFinishPoint>();
+            finishPoint.Configure(builtShip, generator.ActiveLevelNumber);
         }
     }
 }
