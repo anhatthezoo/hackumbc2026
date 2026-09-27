@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: DistantVolumetricFog
+  m_Shader: {fileID: 4800000, guid: b41d9932a38a4f68a4d772e75a2bb8c1, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties:
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs: []
+    m_Ints: []
+    m_Floats:
+    - _BandHeight: 0.64
+    - _Density: 0.24
+    - _LayerPhase: 0
+    - _NoiseScale: 4.2
+    m_Colors:
+    - _Color: {r: 0.48, g: 0.7, b: 0.92, a: 1}
+    - _NoiseSpeed: {r: 0.012, g: 0.004, b: 0, a: 0}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1
