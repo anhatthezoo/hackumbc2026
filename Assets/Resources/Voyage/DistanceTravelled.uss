@@ -1,0 +1,76 @@
+.distance-hud-root {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+}
+
+.distance-travelled {
+    position: absolute;
+    left: 50%;
+    top: 32px;
+    width: 390px;
+    height: 112px;
+    translate: -195px 0;
+    align-items: center;
+}
+
+.distance-value-stack {
+    position: relative;
+    width: 100%;
+    height: 64px;
+}
+
+.distance-caption-stack {
+    position: relative;
+    width: 100%;
+    height: 48px;
+}
+
+.distance-value,
+.distance-caption {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    color: rgb(255, 255, 255);
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/DarumadropOne-Regular.ttf");
+    -unity-text-align: middle-center;
+    white-space: nowrap;
+}
+
+.distance-value {
+    height: 64px;
+    font-size: 64px;
+}
+
+.distance-caption {
+    height: 48px;
+    font-size: 48px;
+}
+
+.distance-value-shadow,
+.distance-caption-shadow {
+    color: rgba(0, 0, 0, 0.22);
+}
+
+.distance-shadow-top-left {
+    left: -3px;
+    top: -3px;
+}
+
+.distance-shadow-top-right {
+    left: 3px;
+    top: -3px;
+}
+
+.distance-shadow-bottom-left {
+    left: -3px;
+    top: 3px;
+}
+
+.distance-shadow-bottom-right {
+    left: 3px;
+    top: 3px;
+}
