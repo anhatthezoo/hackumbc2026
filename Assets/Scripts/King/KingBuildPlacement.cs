@@ -41,6 +41,13 @@ namespace RoyaltyBoat.King
                 return transform.position;
             }
 
+            ChairSeat chair = block.GetComponent<ChairSeat>();
+            if (chair != null
+                && chair.TryGetSeatPose(out Vector3 seatPosition, out _))
+            {
+                return seatPosition;
+            }
+
             Collider supportCollider = block.GetComponent<Collider>();
             Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
             if (supportCollider == null || renderers.Length == 0)
@@ -109,6 +116,13 @@ namespace RoyaltyBoat.King
             SupportBlock = block;
             SupportingShip = ship;
             SupportBlock.Destroyed += HandleSupportDestroyed;
+
+            if (chair.TryGetSeatPose(out Vector3 seatPosition, out Quaternion seatRotation))
+            {
+                transform.SetPositionAndRotation(seatPosition, seatRotation);
+            }
+
+            GetComponent<KingAnimationController>()?.RestoreSittingIdle();
             controller.BoatLink.Connect(body, true);
             return true;
         }
