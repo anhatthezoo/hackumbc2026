@@ -134,8 +134,8 @@ public class BlockDragController : MonoBehaviour
             draggedBlock = selectedBlock.transform;
         }
 
-        float dragHeight = snappingShip != null && snappingShip.CoreBlock != null
-            ? snappingShip.CoreBlock.transform.position.y
+        float dragHeight = snappingShip != null && snappingShip.AnchorBlock != null
+            ? snappingShip.AnchorBlock.transform.position.y
             : draggedBlock.position.y;
 
         dragPlane = new Plane(Vector3.up, new Vector3(0f, dragHeight, 0f));
@@ -172,8 +172,9 @@ public class BlockDragController : MonoBehaviour
         if (draggedShip == null
             && TryGetSurfacePlacement(ray, out Vector3 surfacePosition))
         {
-            draggedBlock.position = surfacePosition;
-            draggedBlock.rotation = snappingShip.transform.rotation;
+            TryApplyPlacement(
+                surfacePosition,
+                snappingShip.transform.rotation);
             return;
         }
 
@@ -183,8 +184,10 @@ public class BlockDragController : MonoBehaviour
         }
 
         Vector3 targetPosition = ray.GetPoint(distance) + pointerOffset;
-        Vector3 gridOrigin = snappingShip != null && snappingShip.CoreBlock != null
-            ? snappingShip.CoreBlock.transform.position
+        Vector3 gridOrigin = snappingShip != null
+            ? (snappingShip.AnchorBlock != null
+                ? snappingShip.AnchorBlock.transform.position
+                : snappingShip.transform.position)
             : Vector3.zero;
 
         float activeGridSize = snappingShip != null
@@ -204,9 +207,86 @@ public class BlockDragController : MonoBehaviour
                 + Mathf.Round((targetPosition.z - gridOrigin.z) / activeGridSize)
                 * activeGridSize);
 
-        draggedBlock.position = ConstrainToPlacementBounds(
-            snappedPosition,
-            activeGridSize);
+        TryApplyPlacement(
+            ConstrainToPlacementBounds(snappedPosition, activeGridSize),
+            draggedBlock.rotation);
+    }
+
+    private bool TryApplyPlacement(Vector3 position, Quaternion rotation)
+    {
+        if (draggedBlock == null)
+        {
+            return false;
+        }
+
+        Vector3 previousPosition = draggedBlock.position;
+        Quaternion previousRotation = draggedBlock.rotation;
+        draggedBlock.SetPositionAndRotation(position, rotation);
+        Physics.SyncTransforms();
+
+        if (IsPlacementClear(draggedBlock))
+        {
+            return true;
+        }
+
+        draggedBlock.SetPositionAndRotation(previousPosition, previousRotation);
+        Physics.SyncTransforms();
+        return false;
+    }
+
+    public bool IsPlacementClear(Transform movingRoot)
+    {
+        if (movingRoot == null)
+        {
+            return false;
+        }
+
+        Collider[] movingColliders =
+            movingRoot.GetComponentsInChildren<Collider>(true);
+
+        foreach (Collider movingCollider in movingColliders)
+        {
+            if (movingCollider == null || !movingCollider.enabled)
+            {
+                continue;
+            }
+
+            Collider[] nearbyColliders = Physics.OverlapBox(
+                movingCollider.bounds.center,
+                movingCollider.bounds.extents + Vector3.one * 0.02f,
+                Quaternion.identity,
+                ~0,
+                QueryTriggerInteraction.Ignore);
+
+            foreach (Collider otherCollider in nearbyColliders)
+            {
+                if (otherCollider == null
+                    || otherCollider == movingCollider
+                    || !otherCollider.enabled
+                    || otherCollider.isTrigger
+                    || otherCollider.transform.IsChildOf(movingRoot)
+                    || otherCollider.GetComponentInParent<Block>() == null)
+                {
+                    continue;
+                }
+
+                if (Physics.ComputePenetration(
+                        movingCollider,
+                        movingCollider.transform.position,
+                        movingCollider.transform.rotation,
+                        otherCollider,
+                        otherCollider.transform.position,
+                        otherCollider.transform.rotation,
+                        out _,
+                        out float penetrationDistance)
+                    && penetrationDistance > 0.01f)
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     private bool TryGetSurfacePlacement(Ray ray, out Vector3 placementPosition)

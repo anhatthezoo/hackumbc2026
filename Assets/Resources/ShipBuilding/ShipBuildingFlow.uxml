@@ -2,10 +2,42 @@
     <Style src="project://database/Assets/Resources/ShipBuilding/ShipBuildingFlow.uss" />
 
     <ui:VisualElement class="ship-building-overlay" picking-mode="Ignore">
-        <ui:VisualElement class="ship-building-card">
+        <ui:VisualElement class="shop-panel" picking-mode="Position">
+            <ui:VisualElement class="shop-heading-row">
+                <ui:VisualElement>
+                    <ui:Label text="ROYAL SUPPLY" class="shop-eyebrow" />
+                    <ui:Label text="SHIP PARTS" class="shop-title" />
+                </ui:VisualElement>
+                <ui:Label text="DRY DOCK" class="shop-stamp" />
+            </ui:VisualElement>
+
+            <ui:Label text="Buy a part, then drag it into your design." class="shop-subtitle" />
+
+            <ui:VisualElement class="category-row">
+                <ui:Label text="STRUCTURE" class="category-chip category-chip-active" />
+                <ui:Label text="MORE SOON" class="category-chip" />
+            </ui:VisualElement>
+
+            <ui:ScrollView name="shop-scroll" class="shop-scroll" mode="Vertical">
+                <ui:VisualElement name="shop-items" class="shop-items" />
+            </ui:ScrollView>
+
+            <ui:Label name="shop-status" text="Purchased parts appear on the build floor." class="shop-status" />
+        </ui:VisualElement>
+
+        <ui:VisualElement class="money-hud" picking-mode="Ignore">
+            <ui:Label text="ROYAL FUNDS" class="money-caption" />
+            <ui:VisualElement class="money-value-row">
+                <ui:Label text="◆" class="money-icon" />
+                <ui:Label name="money-balance" text="$0" class="money-balance" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement class="ship-building-card" picking-mode="Position">
             <ui:Label text="ROYAL SHIPYARD" class="ship-building-title" />
-            <ui:Label text="DRAG BLOCKS ONTO YOUR SHIP, THEN LAUNCH" class="ship-building-hint" />
-            <ui:Button name="set-sail-button" text="SET SAIL" class="set-sail-button" picking-mode="Position" />
+            <ui:Label text="Drag parts together. Flip sides to check your shape." class="ship-building-subtitle" />
+            <ui:Button name="camera-angle-button" text="FLIP SIDE  •  V" class="camera-angle-button" />
+            <ui:Button name="set-sail-button" text="SET SAIL" class="set-sail-button" />
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

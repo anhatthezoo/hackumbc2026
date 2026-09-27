@@ -3,11 +3,9 @@ using UnityEngine;
 public sealed class ShipBuildArea : MonoBehaviour
 {
     [SerializeField] private Transform platform;
-    [SerializeField] private AdaptiveBuildGrid buildGrid;
     [SerializeField] private Ship startingShip;
 
     public Transform Platform => platform;
-    public AdaptiveBuildGrid BuildGrid => buildGrid;
     public Ship StartingShip => startingShip;
 
     private void Awake()
@@ -44,10 +42,5 @@ public sealed class ShipBuildArea : MonoBehaviour
 
         orbitController.OrbitTarget = platform;
 
-        if (buildGrid != null)
-        {
-            buildGrid.CenterTarget = platform;
-            buildGrid.ViewCamera = targetCamera;
-        }
     }
 }

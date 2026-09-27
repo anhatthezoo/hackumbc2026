@@ -100,7 +100,7 @@ namespace RoyaltyBoat.Obstacles
 
             foreach (Ship ship in Object.FindObjectsByType<Ship>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
             {
-                if (ship.CoreBlock == null || !ship.CoreBlock.IsAlive)
+                if (!ship.IsAlive)
                 {
                     continue;
                 }

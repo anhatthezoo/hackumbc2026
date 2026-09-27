@@ -7,10 +7,6 @@ public class Ship : MonoBehaviour
     public const float DefaultAttachmentGridSize = 1f;
     public const float DefaultAttachmentSnapDistance = 0.6f;
 
-    [Header("Required Blocks")]
-    [SerializeField] private Block coreBlock;
-    [SerializeField] private Block kingBlock;
-
     [Header("Ship Structure")]
     [SerializeField] private List<Block> blocks = new List<Block>();
     [SerializeField] private int blockCount;
@@ -19,8 +15,12 @@ public class Ship : MonoBehaviour
     [FormerlySerializedAs("attachmentTolerance")]
     [SerializeField, Min(0f)] private float attachmentSnapDistance = DefaultAttachmentSnapDistance;
 
-    public Block CoreBlock => coreBlock;
-    public Block KingBlock => kingBlock;
+    /// <summary>
+    /// A temporary grid reference selected from the ship's current blocks.
+    /// It has no special gameplay meaning and changes automatically when blocks
+    /// are added or removed.
+    /// </summary>
+    public Block AnchorBlock => FindAnchorBlock();
     public IReadOnlyList<Block> Blocks => blocks;
     public int BlockCount => blockCount;
     public float AttachmentGridSize => attachmentGridSize;
@@ -28,7 +28,6 @@ public class Ship : MonoBehaviour
 
     private void Reset()
     {
-        coreBlock = GetComponent<Block>();
         CollectAttachedBlocks();
     }
 
@@ -42,22 +41,7 @@ public class Ship : MonoBehaviour
 
     private void Awake()
     {
-        if (coreBlock == null)
-        {
-            coreBlock = GetComponent<Block>();
-        }
-
         RefreshBlocks();
-
-        if (coreBlock == null)
-        {
-            Debug.LogError("A Ship requires a core Block on the same GameObject.", this);
-        }
-
-        if (kingBlock == null)
-        {
-            Debug.LogWarning("Assign the King's Block in the Ship component.", this);
-        }
     }
 
     private void Start()
@@ -117,7 +101,7 @@ public class Ship : MonoBehaviour
 
     public bool AttachBlock(Block block)
     {
-        if (block == null || block == coreBlock || block.GetComponent<Ship>() != null)
+        if (block == null || block.GetComponent<Ship>() != null)
         {
             return false;
         }
@@ -136,7 +120,7 @@ public class Ship : MonoBehaviour
 
     public bool DetachBlock(Block block)
     {
-        if (block == null || block == coreBlock || !blocks.Contains(block))
+        if (block == null || !blocks.Contains(block))
         {
             return false;
         }
@@ -148,6 +132,17 @@ public class Ship : MonoBehaviour
 
     public bool TryAttachBlock(Block block)
     {
+        if (AnchorBlock == null)
+        {
+            if (block == null || block.GetComponent<Ship>() != null)
+            {
+                return false;
+            }
+
+            block.transform.rotation = transform.rotation;
+            return AttachBlock(block);
+        }
+
         if (!TryFindAttachmentPosition(block, out Vector3 attachmentPosition))
         {
             return false;
@@ -161,6 +156,13 @@ public class Ship : MonoBehaviour
     [ContextMenu("Attach Touching Blocks")]
     public void AttachTouchingBlocks()
     {
+        // An empty ship has no preferred first block. The player explicitly
+        // chooses one by dragging it into the build area via TryAttachBlock.
+        if (AnchorBlock == null)
+        {
+            return;
+        }
+
         List<Block> candidates = new List<Block>(
             Object.FindObjectsByType<Block>(FindObjectsInactive.Exclude));
 
@@ -192,10 +194,62 @@ public class Ship : MonoBehaviour
 
     public bool CheckBoatLife()
     {
-        return coreBlock != null
-            && coreBlock.IsAlive
-            && kingBlock != null
-            && kingBlock.IsAlive;
+        bool hasLivingStructure = false;
+
+        foreach (Block block in blocks)
+        {
+            if (block != null && block.IsAlive)
+            {
+                hasLivingStructure = true;
+                break;
+            }
+        }
+
+        return hasLivingStructure;
+    }
+
+    /// <summary>
+    /// Moves the neutral ship container to the center of its blocks without
+    /// changing any block's world position. This keeps voyage physics and the
+    /// follow camera centered even when the first block was placed off-center.
+    /// </summary>
+    public void CenterRootOnStructure()
+    {
+        if (AnchorBlock == null)
+        {
+            return;
+        }
+
+        Vector3 center = Vector3.zero;
+        int livingBlockCount = 0;
+
+        foreach (Block block in blocks)
+        {
+            if (block == null || !block.IsAlive)
+            {
+                continue;
+            }
+
+            center += block.transform.position;
+            livingBlockCount++;
+        }
+
+        if (livingBlockCount == 0)
+        {
+            return;
+        }
+
+        center /= livingBlockCount;
+        Vector3 rootOffset = center - transform.position;
+        transform.position = center;
+
+        foreach (Block block in blocks)
+        {
+            if (block != null)
+            {
+                block.transform.position -= rootOffset;
+            }
+        }
     }
 
     private void HandleBlockDestroyed(Block destroyedBlock)
@@ -203,7 +257,6 @@ public class Ship : MonoBehaviour
         UnregisterBlock(destroyedBlock);
 
         if (destroyedBlock != null
-            && destroyedBlock != coreBlock
             && destroyedBlock.transform.IsChildOf(transform))
         {
             destroyedBlock.transform.SetParent(null, true);
@@ -351,6 +404,19 @@ public class Ship : MonoBehaviour
     {
         blocks = new List<Block>(GetComponentsInChildren<Block>(true));
         blockCount = blocks.Count;
+    }
+
+    private Block FindAnchorBlock()
+    {
+        foreach (Block block in blocks)
+        {
+            if (block != null && block.IsAlive)
+            {
+                return block;
+            }
+        }
+
+        return null;
     }
 
     private void SubscribeToBlock(Block block)

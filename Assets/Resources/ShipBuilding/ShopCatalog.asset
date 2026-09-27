@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 44a29b544938f834ab24da615418ce21, type: 3}
+  m_Name: ShopCatalog
+  m_EditorClassIdentifier: Assembly-CSharp::RoyaltyBoat.UI.ShopCatalog
+  products:
+  - id: wooden-block
+    displayName: Wooden Block
+    category: STRUCTURE
+    description: Reliable timber for hulls, walls, and questionable ideas.
+    price: 25
+    prefab: {fileID: 5429466535869677022, guid: 487a717d0716e4f4d978214f3b8df501, type: 3}

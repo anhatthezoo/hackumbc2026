@@ -10,7 +10,7 @@ namespace RoyaltyBoat.Flow
 {
     public static class VoyageFlow
     {
-        public const string GameplaySceneName = "SampleScene";
+        public const string GameplaySceneName = "Voyage";
         public const string ShipBuildingSceneName = "ShipBuilding";
 
         private static Ship builtShip;
@@ -67,6 +67,13 @@ namespace RoyaltyBoat.Flow
             }
 
             ship.AttachTouchingBlocks();
+            if (!ship.IsAlive)
+            {
+                Debug.LogError("Cannot launch a ship without at least one living block.");
+                return false;
+            }
+
+            ship.CenterRootOnStructure();
             ship.transform.SetParent(null, true);
             UnityEngine.Object.DontDestroyOnLoad(ship.gameObject);
 

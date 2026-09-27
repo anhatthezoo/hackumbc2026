@@ -15,7 +15,7 @@ This folder contains a Unity URP port of
   cascades in edit mode and play mode, and binds them with a
   `MaterialPropertyBlock`.
 - `Materials/GodotOceanWater.mat` — source-inspired water material.
-- `Meshes/OceanGrid.asset` — tessellated 400 m water grid used by SampleScene.
+- `Meshes/OceanGrid.asset` — tessellated 400 m water grid used by the Voyage scene.
 - `Textures/OceanSkybox.png` and `Materials/OceanSkybox.mat` — the original
   demo environment, imported as a cubemap for sky and water reflections.
 
