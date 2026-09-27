@@ -17,20 +17,40 @@ public sealed class BlockDragOutline : MonoBehaviour
     public void Configure(Color color, float width)
     {
         ClearOutline();
-        Shader shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Sprites/Default");
+
+        Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+
+        if (shader == null)
+        {
+            shader = Shader.Find("Sprites/Default");
+        }
+
         outlineMaterial = new Material(shader)
         {
-            name = "Runtime Build Selection",
+            name = "Runtime Block Drag Highlight",
             color = color,
             renderQueue = 4000
         };
-        if (outlineMaterial.HasProperty("_BaseColor")) outlineMaterial.SetColor("_BaseColor", color);
 
-        outlineRoot = new GameObject("Build Selection Outline");
+        if (outlineMaterial.HasProperty("_BaseColor"))
+        {
+            outlineMaterial.SetColor("_BaseColor", color);
+        }
+
+        if (outlineMaterial.HasProperty("_EmissionColor"))
+        {
+            outlineMaterial.EnableKeyword("_EMISSION");
+            outlineMaterial.SetColor("_EmissionColor", color * 2f);
+        }
+
+        outlineRoot = new GameObject("Drag Highlight");
         outlineRoot.transform.SetParent(transform, false);
-        Bounds localBounds = GetLocalBounds();
-        Vector3 center = localBounds.center;
-        Vector3 halfSize = localBounds.extents + Vector3.one * 0.025f;
+
+        BoxCollider boxCollider = GetComponent<BoxCollider>();
+        Vector3 center = boxCollider != null ? boxCollider.center : Vector3.zero;
+        Vector3 size = boxCollider != null ? boxCollider.size : Vector3.one;
+        Vector3 halfSize = size * 0.5f + Vector3.one * 0.025f;
+
         Vector3[] corners =
         {
             center + new Vector3(-halfSize.x, -halfSize.y, -halfSize.z),
@@ -45,8 +65,9 @@ public sealed class BlockDragOutline : MonoBehaviour
 
         for (int edge = 0; edge < EdgeIndices.GetLength(0); edge++)
         {
-            GameObject edgeObject = new GameObject("Selection Edge " + edge);
+            GameObject edgeObject = new GameObject("Edge " + edge);
             edgeObject.transform.SetParent(outlineRoot.transform, false);
+
             LineRenderer line = edgeObject.AddComponent<LineRenderer>();
             line.useWorldSpace = false;
             line.positionCount = 2;
@@ -64,49 +85,23 @@ public sealed class BlockDragOutline : MonoBehaviour
         }
     }
 
-    private Bounds GetLocalBounds()
+    private void OnDestroy()
     {
-        Collider[] colliders = GetComponentsInChildren<Collider>(true);
-        bool found = false;
-        Bounds localBounds = new Bounds(Vector3.zero, Vector3.one);
-        foreach (Collider collider in colliders)
-        {
-            if (collider == null || !collider.enabled || collider.isTrigger
-                || (outlineRoot != null && collider.transform.IsChildOf(outlineRoot.transform))) continue;
-            Bounds world = collider.bounds;
-            Vector3 min = world.min;
-            Vector3 max = world.max;
-            Vector3[] corners =
-            {
-                new(min.x, min.y, min.z), new(min.x, min.y, max.z),
-                new(min.x, max.y, min.z), new(min.x, max.y, max.z),
-                new(max.x, min.y, min.z), new(max.x, min.y, max.z),
-                new(max.x, max.y, min.z), new(max.x, max.y, max.z)
-            };
-            foreach (Vector3 corner in corners)
-            {
-                Vector3 local = transform.InverseTransformPoint(corner);
-                if (!found) { localBounds = new Bounds(local, Vector3.zero); found = true; }
-                else localBounds.Encapsulate(local);
-            }
-        }
-        if (found) return localBounds;
-        return new Bounds(Vector3.zero, Vector3.one);
+        ClearOutline();
     }
-
-    private void OnDestroy() => ClearOutline();
 
     private void ClearOutline()
     {
         if (outlineRoot != null)
         {
-            // Detach immediately so a same-frame recolor cannot measure the old
-            // line renderers and recursively inflate the next outline.
-            outlineRoot.SetActive(false);
-            outlineRoot.transform.SetParent(null, false);
             Destroy(outlineRoot);
             outlineRoot = null;
         }
-        if (outlineMaterial != null) { Destroy(outlineMaterial); outlineMaterial = null; }
+
+        if (outlineMaterial != null)
+        {
+            Destroy(outlineMaterial);
+            outlineMaterial = null;
+        }
     }
 }
