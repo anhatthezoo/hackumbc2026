@@ -26,8 +26,23 @@ namespace RoyaltyBoat.Gameplay
         private Vector3 positionVelocity;
         private Vector3 basePosition;
         private Quaternion baseRotation;
+        private float impulseStrength;
+        private float impulseDuration;
+        private float impulseEndTime;
 
         public Transform Target => target;
+
+        public void TriggerShake(float strength, float duration)
+        {
+            if (strength <= 0f || duration <= 0f)
+            {
+                return;
+            }
+
+            impulseStrength = Mathf.Max(impulseStrength, Mathf.Clamp01(strength));
+            impulseDuration = Mathf.Max(0.01f, duration);
+            impulseEndTime = Time.unscaledTime + impulseDuration;
+        }
 
         public void SetTarget(Transform newTarget, bool snapImmediately = true)
         {
@@ -96,7 +111,11 @@ namespace RoyaltyBoat.Gameplay
             float boatMotion = Mathf.Clamp01(
                 Mathf.Abs(targetBody.linearVelocity.y) * 0.08f +
                 targetBody.angularVelocity.magnitude * 0.16f);
-            float strength = setting * boatMotion;
+            float impulse = impulseEndTime > Time.unscaledTime
+                ? impulseStrength * Mathf.Clamp01(
+                    (impulseEndTime - Time.unscaledTime) / impulseDuration)
+                : 0f;
+            float strength = setting * Mathf.Clamp01(boatMotion + impulse);
             float sampleTime = Time.unscaledTime * shakeFrequency;
             float horizontalNoise = SignedNoise(sampleTime, 19.7f);
             float verticalNoise = SignedNoise(sampleTime, 47.3f);

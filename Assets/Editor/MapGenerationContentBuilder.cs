@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using RoyaltyBoat.MapGeneration;
 using RoyaltyBoat.Obstacles;
+using RoyaltyBoat.Weather;
 using UnityEditor;
 using UnityEngine;
 
@@ -134,6 +135,11 @@ public static class MapGenerationContentBuilder
             Place("GhostShip", 48f, -24f, 0f),
             Place("GhostShip", 116f, 24f, 180f));
 
+        GameObject rainSquall = BuildRainChunk(
+            "RainSquall",
+            "rain-squall",
+            Route(0f, 0f, 160f, 0f));
+
         LevelChunkDefinition openingDefinition = BuildDefinition("OpenWater", opening, 1f, 0f, 1, 99, 0);
         LevelChunkDefinition cooldownDefinition = BuildDefinition("Cooldown", cooldown, 1f, 0f, 1, 99, 0);
         var hazards = new List<LevelChunkDefinition>
@@ -144,7 +150,8 @@ public static class MapGenerationContentBuilder
             BuildDefinition("NarrowIcebergPassage", narrowPassage, 1.8f, 3.5f, 2, 99, 2),
             BuildDefinition("IceAndDebris", iceAndDebris, 2.2f, 3f, 2, 99, 1),
             BuildDefinition("AcidDebrisGauntlet", acidDebris, 1.4f, 4f, 3, 99, 2),
-            BuildDefinition("GhostShipEncounter", ghostShipEncounter, 1.2f, 4.5f, 3, 99, 2)
+            BuildDefinition("GhostShipEncounter", ghostShipEncounter, 1.2f, 4.5f, 3, 99, 2),
+            BuildDefinition("RainSquall", rainSquall, 1.2f, 3.5f, 1, 99, 2)
         };
 
         LevelChunkCatalog catalog = LoadOrCreate<LevelChunkCatalog>(CatalogFolder + "/DefaultLevelCatalog.asset");
@@ -270,9 +277,42 @@ public static class MapGenerationContentBuilder
             throw new InvalidOperationException($"Chunk {definition.ChunkId} has invalid dimensions or no safe route.");
         }
 
-        if (requireObstacle && definition.Prefab.GetComponentsInChildren<ObstacleDescriptor>(true).Length == 0)
+        bool hasObstacle = definition.Prefab.GetComponentsInChildren<ObstacleDescriptor>(true).Length > 0;
+        bool hasWeather = definition.Prefab.GetComponentInChildren<RainSection>(true) != null;
+        if (requireObstacle && !hasObstacle && !hasWeather)
         {
-            throw new InvalidOperationException($"Hazard chunk {definition.ChunkId} contains no obstacles.");
+            throw new InvalidOperationException($"Hazard chunk {definition.ChunkId} contains no obstacle or weather content.");
+        }
+    }
+
+    private static GameObject BuildRainChunk(
+        string assetName,
+        string chunkId,
+        Vector3[] safeRoute)
+    {
+        GameObject root = new GameObject(assetName);
+        try
+        {
+            root.AddComponent<LevelChunkAuthoring>().Configure(
+                chunkId,
+                MapGenerationDefaults.ChunkLength,
+                MapGenerationDefaults.CourseWidth,
+                LaneMask.All,
+                LaneMask.All,
+                safeRoute);
+            root.AddComponent<RainSection>().Configure(
+                MapGenerationDefaults.ChunkLength,
+                MapGenerationDefaults.CourseWidth);
+            root.AddComponent<LightningStormSection>();
+            CreateBoundaryMarker(root.transform, "Entrance", Vector3.zero);
+            CreateBoundaryMarker(root.transform, "Exit", new Vector3(MapGenerationDefaults.ChunkLength, 0f, 0f));
+            CreateRouteMarkers(root.transform, safeRoute);
+
+            return PrefabUtility.SaveAsPrefabAsset(root, ChunkFolder + "/" + assetName + ".prefab");
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(root);
         }
     }
 
