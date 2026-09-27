@@ -2,7 +2,7 @@
     --ink: rgb(255, 255, 255);
     --sail-blue: rgb(255, 255, 255);
     --sail-blue-hover: rgb(245, 245, 245);
-    --rail: rgba(0, 0, 0, 0.45);
+    --rail: rgba(0, 0, 0, 0.56);
 }
 
 .build-screen {
@@ -238,6 +238,62 @@
 
 .sail-button:disabled {
     opacity: 0.5;
+}
+
+.ship-summary {
+    position: absolute;
+    right: 64px;
+    bottom: 246px;
+    width: 291px;
+    min-height: 68px;
+    padding: 10px 20px;
+    background-color: rgba(0, 0, 0, 0.56);
+    border-top-left-radius: 14px;
+    border-top-right-radius: 14px;
+    border-bottom-left-radius: 14px;
+    border-bottom-right-radius: 14px;
+}
+
+.ship-summary-label {
+    height: 28px;
+    color: var(--ink);
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/DarumadropOne-Regular.ttf");
+    -unity-text-align: middle-left;
+    font-size: 22px;
+}
+
+.flip-button {
+    position: absolute;
+    right: 64px;
+    bottom: 174px;
+    width: 291px;
+    height: 58px;
+    padding: 0;
+    color: rgb(0, 0, 0);
+    background-color: rgb(255, 255, 255);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    border-top-left-radius: 29px;
+    border-top-right-radius: 29px;
+    border-bottom-left-radius: 29px;
+    border-bottom-right-radius: 29px;
+    -unity-font-definition: url("project://database/Assets/UI/Fonts/DarumadropOne-Regular.ttf");
+    -unity-text-align: middle-center;
+    font-size: 28px;
+    transition-duration: 0.18s;
+    transition-timing-function: ease-out;
+}
+
+.flip-button:hover {
+    background-color: rgb(235, 235, 235);
+    scale: 1.03 1.03;
+}
+
+.flip-button:active {
+    background-color: rgb(215, 215, 215);
+    scale: 0.97 0.97;
 }
 
 .sail-icon {

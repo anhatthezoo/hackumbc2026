@@ -20,6 +20,12 @@
             </ui:VisualElement>
         </ui:VisualElement>
 
+        <ui:VisualElement name="shipSummary" class="ship-summary" picking-mode="Ignore">
+            <ui:Label name="ship-weight" text="WEIGHT  0 KG" class="ship-summary-label" picking-mode="Ignore" />
+            <ui:Label name="ship-cost" text="TOTAL  0" class="ship-summary-label" picking-mode="Ignore" />
+        </ui:VisualElement>
+        <ui:Button name="camera-angle-button" text="FLIP" class="flip-button" tooltip="View the other side of your ship" />
+
         <ui:Button name="set-sail-button" class="sail-button screen-enter" tooltip="Launch your finished ship">
             <ui:VisualElement class="sail-content" picking-mode="Ignore">
                 <ui:VisualElement class="sail-icon" picking-mode="Ignore" />

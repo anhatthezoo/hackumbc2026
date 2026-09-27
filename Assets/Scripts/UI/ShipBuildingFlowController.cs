@@ -1,6 +1,8 @@
 using RoyaltyBoat.Flow;
 using RoyaltyBoat.Audio;
 using RoyaltyBoat.King;
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -16,7 +18,12 @@ namespace RoyaltyBoat.UI
         private Button cameraAngleButton;
         private Button rotateItemButton;
         private Label statusLabel;
+        private Label shipWeightLabel;
+        private Label shipCostLabel;
         private CameraOrbitController orbitController;
+        private readonly Dictionary<string, int> productPrices = new(StringComparer.Ordinal);
+        private string displayedWeight;
+        private string displayedCost;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void RegisterSceneLoadedHandler()
@@ -65,6 +72,9 @@ namespace RoyaltyBoat.UI
             cameraAngleButton = root.Q<Button>("camera-angle-button");
             rotateItemButton = root.Q<Button>("rotate-item-button");
             statusLabel = root.Q<Label>("shop-status");
+            shipWeightLabel = root.Q<Label>("ship-weight");
+            shipCostLabel = root.Q<Label>("ship-cost");
+            CacheProductPrices();
             if (setSailButton == null)
             {
                 Debug.LogError("Ship-building UI is missing set-sail-button.", this);
@@ -100,15 +110,73 @@ namespace RoyaltyBoat.UI
             }
 
             UpdateCameraSideLabel();
+            UpdateShipSummary();
             setSailButton.Focus();
         }
 
         private void Update()
         {
+            UpdateShipSummary();
             Keyboard keyboard = Keyboard.current;
             if (keyboard != null && keyboard.vKey.wasPressedThisFrame)
             {
                 ToggleCameraAngle();
+            }
+        }
+
+        private void CacheProductPrices()
+        {
+            productPrices.Clear();
+            ShopCatalog catalog = Resources.Load<ShopCatalog>("ShipBuilding/ShopCatalog");
+            if (catalog == null)
+            {
+                return;
+            }
+
+            foreach (ShopProduct product in catalog.Products)
+            {
+                if (product.Prefab != null)
+                {
+                    productPrices[product.Prefab.name] = product.Price;
+                }
+            }
+        }
+
+        private void UpdateShipSummary()
+        {
+            ShipBuildArea buildArea = FindAnyObjectByType<ShipBuildArea>();
+            Ship ship = buildArea != null ? buildArea.StartingShip : FindAnyObjectByType<Ship>();
+            float mass = ship == null ? 0f : ship.TotalMass;
+            int totalCost = 0;
+
+            if (ship != null)
+            {
+                foreach (Block block in ship.Blocks)
+                {
+                    if (block == null)
+                    {
+                        continue;
+                    }
+
+                    string blockName = block.gameObject.name.Replace("(Clone)", string.Empty).Trim();
+                    if (productPrices.TryGetValue(blockName, out int price))
+                    {
+                        totalCost += price;
+                    }
+                }
+            }
+
+            string weightText = $"WEIGHT  {mass:0.#} KG";
+            string costText = $"TOTAL  {totalCost:N0}";
+            if (shipWeightLabel != null && displayedWeight != weightText)
+            {
+                shipWeightLabel.text = weightText;
+                displayedWeight = weightText;
+            }
+            if (shipCostLabel != null && displayedCost != costText)
+            {
+                shipCostLabel.text = costText;
+                displayedCost = costText;
             }
         }
 
