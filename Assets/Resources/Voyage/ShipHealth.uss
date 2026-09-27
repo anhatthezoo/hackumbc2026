@@ -1,0 +1,16 @@
+.ship-health-hud-root {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+}
+
+.ship-health-viewport {
+    position: absolute;
+    left: 32px;
+    bottom: 32px;
+    width: 360px;
+    height: 360px;
+    -unity-background-scale-mode: scale-to-fit;
+}

@@ -4,6 +4,7 @@ using RoyaltyBoat.Gameplay;
 using RoyaltyBoat.King;
 using RoyaltyBoat.MapGeneration;
 using RoyaltyBoat.Obstacles;
+using RoyaltyBoat.UI;
 using RoyaltyBoat.Water;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -37,6 +38,7 @@ namespace RoyaltyBoat.Flow
         private static bool returningToBuilder;
         private static bool levelComplete;
         private static int pendingOpeningDecree = -1;
+        private static DeathScreenController deathScreen;
 
         public static bool IsVoyageActive { get; private set; }
         public static bool IsRunActive { get; private set; }
@@ -57,6 +59,8 @@ namespace RoyaltyBoat.Flow
             returningToBuilder = false;
             levelComplete = false;
             pendingOpeningDecree = -1;
+            deathScreen = null;
+            Time.timeScale = 1f;
             IsVoyageActive = false;
             IsRunActive = false;
             CurrentLevel = 1;
@@ -157,6 +161,8 @@ namespace RoyaltyBoat.Flow
             destinationSceneName = GameplaySceneName;
             returningToBuilder = false;
             levelComplete = false;
+            pendingOpeningDecree = -1;
+            ActiveDecree = RoyalDecree.None;
             IsVoyageActive = false;
             IsRunActive = false;
             CurrentLevel = 1;
@@ -327,6 +333,7 @@ namespace RoyaltyBoat.Flow
             presentation.enabled = true;
             presentation.Configure(builtShip);
             SubscribeToKingDeath();
+            CreateDeathScreen();
 
             Camera gameplayCamera = Camera.main;
             if (gameplayCamera == null)
@@ -346,6 +353,7 @@ namespace RoyaltyBoat.Flow
 
         private static void StartNewRun(bool showOpeningDecree = false)
         {
+            Time.timeScale = 1f;
             UnsubscribeFromKingDeath();
 
             if (builtKing != null)
@@ -364,6 +372,7 @@ namespace RoyaltyBoat.Flow
             builtKing = null;
             builtShipScale = Vector3.one;
             builtKingScale = Vector3.one;
+            deathScreen = null;
             CurrentLevel = 1;
             runSeed = unchecked((int)DateTime.UtcNow.Ticks);
             destinationSceneName = GameplaySceneName;
@@ -384,6 +393,36 @@ namespace RoyaltyBoat.Flow
             }
             EconomyAccess.Current.ResetBalance(StartingFunds);
             SceneManager.LoadScene(ShipBuildingSceneName);
+        }
+
+        private static void ReturnToTitleScreen()
+        {
+            Time.timeScale = 1f;
+            UnsubscribeFromKingDeath();
+
+            if (builtKing != null)
+            {
+                builtKing.gameObject.SetActive(false);
+                UnityEngine.Object.Destroy(builtKing.gameObject);
+            }
+
+            if (builtShip != null)
+            {
+                builtShip.gameObject.SetActive(false);
+                UnityEngine.Object.Destroy(builtShip.gameObject);
+            }
+
+            builtShip = null;
+            builtKing = null;
+            deathScreen = null;
+            pendingOpeningDecree = -1;
+            ActiveDecree = RoyalDecree.None;
+            returningToBuilder = false;
+            levelComplete = false;
+            IsVoyageActive = false;
+            IsRunActive = false;
+            CurrentLevel = 1;
+            SceneManager.LoadScene(GameplaySceneName);
         }
 
         private static void PrepareBuiltShipForBuilding()
@@ -444,7 +483,47 @@ namespace RoyaltyBoat.Flow
                 return;
             }
 
-            Debug.Log($"The King died during level {CurrentLevel}. Restarting the run.");
+            Debug.Log($"The King died during level {CurrentLevel}: {cause}.");
+            IsVoyageActive = false;
+
+            BoatMovementController movement = builtShip == null
+                ? null
+                : builtShip.GetComponent<BoatMovementController>();
+            if (movement != null)
+            {
+                movement.enabled = false;
+            }
+
+            Time.timeScale = 0f;
+        }
+
+        private static void CreateDeathScreen()
+        {
+            GameObject prefab = Resources.Load<GameObject>("UI/DeathScreen");
+            if (prefab == null)
+            {
+                Debug.LogError("Death screen prefab could not be loaded from Resources/UI.");
+                return;
+            }
+
+            GameObject instance = UnityEngine.Object.Instantiate(prefab);
+            deathScreen = instance.GetComponent<DeathScreenController>();
+            if (deathScreen == null)
+            {
+                Debug.LogError("The death screen prefab has no DeathScreenController.", instance);
+                return;
+            }
+
+            KingHealth health = builtKing == null
+                ? null
+                : builtKing.GetComponent<KingHealth>();
+            deathScreen.BindKing(health);
+            deathScreen.TryAgainRequested += RetryRun;
+            deathScreen.ReturnToDockRequested += ReturnToTitleScreen;
+        }
+
+        private static void RetryRun()
+        {
             StartNewRun(true);
         }
 

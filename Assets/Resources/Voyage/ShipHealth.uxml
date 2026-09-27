@@ -1,0 +1,6 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:Style src="ShipHealth.uss" />
+    <ui:VisualElement name="shipHealthHudRoot" class="ship-health-hud-root" picking-mode="Ignore">
+        <ui:Image name="shipHealthViewport" class="ship-health-viewport" picking-mode="Ignore" />
+    </ui:VisualElement>
+</ui:UXML>

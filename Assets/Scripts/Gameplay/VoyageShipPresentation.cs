@@ -9,18 +9,6 @@ namespace RoyaltyBoat.Gameplay
     [DisallowMultipleComponent]
     public sealed class VoyageShipPresentation : MonoBehaviour
     {
-        private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
-        private static readonly int ColorId = Shader.PropertyToID("_Color");
-
-        private static readonly Color[] BlockColors =
-        {
-            new Color(0.95f, 0.22f, 0.12f),
-            new Color(1f, 0.67f, 0.08f),
-            new Color(0.08f, 0.55f, 0.95f),
-            new Color(0.2f, 0.82f, 0.45f)
-        };
-
-        private MaterialPropertyBlock propertyBlock;
         private List<Block> displayedBlocks;
 
         private Ship ship;
@@ -43,7 +31,7 @@ namespace RoyaltyBoat.Gameplay
             levelCompleteVisible = false;
             completionTransitionRequested = false;
             EnsureCollisionBoxes();
-            ApplyVoyageColors();
+            RestoreBuildMaterials();
         }
 
         public void ShowLevelComplete(
@@ -69,6 +57,11 @@ namespace RoyaltyBoat.Gameplay
             Configure(ship);
         }
 
+        private void OnDisable()
+        {
+            RestoreBuildMaterials();
+        }
+
         private void EnsureCollisionBoxes()
         {
             if (ship == null)
@@ -89,33 +82,16 @@ namespace RoyaltyBoat.Gameplay
             }
         }
 
-        private void ApplyVoyageColors()
+        private void RestoreBuildMaterials()
         {
             if (ship == null)
             {
                 return;
             }
 
-            EnsureRuntimeState();
-            Block[] blocks = ship.GetComponentsInChildren<Block>(true);
-            Dictionary<Block, Color> colors = new Dictionary<Block, Color>();
-            for (int index = 0; index < blocks.Length; ++index)
-            {
-                colors[blocks[index]] = BlockColors[index % BlockColors.Length];
-            }
-
             foreach (Renderer shipRenderer in ship.GetComponentsInChildren<Renderer>(true))
             {
-                Block owner = shipRenderer.GetComponentInParent<Block>();
-                if (owner == null || !colors.TryGetValue(owner, out Color color))
-                {
-                    continue;
-                }
-
-                shipRenderer.GetPropertyBlock(propertyBlock);
-                propertyBlock.SetColor(BaseColorId, color);
-                propertyBlock.SetColor(ColorId, color);
-                shipRenderer.SetPropertyBlock(propertyBlock);
+                shipRenderer.SetPropertyBlock(null);
             }
         }
 
@@ -297,7 +273,6 @@ namespace RoyaltyBoat.Gameplay
 
         private void EnsureRuntimeState()
         {
-            propertyBlock ??= new MaterialPropertyBlock();
             displayedBlocks ??= new List<Block>();
         }
 
