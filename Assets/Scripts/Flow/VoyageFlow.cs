@@ -11,10 +11,12 @@ namespace RoyaltyBoat.Flow
     public static class VoyageFlow
     {
         public const string GameplaySceneName = "Voyage";
+        public const string DevMapSceneName = "DevMap";
         public const string ShipBuildingSceneName = "ShipBuilding";
 
         private static Ship builtShip;
         private static int runSeed;
+        private static string destinationSceneName = GameplaySceneName;
 
         public static bool IsVoyageActive { get; private set; }
 
@@ -23,6 +25,7 @@ namespace RoyaltyBoat.Flow
         {
             builtShip = null;
             runSeed = 0;
+            destinationSceneName = GameplaySceneName;
             IsVoyageActive = false;
         }
 
@@ -35,8 +38,23 @@ namespace RoyaltyBoat.Flow
 
         private static void ConfigureLoadedScene(Scene scene, LoadSceneMode loadMode)
         {
-            if (!IsVoyageActive || scene.name != GameplaySceneName)
+            if (!IsVoyageActive || scene.name != destinationSceneName)
             {
+                return;
+            }
+
+            if (scene.name == DevMapSceneName)
+            {
+                DevMapCourse devCourse = UnityEngine.Object.FindAnyObjectByType<DevMapCourse>();
+                if (devCourse == null)
+                {
+                    Debug.LogError("The dev map scene has no DevMapCourse.");
+                    return;
+                }
+
+                devCourse.ConfigureObstacleDamage();
+                PlaceBuiltShipOnWater();
+                CreateFinishPoint(devCourse.transform, devCourse.FinishX, 1);
                 return;
             }
 
@@ -56,10 +74,16 @@ namespace RoyaltyBoat.Flow
         {
             IsVoyageActive = false;
             builtShip = null;
+            destinationSceneName = GameplaySceneName;
             SceneManager.LoadScene(ShipBuildingSceneName);
         }
 
         public static bool LaunchBuiltShip(Ship ship)
+        {
+            return LaunchBuiltShip(ship, false);
+        }
+
+        public static bool LaunchBuiltShip(Ship ship, bool useDevMap)
         {
             if (ship == null)
             {
@@ -74,14 +98,22 @@ namespace RoyaltyBoat.Flow
                 return false;
             }
 
+            if (!ship.AreAllBlocksConnected(out int disconnectedBlockCount))
+            {
+                Debug.LogError(
+                    $"Cannot launch while {disconnectedBlockCount} ship part(s) are disconnected.");
+                return false;
+            }
+
             ship.CenterRootOnStructure();
             ship.transform.SetParent(null, true);
             UnityEngine.Object.DontDestroyOnLoad(ship.gameObject);
 
             builtShip = ship;
             runSeed = unchecked((int)DateTime.UtcNow.Ticks);
+            destinationSceneName = useDevMap ? DevMapSceneName : GameplaySceneName;
             IsVoyageActive = true;
-            SceneManager.LoadScene(GameplaySceneName);
+            SceneManager.LoadScene(destinationSceneName);
             return true;
         }
 
@@ -192,13 +224,24 @@ namespace RoyaltyBoat.Flow
                 generator.GeneratedChunks[generator.GeneratedChunks.Count - 1];
             float finishX = Mathf.Lerp(cooldown.StartX, cooldown.EndX, 0.75f);
 
+            CreateFinishPoint(generator.GeneratedRoot, finishX, generator.ActiveLevelNumber);
+        }
+
+        private static void CreateFinishPoint(Transform parent, float finishX, int levelNumber)
+        {
+            if (builtShip == null || parent == null)
+            {
+                Debug.LogError("Cannot place the finish point without a course and ship.");
+                return;
+            }
+
             GameObject finishObject = new GameObject("Royal Finish Gate");
-            finishObject.transform.SetParent(generator.GeneratedRoot, false);
+            finishObject.transform.SetParent(parent, false);
             finishObject.transform.localPosition = new Vector3(finishX, 0f, 0f);
 
             finishObject.AddComponent<BoxCollider>();
             VoyageFinishPoint finishPoint = finishObject.AddComponent<VoyageFinishPoint>();
-            finishPoint.Configure(builtShip, generator.ActiveLevelNumber);
+            finishPoint.Configure(builtShip, levelNumber);
         }
     }
 }

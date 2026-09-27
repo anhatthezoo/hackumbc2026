@@ -403,6 +403,7 @@
 }
 
 .camera-angle-button,
+.dev-map-button,
 .set-sail-button {
     border-left-width: 0;
     border-right-width: 0;
@@ -428,6 +429,16 @@
     font-size: 21px;
 }
 
+.dev-map-button {
+    height: 52px;
+    margin-bottom: 12px;
+    color: rgb(255, 239, 198);
+    background-color: rgb(190, 72, 45);
+    border-bottom-width: 6px;
+    border-bottom-color: rgb(122, 42, 34);
+    font-size: 20px;
+}
+
 .set-sail-button {
     height: 76px;
     color: rgb(29, 52, 75);
@@ -438,6 +449,7 @@
 }
 
 .camera-angle-button:hover,
+.dev-map-button:hover,
 .set-sail-button:hover {
     scale: 1.02 1.02;
     translate: 0 -2px;
@@ -447,11 +459,16 @@
     background-color: rgb(78, 116, 151);
 }
 
+.dev-map-button:hover {
+    background-color: rgb(214, 86, 50);
+}
+
 .set-sail-button:hover {
     background-color: rgb(255, 207, 82);
 }
 
 .camera-angle-button:active,
+.dev-map-button:active,
 .set-sail-button:active {
     scale: 0.98 0.98;
     translate: 0 3px;

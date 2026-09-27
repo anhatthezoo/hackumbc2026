@@ -28,6 +28,50 @@ public class Ship : MonoBehaviour
     public float AttachmentGridSize => attachmentGridSize;
     public bool IsAlive => CheckBoatLife();
 
+    /// <summary>
+    /// Returns true when every living block belongs to one face-connected grid
+    /// structure. Diagonal contact does not connect two parts.
+    /// </summary>
+    public bool AreAllBlocksConnected(out int disconnectedBlockCount)
+    {
+        var livingBlocks = new List<Block>();
+        foreach (Block block in blocks)
+        {
+            if (block != null && block.IsAlive)
+            {
+                livingBlocks.Add(block);
+            }
+        }
+
+        if (livingBlocks.Count <= 1)
+        {
+            disconnectedBlockCount = 0;
+            return livingBlocks.Count == 1;
+        }
+
+        var connected = new HashSet<Block> { livingBlocks[0] };
+        var frontier = new Queue<Block>();
+        frontier.Enqueue(livingBlocks[0]);
+
+        while (frontier.Count > 0)
+        {
+            Block current = frontier.Dequeue();
+            foreach (Block candidate in livingBlocks)
+            {
+                if (connected.Contains(candidate) || !AreGridNeighbors(current, candidate))
+                {
+                    continue;
+                }
+
+                connected.Add(candidate);
+                frontier.Enqueue(candidate);
+            }
+        }
+
+        disconnectedBlockCount = livingBlocks.Count - connected.Count;
+        return disconnectedBlockCount == 0;
+    }
+
     private void Reset()
     {
         CollectAttachedBlocks();
@@ -422,6 +466,29 @@ public class Ship : MonoBehaviour
         }
 
         return false;
+    }
+
+    private bool AreGridNeighbors(Block first, Block second)
+    {
+        Vector3 difference = transform.InverseTransformVector(
+            second.transform.position - first.transform.position);
+        difference = new Vector3(
+            Mathf.Abs(difference.x),
+            Mathf.Abs(difference.y),
+            Mathf.Abs(difference.z));
+
+        float gridSize = Mathf.Max(0.01f, attachmentGridSize);
+        float tolerance = Mathf.Max(0.03f, gridSize * 0.12f);
+        bool xNeighbor = Mathf.Abs(difference.x - gridSize) <= tolerance
+            && difference.y <= tolerance
+            && difference.z <= tolerance;
+        bool yNeighbor = Mathf.Abs(difference.y - gridSize) <= tolerance
+            && difference.x <= tolerance
+            && difference.z <= tolerance;
+        bool zNeighbor = Mathf.Abs(difference.z - gridSize) <= tolerance
+            && difference.x <= tolerance
+            && difference.y <= tolerance;
+        return xNeighbor || yNeighbor || zNeighbor;
     }
 
     private void CollectAttachedBlocks()

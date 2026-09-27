@@ -10,7 +10,9 @@ namespace RoyaltyBoat.UI
     public sealed class ShipBuildingFlowController : MonoBehaviour
     {
         private Button setSailButton;
+        private Button devMapButton;
         private Button cameraAngleButton;
+        private Label statusLabel;
         private CameraOrbitController orbitController;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -55,7 +57,9 @@ namespace RoyaltyBoat.UI
         {
             VisualElement root = GetComponent<UIDocument>().rootVisualElement;
             setSailButton = root.Q<Button>("set-sail-button");
+            devMapButton = root.Q<Button>("dev-map-button");
             cameraAngleButton = root.Q<Button>("camera-angle-button");
+            statusLabel = root.Q<Label>("shop-status");
             if (setSailButton == null)
             {
                 Debug.LogError("Ship-building UI is missing set-sail-button.", this);
@@ -63,6 +67,10 @@ namespace RoyaltyBoat.UI
             }
 
             setSailButton.clicked += HandleSetSailClicked;
+            if (devMapButton != null)
+            {
+                devMapButton.clicked += HandleDevMapClicked;
+            }
             if (cameraAngleButton != null)
             {
                 cameraAngleButton.clicked += HandleCameraAngleClicked;
@@ -102,11 +110,21 @@ namespace RoyaltyBoat.UI
                 cameraAngleButton.clicked -= HandleCameraAngleClicked;
             }
 
+            if (devMapButton != null)
+            {
+                devMapButton.clicked -= HandleDevMapClicked;
+            }
+
         }
 
         private void HandleSetSailClicked()
         {
-            SetSail();
+            SetSail(false);
+        }
+
+        private void HandleDevMapClicked()
+        {
+            SetSail(true);
         }
 
         private void HandleCameraAngleClicked()
@@ -129,21 +147,57 @@ namespace RoyaltyBoat.UI
 
         public bool SetSail()
         {
-            Ship ship = FindAnyObjectByType<Ship>();
+            return SetSail(false);
+        }
+
+        private bool SetSail(bool useDevMap)
+        {
+            ShipBuildArea buildArea = FindAnyObjectByType<ShipBuildArea>();
+            Ship ship = buildArea != null
+                ? buildArea.PrepareShipForLaunch()
+                : FindAnyObjectByType<Ship>();
             if (ship == null)
             {
                 Debug.LogError("No Ship was found in the ship-building scene.", this);
+                ShowLaunchError("Place at least one ship part on the build floor.");
+                return false;
+            }
+
+            if (!ship.IsAlive)
+            {
+                ShowLaunchError("Place at least one ship part on the build floor.");
+                return false;
+            }
+
+            if (!ship.AreAllBlocksConnected(out int disconnectedBlockCount))
+            {
+                string noun = disconnectedBlockCount == 1 ? "part is" : "parts are";
+                ShowLaunchError(
+                    $"{disconnectedBlockCount} {noun} disconnected. Join every part before launch.");
                 return false;
             }
 
             setSailButton?.SetEnabled(false);
-            if (VoyageFlow.LaunchBuiltShip(ship))
+            devMapButton?.SetEnabled(false);
+            if (VoyageFlow.LaunchBuiltShip(ship, useDevMap))
             {
                 return true;
             }
 
             setSailButton?.SetEnabled(true);
+            devMapButton?.SetEnabled(true);
             return false;
+        }
+
+        private void ShowLaunchError(string message)
+        {
+            if (statusLabel == null)
+            {
+                return;
+            }
+
+            statusLabel.text = message;
+            statusLabel.AddToClassList("shop-status-error");
         }
     }
 }

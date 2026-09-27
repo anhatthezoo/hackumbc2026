@@ -16,6 +16,7 @@ namespace RoyaltyBoat.MapGeneration
         [SerializeField, Min(1)] private int baseHazardChunkCount = MapGenerationDefaults.BaseHazardChunkCount;
         [SerializeField, Min(1)] private int levelsPerExtraChunk = MapGenerationDefaults.LevelsPerExtraChunk;
         [SerializeField, Min(1)] private int maximumHazardChunkCount = MapGenerationDefaults.MaximumHazardChunkCount;
+        [SerializeField, Min(0f)] private float hazardChunkGap = MapGenerationDefaults.HazardChunkGap;
 
         [Header("Difficulty")]
         [SerializeField, Min(0f)] private float baseDifficultyBudget = MapGenerationDefaults.BaseDifficultyBudget;
@@ -34,6 +35,7 @@ namespace RoyaltyBoat.MapGeneration
         public float GeneratedLength { get; private set; }
         public int ActiveRunSeed { get; private set; }
         public int ActiveLevelNumber { get; private set; }
+        public float HazardChunkGap => hazardChunkGap;
 
         public event Action<int, int, float> CourseGenerated;
         public event Action CourseCleared;
@@ -115,6 +117,7 @@ namespace RoyaltyBoat.MapGeneration
                 availableLanes = selected.Authoring.ExitLanes;
                 remainingDifficulty -= selected.DifficultyCost;
                 lastUsedAt[selected] = hazardIndex;
+                cursor += hazardChunkGap;
             }
 
             AppendChunk(catalog.CooldownChunk, generatedChunks.Count, ref cursor);
@@ -295,6 +298,7 @@ namespace RoyaltyBoat.MapGeneration
             baseHazardChunkCount = Mathf.Max(1, baseHazardChunkCount);
             levelsPerExtraChunk = Mathf.Max(1, levelsPerExtraChunk);
             maximumHazardChunkCount = Mathf.Max(baseHazardChunkCount, maximumHazardChunkCount);
+            hazardChunkGap = Mathf.Max(0f, hazardChunkGap);
             baseDifficultyBudget = Mathf.Max(0f, baseDifficultyBudget);
             difficultyPerLevel = Mathf.Max(0f, difficultyPerLevel);
             previewLevel = Mathf.Max(1, previewLevel);

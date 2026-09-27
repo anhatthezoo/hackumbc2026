@@ -22,8 +22,6 @@ public static class ObstaclePrefabBuilder
         Material wood = CreateLitMaterial("Driftwood", new Color(0.34f, 0.16f, 0.065f), 0f, 0.12f);
         Material darkWood = CreateLitMaterial("DriftwoodDark", new Color(0.16f, 0.075f, 0.035f), 0f, 0.08f);
         Material metal = CreateLitMaterial("DebrisMetal", new Color(0.18f, 0.22f, 0.24f), 0.45f, 0.18f);
-        Material acid = CreateTransparentMaterial("AcidSurface", new Color(0.38f, 0.95f, 0.08f, 0.68f), new Color(0.16f, 0.8f, 0.02f));
-        Material acidBubble = CreateLitMaterial("AcidBubble", new Color(0.6f, 1f, 0.1f), 0f, 0.35f, new Color(0.25f, 1f, 0.02f));
         Material ghostWood = CreateTransparentMaterial("GhostShip", new Color(0.2f, 0.85f, 0.78f, 0.62f), new Color(0.05f, 0.6f, 0.5f));
         Material cannonballMaterial = CreateLitMaterial("GhostCannonball", new Color(0.08f, 0.12f, 0.14f), 0.6f, 0.25f);
 
@@ -32,12 +30,12 @@ public static class ObstaclePrefabBuilder
         BuildIceberg(icebergMesh, ice, snow);
         BuildFloatingLog(wood, darkWood);
         BuildDebrisCluster(wood, darkWood, metal);
-        BuildAcidWater(acid, acidBubble);
+        BuildBurningOilSlick();
         BuildGhostShip(ghostWood, cannonball);
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log("Built iceberg, floating log, debris cluster, acidic water, and ghost ship prefabs.");
+        Debug.Log("Built iceberg, floating log, debris cluster, burning oil slick, and ghost ship prefabs.");
     }
 
     public static void BuildAndValidate()
@@ -66,6 +64,7 @@ public static class ObstaclePrefabBuilder
         GameObject acid = RequirePrefab("AcidicWater");
         RequireComponent<ObstacleDescriptor>(acid);
         RequireComponent<AcidWaterVolume>(acid);
+        RequireComponent<BurningOilSlickVisual>(acid);
         Collider acidCollider = RequireComponent<Collider>(acid);
         if (!acidCollider.isTrigger)
         {
@@ -240,39 +239,19 @@ public static class ObstaclePrefabBuilder
         }
     }
 
-    private static void BuildAcidWater(Material acid, Material acidBubble)
+    private static void BuildBurningOilSlick()
     {
-        GameObject root = new GameObject("Acidic Water");
+        GameObject root = new GameObject("Burning Oil Slick");
         try
         {
-            root.AddComponent<ObstacleDescriptor>().Configure("acidic-water", ObstacleKind.AcidicWater, 3f, new Vector2(18f, 18f));
+            Vector2 oilSize = new Vector2(36f, 60f);
+            root.AddComponent<ObstacleDescriptor>().Configure("burning-oil-slick", ObstacleKind.AcidicWater, 3f, oilSize);
             BoxCollider volume = root.AddComponent<BoxCollider>();
             volume.isTrigger = true;
             volume.center = new Vector3(0f, -1.5f, 0f);
-            volume.size = new Vector3(18f, 4f, 18f);
+            volume.size = new Vector3(oilSize.x, 4f, oilSize.y);
             root.AddComponent<AcidWaterVolume>();
-
-            GameObject surface = AddVisualPrimitive(root.transform, PrimitiveType.Cube, "Acid Surface", new Vector3(0f, 0.08f, 0f), new Vector3(18f, 0.05f, 18f), Quaternion.identity, acid);
-            MeshRenderer surfaceRenderer = surface.GetComponent<MeshRenderer>();
-            surfaceRenderer.shadowCastingMode = ShadowCastingMode.Off;
-            surfaceRenderer.receiveShadows = false;
-
-            GameObject bubbles = new GameObject("Bubbles");
-            bubbles.transform.SetParent(root.transform, false);
-            bubbles.AddComponent<AcidWaterVisual>();
-            Vector3[] bubblePositions =
-            {
-                new Vector3(-5.8f, 0.22f, -2.9f), new Vector3(-3.1f, 0.18f, 4.8f),
-                new Vector3(-0.9f, 0.26f, 1.9f), new Vector3(2.1f, 0.2f, -4.2f),
-                new Vector3(4.9f, 0.25f, 2.8f), new Vector3(6.2f, 0.18f, -1.1f),
-                new Vector3(1.4f, 0.2f, 5.9f), new Vector3(-5.2f, 0.19f, 3.2f)
-            };
-            for (int i = 0; i < bubblePositions.Length; i++)
-            {
-                float size = 0.28f + (i % 3) * 0.13f;
-                GameObject bubble = AddVisualPrimitive(bubbles.transform, PrimitiveType.Sphere, $"Bubble {i + 1}", bubblePositions[i], Vector3.one * size, Quaternion.identity, acidBubble);
-                bubble.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
-            }
+            root.AddComponent<BurningOilSlickVisual>().Configure(oilSize, 16);
 
             PrefabUtility.SaveAsPrefabAsset(root, PrefabFolder + "/AcidicWater.prefab");
         }
