@@ -103,6 +103,8 @@ MonoBehaviour:
   edgeNoise: 0.24
   opacity: 0.94
   patternSeed: 2.71
+  firePrefab: {fileID: 1255053967005034563, guid: 2ee7574cb1211da4ba89d1838327b5c4, type: 3}
   fireClusterCount: 16
   fireHeight: 0.55
+  fireScaleRange: {x: 3.5, y: 5.25}
   flickerSpeed: 8

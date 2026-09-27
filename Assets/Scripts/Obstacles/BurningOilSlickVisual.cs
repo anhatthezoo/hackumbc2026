@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Rendering;
 
 namespace RoyaltyBoat.Obstacles
 {
@@ -25,23 +24,14 @@ namespace RoyaltyBoat.Obstacles
         [SerializeField] private float patternSeed = 2.71f;
 
         [Header("Fire")]
+        [SerializeField] private GameObject firePrefab;
         [SerializeField, Range(3, 24)] private int fireClusterCount = 16;
         [SerializeField, Min(0f)] private float fireHeight = 0.55f;
+        [SerializeField] private Vector2 fireScaleRange = new Vector2(1.25f, 2.1f);
         [SerializeField, Min(0f)] private float flickerSpeed = 8f;
 
-        private readonly List<FlameCluster> flames = new();
         private GameObject fireRoot;
-        private Material flameMaterial;
-        private Mesh flameMesh;
         private Light fireLight;
-
-        private sealed class FlameCluster
-        {
-            public Transform Root;
-            public Vector3 BasePosition;
-            public Vector3 BaseScale;
-            public float Phase;
-        }
 
         public void Configure(Vector2 area, int clusterCount)
         {
@@ -50,6 +40,11 @@ namespace RoyaltyBoat.Obstacles
                 Mathf.Max(0.1f, area.y));
             fireClusterCount = Mathf.Clamp(clusterCount, 3, 24);
             UploadMasks(true);
+
+            if (Application.isPlaying)
+            {
+                BuildFire();
+            }
         }
 
         private void OnEnable()
@@ -78,6 +73,8 @@ namespace RoyaltyBoat.Obstacles
         {
             footprint.x = Mathf.Max(0.1f, footprint.x);
             footprint.y = Mathf.Max(0.1f, footprint.y);
+            fireScaleRange.x = Mathf.Max(0.05f, fireScaleRange.x);
+            fireScaleRange.y = Mathf.Max(fireScaleRange.x, fireScaleRange.y);
             UploadMasks(true);
         }
 
@@ -159,10 +156,14 @@ namespace RoyaltyBoat.Obstacles
             fireRoot = new GameObject("Oil Fire");
             fireRoot.transform.SetParent(transform, false);
 
-            flameMaterial = CreateFlameMaterial();
-            flameMesh = CreateFlameMesh();
+            if (firePrefab == null)
+            {
+                Debug.LogWarning($"{nameof(BurningOilSlickVisual)} on {name} has no fire prefab assigned.", this);
+                return;
+            }
 
             var random = new System.Random(Mathf.RoundToInt(patternSeed * 1000f));
+            int audioClusterIndex = fireClusterCount / 2;
             for (int index = 0; index < fireClusterCount; ++index)
             {
                 float normalized = fireClusterCount <= 1
@@ -176,26 +177,25 @@ namespace RoyaltyBoat.Obstacles
                     Mathf.Lerp(-footprint.y * 0.42f, footprint.y * 0.42f, normalized)
                         + Mathf.Lerp(-laneSpacing * 0.22f, laneSpacing * 0.22f,
                             (float)random.NextDouble()));
-                float size = Mathf.Lerp(0.65f, 1.25f, (float)random.NextDouble());
+                float size = Mathf.Lerp(
+                    fireScaleRange.x,
+                    fireScaleRange.y,
+                    (float)random.NextDouble());
 
-                GameObject clusterRoot = new GameObject($"Flame {index + 1}");
-                clusterRoot.transform.SetParent(fireRoot.transform, false);
-                clusterRoot.transform.localPosition = position;
+                GameObject cluster = Instantiate(firePrefab, fireRoot.transform);
+                cluster.name = $"Fire Cluster {index + 1}";
+                cluster.transform.localPosition = position;
+                cluster.transform.localRotation = Quaternion.Euler(
+                    0f,
+                    Mathf.Lerp(0f, 360f, (float)random.NextDouble()),
+                    0f);
+                cluster.transform.localScale = Vector3.one * size;
 
-                CreateFlameLobe(
-                    clusterRoot.transform,
-                    "Flame Shape",
-                    Vector3.one * size,
-                    flameMesh,
-                    flameMaterial);
-
-                flames.Add(new FlameCluster
+                AudioSource[] audioSources = cluster.GetComponentsInChildren<AudioSource>(true);
+                for (int audioIndex = 0; audioIndex < audioSources.Length; ++audioIndex)
                 {
-                    Root = clusterRoot.transform,
-                    BasePosition = position,
-                    BaseScale = Vector3.one,
-                    Phase = (float)random.NextDouble() * Mathf.PI * 2f
-                });
+                    audioSources[audioIndex].enabled = index == audioClusterIndex;
+                }
             }
 
             GameObject lightObject = new GameObject("Oil Fire Light");
@@ -212,139 +212,14 @@ namespace RoyaltyBoat.Obstacles
         private void AnimateFire()
         {
             float time = Time.time * flickerSpeed;
-            for (int index = 0; index < flames.Count; ++index)
-            {
-                FlameCluster flame = flames[index];
-                if (flame.Root == null)
-                {
-                    continue;
-                }
-
-                float flicker = 1f
-                    + Mathf.Sin(time + flame.Phase) * 0.12f
-                    + Mathf.Sin(time * 1.73f + flame.Phase * 2.1f) * 0.06f;
-                Vector3 position = flame.BasePosition;
-                position.y += Mathf.Sin(time * 0.42f + flame.Phase) * 0.18f;
-                position.x += Mathf.Sin(time * 0.31f + flame.Phase) * 0.08f;
-                flame.Root.localPosition = position;
-                flame.Root.localScale = new Vector3(
-                    2f - flicker,
-                    flicker,
-                    2f - flicker);
-                flame.Root.localRotation = Quaternion.Euler(
-                    Mathf.Sin(time * 0.55f + flame.Phase) * 5f,
-                    time * 2f + flame.Phase * Mathf.Rad2Deg,
-                    Mathf.Cos(time * 0.47f + flame.Phase) * 5f);
-            }
-
             if (fireLight != null)
             {
                 fireLight.intensity = 4.3f + Mathf.Sin(time * 1.31f) * 0.7f;
             }
         }
 
-        private static GameObject CreateFlameLobe(
-            Transform parent,
-            string name,
-            Vector3 scale,
-            Mesh mesh,
-            Material material)
-        {
-            GameObject lobe = new GameObject(name);
-            lobe.name = name;
-            lobe.transform.SetParent(parent, false);
-            lobe.transform.localScale = scale;
-            MeshFilter filter = lobe.AddComponent<MeshFilter>();
-            filter.sharedMesh = mesh;
-            MeshRenderer renderer = lobe.AddComponent<MeshRenderer>();
-            renderer.sharedMaterial = material;
-            renderer.shadowCastingMode = ShadowCastingMode.Off;
-            renderer.receiveShadows = false;
-            return lobe;
-        }
-
-        private static Mesh CreateFlameMesh()
-        {
-            const int sides = 7;
-            const int ringCount = 3;
-            var vertices = new Vector3[sides * ringCount + 2];
-            var triangles = new int[sides * 18];
-
-            for (int side = 0; side < sides; ++side)
-            {
-                float angle = side * Mathf.PI * 2f / sides;
-                float cosine = Mathf.Cos(angle);
-                float sine = Mathf.Sin(angle);
-                vertices[side] = new Vector3(cosine * 0.25f, 0f, sine * 0.25f);
-                vertices[sides + side] = new Vector3(
-                    cosine * 0.38f - 0.04f,
-                    0.48f,
-                    sine * 0.38f);
-                vertices[sides * 2 + side] = new Vector3(
-                    cosine * 0.19f + 0.07f,
-                    1.02f,
-                    sine * 0.19f - 0.025f);
-            }
-
-            int bottomCenter = sides * ringCount;
-            int tip = bottomCenter + 1;
-            vertices[bottomCenter] = Vector3.zero;
-            vertices[tip] = new Vector3(-0.08f, 1.58f, 0.04f);
-
-            int triangle = 0;
-            for (int side = 0; side < sides; ++side)
-            {
-                int next = (side + 1) % sides;
-                for (int ring = 0; ring < ringCount - 1; ++ring)
-                {
-                    int currentRing = ring * sides;
-                    int nextRing = (ring + 1) * sides;
-                    triangles[triangle++] = currentRing + side;
-                    triangles[triangle++] = nextRing + side;
-                    triangles[triangle++] = nextRing + next;
-                    triangles[triangle++] = currentRing + side;
-                    triangles[triangle++] = nextRing + next;
-                    triangles[triangle++] = currentRing + next;
-                }
-
-                triangles[triangle++] = sides * 2 + side;
-                triangles[triangle++] = tip;
-                triangles[triangle++] = sides * 2 + next;
-                triangles[triangle++] = bottomCenter;
-                triangles[triangle++] = side;
-                triangles[triangle++] = next;
-            }
-
-            Mesh mesh = new Mesh
-            {
-                name = "Runtime Low-Poly Flame",
-                hideFlags = HideFlags.DontSave,
-                vertices = vertices,
-                triangles = triangles
-            };
-            mesh.RecalculateNormals();
-            mesh.RecalculateBounds();
-            return mesh;
-        }
-
-        private static Material CreateFlameMaterial()
-        {
-            Shader shader = Shader.Find("RoyaltyBoat/Burning Oil Fire");
-            Material material = new Material(shader)
-            {
-                name = "Runtime Burning Oil Fire",
-                hideFlags = HideFlags.DontSave
-            };
-            material.SetColor("_BaseColor", new Color(1f, 0.78f, 0.08f));
-            material.SetColor("_MiddleColor", new Color(1f, 0.28f, 0.015f));
-            material.SetColor("_TipColor", new Color(0.72f, 0.035f, 0.012f));
-            return material;
-        }
-
         private void DestroyFire()
         {
-            flames.Clear();
-
             if (fireRoot != null)
             {
                 if (Application.isPlaying)
@@ -357,39 +232,7 @@ namespace RoyaltyBoat.Obstacles
                 }
                 fireRoot = null;
             }
-
-            DestroyRuntimeMaterial(ref flameMaterial);
-            if (flameMesh != null)
-            {
-                if (Application.isPlaying)
-                {
-                    Destroy(flameMesh);
-                }
-                else
-                {
-                    DestroyImmediate(flameMesh);
-                }
-                flameMesh = null;
-            }
             fireLight = null;
-        }
-
-        private static void DestroyRuntimeMaterial(ref Material material)
-        {
-            if (material == null)
-            {
-                return;
-            }
-
-            if (Application.isPlaying)
-            {
-                Destroy(material);
-            }
-            else
-            {
-                DestroyImmediate(material);
-            }
-            material = null;
         }
     }
 }
