@@ -14,6 +14,8 @@ Downloaded from Pixabay on 2026-09-27 and used under the
 | UI buttons | u_xg7ssi08yr — Button Clicks | https://pixabay.com/sound-effects/film-special-effects-button-clicks-572422/ |
 | Level completion | Tithuh — Click Level Up | https://pixabay.com/sound-effects/film-special-effects-click-level-up-524643/ |
 | Voyage failure | Lesiakower — Error / Mistake / Incorrect Answer | https://pixabay.com/sound-effects/film-special-effects-error-mistake-sound-effect-incorrect-answer-437420/ |
+| Ocean ambience | RMultimediaEU — Ocean Waves | https://pixabay.com/sound-effects/nature-ocean-waves-250310/ |
+| Block placement | Thomasjaunism / Freesound Community — Wood Block | https://pixabay.com/sound-effects/film-special-effects-wood-block-105066/ |
 
 Playback offsets in `GameAudio` skip leading silence in the supplied files. Per-sound
 gain values keep UI feedback and impacts at a consistent perceived level while rain

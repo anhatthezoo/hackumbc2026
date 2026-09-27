@@ -103,6 +103,38 @@ namespace RoyaltyBoat.Flow
             StartNewRun();
         }
 
+        public static void ReturnToMainMenu()
+        {
+            UnsubscribeFromKingDeath();
+
+            if (builtKing != null)
+            {
+                builtKing.gameObject.SetActive(false);
+                UnityEngine.Object.Destroy(builtKing.gameObject);
+            }
+
+            if (builtShip != null)
+            {
+                builtShip.gameObject.SetActive(false);
+                UnityEngine.Object.Destroy(builtShip.gameObject);
+            }
+
+            builtShip = null;
+            builtKing = null;
+            builtKingLocalPosition = Vector3.zero;
+            builtKingLocalRotation = Quaternion.identity;
+            builtKingScale = Vector3.one;
+            builtShipScale = Vector3.one;
+            runSeed = 0;
+            destinationSceneName = GameplaySceneName;
+            returningToBuilder = false;
+            levelComplete = false;
+            IsVoyageActive = false;
+            IsRunActive = false;
+            CurrentLevel = 1;
+            SceneManager.LoadScene(GameplaySceneName);
+        }
+
         public static void AdvanceAfterLevel(int completedLevel)
         {
             if (!levelComplete || completedLevel != CurrentLevel)

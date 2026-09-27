@@ -20,6 +20,7 @@ namespace RoyaltyBoat.UI
         private Button creditsButton;
         private Button settingsBackButton;
         private Button creditsBackButton;
+        private Button returnMainMenuButton;
         private VisualSettingsUIBinder settingsBinder;
         private float previousTimeScale = 1f;
         private bool isOpen;
@@ -74,12 +75,14 @@ namespace RoyaltyBoat.UI
             creditsButton = root.Q<Button>("pause-credits-button");
             settingsBackButton = root.Q<Button>("pause-settings-back-button");
             creditsBackButton = root.Q<Button>("pause-credits-back-button");
+            returnMainMenuButton = root.Q<Button>("return-main-menu-button");
 
             resumeButton.clicked += CloseMenu;
             settingsButton.clicked += ShowSettings;
             creditsButton.clicked += ShowCredits;
             settingsBackButton.clicked += ShowPauseScreen;
             creditsBackButton.clicked += ShowPauseScreen;
+            returnMainMenuButton.clicked += ReturnToMainMenu;
             settingsBinder = new VisualSettingsUIBinder(root);
             overlay.AddToClassList("is-hidden");
         }
@@ -91,6 +94,7 @@ namespace RoyaltyBoat.UI
             if (creditsButton != null) creditsButton.clicked -= ShowCredits;
             if (settingsBackButton != null) settingsBackButton.clicked -= ShowPauseScreen;
             if (creditsBackButton != null) creditsBackButton.clicked -= ShowPauseScreen;
+            if (returnMainMenuButton != null) returnMainMenuButton.clicked -= ReturnToMainMenu;
             settingsBinder?.Dispose();
             settingsBinder = null;
             RestoreTimeScale();
@@ -168,6 +172,12 @@ namespace RoyaltyBoat.UI
             settingsScreen.AddToClassList("is-hidden");
             creditsScreen.RemoveFromClassList("is-hidden");
             creditsBackButton.Focus();
+        }
+
+        private void ReturnToMainMenu()
+        {
+            RestoreTimeScale();
+            VoyageFlow.ReturnToMainMenu();
         }
 
         private void RestoreTimeScale()

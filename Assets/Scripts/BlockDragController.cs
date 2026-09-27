@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using RoyaltyBoat.Audio;
 using RoyaltyBoat.King;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -47,6 +48,8 @@ public class BlockDragController : MonoBehaviour
     private Vector3 axisDragStartPosition;
     private float axisPointerStart;
     private Plane axisDragPlane;
+    private Vector3 dragStartPosition;
+    private bool hasDragStartPosition;
     private readonly List<BlockDragOutline> activeHighlights =
         new List<BlockDragOutline>();
 
@@ -155,6 +158,8 @@ public class BlockDragController : MonoBehaviour
             ConfigureDraggedTarget(selectedBlock);
             SelectMoveTarget(selectedBlock, null, draggedBlock);
         }
+
+        RememberDragStartPosition();
 
         float dragHeight = draggedKing != null
             ? draggedBlock.position.y
@@ -403,6 +408,7 @@ public class BlockDragController : MonoBehaviour
             ConfigureDraggedTarget(selectedBlockComponent);
         }
         PrepareDraggedBody();
+        RememberDragStartPosition();
         axisDragging = true;
         activeDragAxis = axis.normalized;
         axisDragStartPosition = draggedBlock.position;
@@ -733,6 +739,14 @@ public class BlockDragController : MonoBehaviour
     {
         HideDragHighlights();
 
+        bool placedIndividualBlock = draggedBlockComponent != null
+            && draggedShip == null
+            && hasDragStartPosition
+            && (draggedBlock.position - dragStartPosition).sqrMagnitude > 0.01f;
+        Vector3 placementSoundPosition = draggedBlock == null
+            ? Vector3.zero
+            : draggedBlock.position;
+
         if (draggedBody != null)
         {
             draggedBody.isKinematic = previousKinematic;
@@ -782,6 +796,11 @@ public class BlockDragController : MonoBehaviour
             }
         }
 
+        if (placedIndividualBlock)
+        {
+            GameAudio.PlayBlockPlaced(placementSoundPosition);
+        }
+
         draggedBlock = null;
         draggedBlockComponent = null;
         draggedKing = null;
@@ -792,7 +811,16 @@ public class BlockDragController : MonoBehaviour
         draggedBody = null;
         axisDragging = false;
         activeDragAxis = Vector3.zero;
+        hasDragStartPosition = false;
         UpdateMoveGizmoPosition();
+    }
+
+    private void RememberDragStartPosition()
+    {
+        hasDragStartPosition = draggedBlock != null;
+        dragStartPosition = hasDragStartPosition
+            ? draggedBlock.position
+            : Vector3.zero;
     }
 
     public void SelectBlock(Block block)

@@ -114,3 +114,13 @@
     align-items: center;
     background-color: rgba(8, 29, 51, 0.96);
 }
+
+.return-main-menu-button {
+    width: 430px;
+    height: 62px;
+    margin-top: 18px;
+    color: rgb(255, 239, 198);
+    background-color: rgb(154, 69, 61);
+    border-bottom-color: rgb(91, 38, 42);
+    font-size: 28px;
+}

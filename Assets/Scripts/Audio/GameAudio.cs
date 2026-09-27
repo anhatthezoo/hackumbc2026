@@ -20,7 +20,9 @@ namespace RoyaltyBoat.Audio
             Lightning,
             Click,
             Success,
-            Failure
+            Failure,
+            Ocean,
+            BlockPlace
         }
 
         private readonly struct SoundDefinition
@@ -43,13 +45,15 @@ namespace RoyaltyBoat.Audio
             {
                 { Sound.IceCrash, new SoundDefinition("IceCrash", 0.65f, 0.59f) },
                 { Sound.IcebergBreak, new SoundDefinition("IcebergBreak", 1f, 0.29f) },
-                { Sound.Fire, new SoundDefinition("FireLoop", 0.18f, 0f) },
+                { Sound.Fire, new SoundDefinition("FireLoop", 0.36f, 0f) },
                 { Sound.Splash, new SoundDefinition("WaterSplash", 0.7f, 0.18f) },
                 { Sound.Rain, new SoundDefinition("RainLoop", 0.85f, 0.66f) },
                 { Sound.Lightning, new SoundDefinition("LightningCrash", 0.35f, 0.01f) },
                 { Sound.Click, new SoundDefinition("ButtonClick", 0.75f, 0.05f) },
                 { Sound.Success, new SoundDefinition("Success", 0.38f, 0.07f) },
-                { Sound.Failure, new SoundDefinition("Failure", 0.38f, 0f) }
+                { Sound.Failure, new SoundDefinition("Failure", 0.38f, 0f) },
+                { Sound.Ocean, new SoundDefinition("OceanLoop", 1f, 0f) },
+                { Sound.BlockPlace, new SoundDefinition("BlockPlace", 0.42f, 0f) }
             };
 
         private static readonly HashSet<VisualElement> BoundUiRoots =
@@ -61,7 +65,9 @@ namespace RoyaltyBoat.Audio
         private readonly Dictionary<Object, AudioSource> fireSources =
             new Dictionary<Object, AudioSource>();
         private readonly HashSet<Object> rainOwners = new HashSet<Object>();
+        private readonly HashSet<Object> oceanOwners = new HashSet<Object>();
         private AudioSource rainSource;
+        private AudioSource oceanSource;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Bootstrap()
@@ -83,6 +89,32 @@ namespace RoyaltyBoat.Audio
 
         public static void PlaySuccess() => EnsureInstance().PlayUiOneShot(Sound.Success);
         public static void PlayFailure() => EnsureInstance().PlayUiOneShot(Sound.Failure);
+
+        public static void PlayBlockPlaced(Vector3 position) =>
+            EnsureInstance().PlayWorldOneShot(
+                Sound.BlockPlace,
+                position,
+                Random.Range(0.94f, 1.07f));
+
+        public static void SetOcean(Object owner, bool active)
+        {
+            if (owner == null)
+            {
+                return;
+            }
+
+            GameAudio audio = EnsureInstance();
+            if (active)
+            {
+                audio.oceanOwners.Add(owner);
+            }
+            else
+            {
+                audio.oceanOwners.Remove(owner);
+            }
+
+            audio.RefreshOcean();
+        }
 
         public static void SetRain(Object owner, bool active)
         {
@@ -217,7 +249,32 @@ namespace RoyaltyBoat.Audio
             }
         }
 
-        private void PlayWorldOneShot(Sound sound, Vector3 position)
+        private void RefreshOcean()
+        {
+            if (oceanOwners.Count > 0)
+            {
+                if (oceanSource == null)
+                {
+                    oceanSource = CreateLoopSource(
+                        Sound.Ocean,
+                        "Ocean Ambience",
+                        transform,
+                        0f,
+                        1f,
+                        500f);
+                }
+            }
+            else if (oceanSource != null)
+            {
+                Destroy(oceanSource.gameObject);
+                oceanSource = null;
+            }
+        }
+
+        private void PlayWorldOneShot(
+            Sound sound,
+            Vector3 position,
+            float pitch = 1f)
         {
             AudioClip clip = GetClip(sound);
             if (clip == null)
@@ -229,9 +286,13 @@ namespace RoyaltyBoat.Audio
             soundObject.transform.position = position;
             AudioSource source = soundObject.AddComponent<AudioSource>();
             ConfigureSource(source, Definitions[sound], 1f, 7f, 75f);
+            source.pitch = pitch;
             source.clip = clip;
             PlayFromOffset(source, Definitions[sound].StartTime);
-            Destroy(soundObject, Mathf.Max(0.1f, clip.length - Definitions[sound].StartTime + 0.15f));
+            float remainingDuration = clip.length - Definitions[sound].StartTime;
+            Destroy(
+                soundObject,
+                Mathf.Max(0.1f, remainingDuration / Mathf.Abs(pitch) + 0.15f));
         }
 
         private void PlayUiOneShot(Sound sound)

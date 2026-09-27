@@ -51,6 +51,7 @@
                     <ui:Slider name="camera-shake-slider" low-value="0" high-value="1" value="0.65" class="setting-slider" />
                 </ui:VisualElement>
             </ui:VisualElement>
+            <ui:Button name="return-main-menu-button" text="RETURN TO MAIN MENU" class="pause-button return-main-menu-button" />
         </ui:VisualElement>
 
         <ui:VisualElement name="pause-credits-screen" class="pause-subscreen is-hidden">

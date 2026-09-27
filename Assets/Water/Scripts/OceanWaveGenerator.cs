@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using RoyaltyBoat.Audio;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
@@ -284,6 +285,11 @@ public sealed class OceanWaveGenerator : MonoBehaviour
         _lastTickTime = 0.0;
         _rendererCacheDirty = true;
 
+        if (Application.isPlaying)
+        {
+            GameAudio.SetOcean(this, true);
+        }
+
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.update -= EditorTick;
         UnityEditor.EditorApplication.update += EditorTick;
@@ -292,6 +298,11 @@ public sealed class OceanWaveGenerator : MonoBehaviour
 
     private void OnDisable()
     {
+        if (Application.isPlaying)
+        {
+            GameAudio.SetOcean(this, false);
+        }
+
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.update -= EditorTick;
 #endif
