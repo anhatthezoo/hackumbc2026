@@ -513,13 +513,36 @@ Shader "Ocean/Godot Ocean Water URP"
             // because URP's hand-written pass does not supply it for us.
             float heightScatter = smoothstep(-2.5, 2.5, input.waveHeight);
             float bodyScatter = _SubsurfaceStrength
-                * lerp(0.18, 0.58, heightScatter)
+                * lerp(0.24, 0.72, heightScatter)
                 * (1.0 - fresnel)
                 * (1.0 - foamFactor);
             color += _WaterColor.rgb * bodyScatter;
+            color += _TransmissionColor.rgb
+                * _TransmissionStrength
+                * lerp(0.06, 0.18, heightScatter)
+                * (1.0 - fresnel)
+                * (1.0 - foamFactor);
 
             float4 shadowCoord = TransformWorldToShadowCoord(input.positionWS);
             Light mainLight = GetMainLight(shadowCoord);
+
+            // Let thin, sun-facing crests glow with the configured transmission
+            // color. These properties previously existed on the material but were
+            // never used, which made the water body read as flat and opaque.
+            float crestTransmission = smoothstep(-0.35, 1.8, input.waveHeight)
+                * (1.0 - fresnel)
+                * (1.0 - foamFactor);
+            float forwardScatter = 0.3 + 0.7 * pow(
+                saturate(dot(mainLight.direction, -viewDirectionWS)),
+                3.0);
+            color += _TransmissionColor.rgb
+                * _TransmissionStrength
+                * crestTransmission
+                * forwardScatter
+                * mainLight.color
+                * mainLight.distanceAttenuation
+                * mainLight.shadowAttenuation;
+
             color += EvaluateOceanLight(
                 mainLight, normalWS, viewDirectionWS, albedo,
                 input.waveHeight, foamFactor, fresnel);
