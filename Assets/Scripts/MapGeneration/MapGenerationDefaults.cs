@@ -11,9 +11,9 @@ namespace RoyaltyBoat.MapGeneration
         public const float CourseWidth = 60f;
         public const float HazardChunkGap = 40f;
 
-        public const int BaseHazardChunkCount = 5;
-        public const int LevelsPerExtraChunk = 2;
-        public const int MaximumHazardChunkCount = 8;
+        public const int BaseHazardChunkCount = 1;
+        public const int LevelsPerExtraChunk = 1;
+        public const int MaximumHazardChunkCount = 6;
 
         public const float BaseDifficultyBudget = 10f;
         public const float DifficultyPerLevel = 3f;

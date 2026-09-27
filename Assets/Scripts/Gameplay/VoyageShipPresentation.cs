@@ -1,5 +1,7 @@
+using System.Collections;
 using System.Collections.Generic;
 using RoyaltyBoat.Economy;
+using RoyaltyBoat.Flow;
 using UnityEngine;
 
 namespace RoyaltyBoat.Gameplay
@@ -33,10 +35,13 @@ namespace RoyaltyBoat.Gameplay
         private int completedLevel;
         private float completionKingHealth;
         private LevelRewardResult completionReward;
+        private bool completionTransitionRequested;
 
         public void Configure(Ship targetShip)
         {
             ship = targetShip;
+            levelCompleteVisible = false;
+            completionTransitionRequested = false;
             EnsureCollisionBoxes();
             ApplyVoyageColors();
         }
@@ -49,6 +54,7 @@ namespace RoyaltyBoat.Gameplay
             completedLevel = Mathf.Max(1, level);
             completionKingHealth = Mathf.Clamp01(normalizedKingHealth);
             completionReward = reward;
+            completionTransitionRequested = false;
             levelCompleteVisible = true;
         }
 
@@ -225,7 +231,7 @@ namespace RoyaltyBoat.Gameplay
         private void DrawCompletionPanel()
         {
             const float width = 430f;
-            const float height = 286f;
+            const float height = 344f;
             Rect panel = new Rect(
                 (Screen.width - width) * 0.5f,
                 (Screen.height - height) * 0.5f,
@@ -266,6 +272,23 @@ namespace RoyaltyBoat.Gameplay
                 $"+{completionReward.TotalReward} COINS", totalStyle);
             GUI.Label(new Rect(panel.x + 20f, panel.y + 232f, width - 40f, 28f),
                 $"NEW BALANCE  {EconomyAccess.Balance}", centeredLabel);
+
+            string buttonText = completedLevel >= VoyageFlow.LevelsPerRun
+                ? "START NEW RUN"
+                : $"RETURN TO SHOP  •  LEVEL {completedLevel + 1}";
+            if (!completionTransitionRequested && GUI.Button(
+                    new Rect(panel.x + 65f, panel.y + 278f, width - 130f, 44f),
+                    buttonText))
+            {
+                completionTransitionRequested = true;
+                StartCoroutine(AdvanceAfterCompletionPanel());
+            }
+        }
+
+        private IEnumerator AdvanceAfterCompletionPanel()
+        {
+            yield return null;
+            VoyageFlow.AdvanceAfterLevel(completedLevel);
         }
 
         private void EnsureRuntimeState()

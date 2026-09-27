@@ -46,6 +46,92 @@ public sealed class ShipBuildArea : MonoBehaviour
         return launchShip;
     }
 
+    public void AdoptReturningShip(
+        Ship ship,
+        KingBuildPlacement king,
+        Vector3 shipScale,
+        Vector3 kingScale)
+    {
+        if (ship == null || king == null)
+        {
+            return;
+        }
+
+        if (startingShip != null && startingShip != ship)
+        {
+            if (Application.isPlaying)
+            {
+                Destroy(startingShip.gameObject);
+            }
+            else
+            {
+                DestroyImmediate(startingShip.gameObject);
+            }
+        }
+
+        Block seat = king.SupportBlock;
+        startingShip = ship;
+        KingPlacement = king;
+
+        ship.transform.SetParent(transform, true);
+        ship.transform.localScale = shipScale;
+        ship.transform.rotation = Quaternion.identity;
+        CenterShipOverPlatform(ship);
+
+        Rigidbody shipBody = ship.GetComponent<Rigidbody>();
+        if (shipBody != null)
+        {
+            if (!shipBody.isKinematic)
+            {
+                shipBody.linearVelocity = Vector3.zero;
+                shipBody.angularVelocity = Vector3.zero;
+            }
+
+            shipBody.useGravity = false;
+            shipBody.isKinematic = true;
+            shipBody.constraints = RigidbodyConstraints.FreezeRotation;
+        }
+
+        RoyaltyBoat.Water.OceanWaveBuoyancy buoyancy =
+            ship.GetComponent<RoyaltyBoat.Water.OceanWaveBuoyancy>();
+        if (buoyancy != null)
+        {
+            buoyancy.enabled = false;
+        }
+
+        RoyaltyBoat.Gameplay.BoatMovementController movement =
+            ship.GetComponent<RoyaltyBoat.Gameplay.BoatMovementController>();
+        if (movement != null)
+        {
+            movement.enabled = false;
+        }
+
+        RoyaltyBoat.Gameplay.VoyageShipPresentation presentation =
+            ship.GetComponent<RoyaltyBoat.Gameplay.VoyageShipPresentation>();
+        if (presentation != null)
+        {
+            presentation.enabled = false;
+        }
+
+        king.transform.SetParent(transform, true);
+        king.transform.localScale = kingScale;
+        Vector3 kingPosition = seat != null && seat.IsAlive
+            ? king.GetPositionOn(seat)
+            : GetKingStagingPosition();
+        king.EnterBuildMode(kingPosition, Quaternion.identity);
+
+        if (seat != null && seat.IsAlive)
+        {
+            king.SetSupport(seat);
+        }
+
+        ship.RefreshBlocks();
+        if (Application.isPlaying)
+        {
+            ConfigureCamera(Camera.main);
+        }
+    }
+
     public bool IsOverPlatform(Vector3 worldPosition)
     {
         if (platform == null)
@@ -83,9 +169,7 @@ public sealed class ShipBuildArea : MonoBehaviour
             return;
         }
 
-        Vector3 stagingPosition = platform == null
-            ? transform.TransformPoint(kingStagingOffset)
-            : platform.position + kingStagingOffset;
+        Vector3 stagingPosition = GetKingStagingPosition();
         KingController king = Instantiate(
             kingPrefab,
             stagingPosition,
@@ -99,6 +183,44 @@ public sealed class ShipBuildArea : MonoBehaviour
         }
 
         KingPlacement.EnterBuildMode(stagingPosition, Quaternion.identity);
+    }
+
+    private Vector3 GetKingStagingPosition()
+    {
+        return platform == null
+            ? transform.TransformPoint(kingStagingOffset)
+            : platform.position + kingStagingOffset;
+    }
+
+    private void CenterShipOverPlatform(Ship ship)
+    {
+        Vector3 targetCenter = platform == null ? transform.position : platform.position;
+        ship.transform.position = targetCenter;
+
+        Collider[] colliders = ship.GetComponentsInChildren<Collider>(true);
+        if (colliders.Length == 0)
+        {
+            ship.transform.position += Vector3.up;
+            return;
+        }
+
+        Bounds shipBounds = colliders[0].bounds;
+        for (int index = 1; index < colliders.Length; index++)
+        {
+            shipBounds.Encapsulate(colliders[index].bounds);
+        }
+
+        float platformTop = targetCenter.y;
+        Collider platformCollider = platform == null ? null : platform.GetComponent<Collider>();
+        if (platformCollider != null)
+        {
+            platformTop = platformCollider.bounds.max.y;
+        }
+
+        ship.transform.position += new Vector3(
+            targetCenter.x - shipBounds.center.x,
+            platformTop - shipBounds.min.y + 0.02f,
+            targetCenter.z - shipBounds.center.z);
     }
 
     public void ConfigureCamera(Camera targetCamera)

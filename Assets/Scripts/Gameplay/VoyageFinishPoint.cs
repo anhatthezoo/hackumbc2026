@@ -1,4 +1,5 @@
 using RoyaltyBoat.Economy;
+using RoyaltyBoat.Flow;
 using RoyaltyBoat.King;
 using UnityEngine;
 
@@ -49,6 +50,7 @@ namespace RoyaltyBoat.Gameplay
             float kingHealth = ResolveKingHealth();
             LevelRewardResult reward = LevelRewardCalculator.Calculate(levelNumber, kingHealth);
             EconomyAccess.AddFunds(reward.TotalReward);
+            VoyageFlow.MarkLevelComplete(levelNumber);
 
             BoatMovementController movement = targetShip.GetComponent<BoatMovementController>();
             if (movement != null)
