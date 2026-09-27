@@ -128,6 +128,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Block
   maxHealth: 100
   damageReduction: 0
+  providesBuoyancy: 1
+  forwardSpeedBonus: 0
+  steeringSpeedBonus: 0
 --- !u!114 &8571934249047684206
 MonoBehaviour:
   m_ObjectHideFlags: 0

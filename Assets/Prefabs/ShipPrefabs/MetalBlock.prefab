@@ -125,5 +125,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4e5ad56b1928a9341a425ce8cff649f1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Block
-  maxHealth: 100
-  damageReduction: 0
+  maxHealth: 180
+  damageReduction: 5
+  providesBuoyancy: 1
+  forwardSpeedBonus: 0
+  steeringSpeedBonus: 0

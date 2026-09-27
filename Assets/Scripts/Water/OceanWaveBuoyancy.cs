@@ -362,7 +362,8 @@ namespace RoyaltyBoat.Water
 
             foreach (Block block in blocks)
             {
-                if (block == null || !block.gameObject.activeInHierarchy ||
+                if (block == null || !block.IsAlive || !block.ProvidesBuoyancy ||
+                    !block.gameObject.activeInHierarchy ||
                     !TryGetLocalBlockBounds(block, out Bounds localBounds))
                 {
                     continue;

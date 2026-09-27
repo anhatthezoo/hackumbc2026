@@ -276,6 +276,25 @@ public class Ship : MonoBehaviour
         body.ResetInertiaTensor();
     }
 
+    public void GetMovementBonuses(
+        out float forwardSpeedBonus,
+        out float steeringSpeedBonus)
+    {
+        forwardSpeedBonus = 0f;
+        steeringSpeedBonus = 0f;
+
+        foreach (Block block in blocks)
+        {
+            if (block == null || !block.IsAlive)
+            {
+                continue;
+            }
+
+            forwardSpeedBonus += block.ForwardSpeedBonus;
+            steeringSpeedBonus += block.SteeringSpeedBonus;
+        }
+    }
+
     /// <summary>
     /// Moves the neutral ship container to the center of its blocks without
     /// changing any block's world position. This keeps voyage physics and the

@@ -14,14 +14,44 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RoyaltyBoat.UI.ShopCatalog
   products:
   - id: wooden-block
-    displayName: Wooden Block
+    displayName: Wood Block
     category: STRUCTURE
-    description: Reliable timber for hulls, walls, and questionable ideas.
+    description: A sturdy timber cube for the core of your raft.
     price: 25
     prefab: {fileID: 5429466535869677022, guid: 487a717d0716e4f4d978214f3b8df501, type: 3}
+  - id: wood-platform
+    displayName: Wood Platform
+    category: STRUCTURE
+    description: A low wooden deck tile that keeps the hull light.
+    price: 35
+    prefab: {fileID: 5429466535869677022, guid: 77150244d007e5344a1c76fe57b1966d, type: 3}
+  - id: wood-sail
+    displayName: Wood Sail
+    category: MOVEMENT
+    description: A light sail that improves forward speed and steering.
+    price: 90
+    prefab: {fileID: 5429466535869677022, guid: a6d6e9874b8c3f844945f625648bcc74, type: 3}
+  - id: metal-block
+    displayName: Metal Block
+    category: ARMOR
+    description: Heavy armor with more health and impact resistance.
+    price: 70
+    prefab: {fileID: 5429466535869677022, guid: 85e82a0a38ee86a469b22410db5bcf41, type: 3}
+  - id: metal-platform
+    displayName: Metal Platform
+    category: ARMOR
+    description: A durable armored deck tile for exposed sections.
+    price: 85
+    prefab: {fileID: 5429466535869677022, guid: 0828089d533edd84eb5c1296caf47758, type: 3}
+  - id: metal-sail
+    displayName: Metal Sail
+    category: MOVEMENT
+    description: A reinforced sail with the same thrust and better survival.
+    price: 150
+    prefab: {fileID: 5429466535869677022, guid: c8643aed4346d464fb9e15fba42bc8cd, type: 3}
   - id: chair
-    displayName: Chair
+    displayName: Royal Chair
     category: ROYAL
-    description: A sturdy seat that secures the King to the ship.
+    description: The King's seat and required support during the voyage.
     price: 25
     prefab: {fileID: 6095512083062651715, guid: 82c9fad016000264fb0ac21772f464a4, type: 3}

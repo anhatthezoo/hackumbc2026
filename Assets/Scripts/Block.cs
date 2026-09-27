@@ -12,9 +12,18 @@ public class Block : MonoBehaviour
     [Tooltip("Flat amount subtracted from each incoming damage hit.")]
     [SerializeField, Min(0)] private int damageReduction;
 
+    [Header("Ship Module")]
+    [Tooltip("Whether this part's collider should support the ship on the water.")]
+    [SerializeField] private bool providesBuoyancy = true;
+    [SerializeField, Min(0f)] private float forwardSpeedBonus;
+    [SerializeField, Min(0f)] private float steeringSpeedBonus;
+
     public int Health { get; private set; }
     public int MaxHealth => maxHealth;
     public int DamageReduction => damageReduction;
+    public bool ProvidesBuoyancy => providesBuoyancy;
+    public float ForwardSpeedBonus => forwardSpeedBonus;
+    public float SteeringSpeedBonus => steeringSpeedBonus;
     public bool IsAlive => Health > 0;
 
     public event Action<Block> Destroyed;

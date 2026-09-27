@@ -28,14 +28,18 @@ namespace RoyaltyBoat.Gameplay
 
 
         private Rigidbody body;
+        private Ship ship;
         private RavineCourseBoundary course;
+        private float currentForwardBonus;
+        private float currentSteeringBonus;
 
-        public float ForwardSpeed => forwardSpeed;
-        public float LateralSpeed => lateralSpeed;
+        public float ForwardSpeed => forwardSpeed + currentForwardBonus;
+        public float LateralSpeed => lateralSpeed + currentSteeringBonus;
 
         private void Awake()
         {
             body = GetComponent<Rigidbody>();
+            ship = GetComponent<Ship>();
             course = FindAnyObjectByType<RavineCourseBoundary>();
         }
 
@@ -61,6 +65,18 @@ namespace RoyaltyBoat.Gameplay
             }
 
             float steering = ReadSteering();
+            if (ship != null)
+            {
+                ship.GetMovementBonuses(
+                    out currentForwardBonus,
+                    out currentSteeringBonus);
+            }
+            else
+            {
+                currentForwardBonus = 0f;
+                currentSteeringBonus = 0f;
+            }
+
             Vector3 velocity = body.linearVelocity;
             Vector3 forward = Vector3.right;
             if (course != null)
@@ -74,8 +90,8 @@ namespace RoyaltyBoat.Gameplay
 
             Vector3 across = new Vector3(-forward.z, 0f, forward.x);
             Vector3 planarVelocity = new Vector3(velocity.x, 0f, velocity.z);
-            Vector3 desiredPlanarVelocity = forward * forwardSpeed
-                + across * (steering * lateralSpeed);
+            Vector3 desiredPlanarVelocity = forward * ForwardSpeed
+                + across * (steering * LateralSpeed);
             planarVelocity = Vector3.MoveTowards(
                 planarVelocity,
                 desiredPlanarVelocity,
