@@ -1,4 +1,5 @@
 using System;
+using RoyaltyBoat.Economy;
 using RoyaltyBoat.Gameplay;
 using RoyaltyBoat.King;
 using RoyaltyBoat.MapGeneration;
@@ -14,16 +15,22 @@ namespace RoyaltyBoat.Flow
         public const string GameplaySceneName = "Voyage";
         public const string DevMapSceneName = "DevMap";
         public const string ShipBuildingSceneName = "ShipBuilding";
+        public const int StartingFunds = 500;
 
         private static Ship builtShip;
         private static KingBuildPlacement builtKing;
         private static Vector3 builtKingLocalPosition;
         private static Quaternion builtKingLocalRotation;
         private static Vector3 builtKingScale;
+        private static Vector3 builtShipScale;
         private static int runSeed;
         private static string destinationSceneName = GameplaySceneName;
+        private static bool returningToBuilder;
+        private static bool levelComplete;
 
         public static bool IsVoyageActive { get; private set; }
+        public static bool IsRunActive { get; private set; }
+        public static int CurrentLevel { get; private set; } = 1;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetState()
@@ -33,9 +40,14 @@ namespace RoyaltyBoat.Flow
             builtKingLocalPosition = Vector3.zero;
             builtKingLocalRotation = Quaternion.identity;
             builtKingScale = Vector3.one;
+            builtShipScale = Vector3.one;
             runSeed = 0;
             destinationSceneName = GameplaySceneName;
+            returningToBuilder = false;
+            levelComplete = false;
             IsVoyageActive = false;
+            IsRunActive = false;
+            CurrentLevel = 1;
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -47,6 +59,13 @@ namespace RoyaltyBoat.Flow
 
         private static void ConfigureLoadedScene(Scene scene, LoadSceneMode loadMode)
         {
+            if (scene.name == ShipBuildingSceneName && returningToBuilder)
+            {
+                returningToBuilder = false;
+                PrepareBuiltShipForBuilding();
+                return;
+            }
+
             if (!IsVoyageActive || scene.name != destinationSceneName)
             {
                 return;
@@ -63,7 +82,7 @@ namespace RoyaltyBoat.Flow
 
                 devCourse.ConfigureObstacleDamage();
                 PlaceBuiltShipOnWater();
-                CreateFinishPoint(devCourse.transform, devCourse.FinishX, 1);
+                CreateFinishPoint(devCourse.transform, devCourse.FinishX, CurrentLevel);
                 return;
             }
 
@@ -74,28 +93,38 @@ namespace RoyaltyBoat.Flow
                 return;
             }
 
-            generator.GenerateLevel(runSeed, 1);
+            generator.GenerateLevel(runSeed, CurrentLevel);
             PlaceBuiltShipOnWater();
             CreateFinishPoint(generator);
         }
 
         public static void OpenShipBuilder()
         {
-            if (builtKing != null)
+            StartNewRun();
+        }
+
+        public static void AdvanceAfterLevel(int completedLevel)
+        {
+            if (!levelComplete || completedLevel != CurrentLevel)
             {
-                UnityEngine.Object.Destroy(builtKing.gameObject);
+                return;
             }
 
-            if (builtShip != null)
-            {
-                UnityEngine.Object.Destroy(builtShip.gameObject);
-            }
-
+            UnsubscribeFromKingDeath();
+            CurrentLevel++;
+            levelComplete = false;
             IsVoyageActive = false;
-            builtShip = null;
-            builtKing = null;
+            returningToBuilder = true;
             destinationSceneName = GameplaySceneName;
             SceneManager.LoadScene(ShipBuildingSceneName);
+        }
+
+        public static void MarkLevelComplete(int completedLevel)
+        {
+            if (IsVoyageActive && completedLevel == CurrentLevel)
+            {
+                levelComplete = true;
+            }
         }
 
         public static bool LaunchBuiltShip(Ship ship)
@@ -133,12 +162,20 @@ namespace RoyaltyBoat.Flow
                 return false;
             }
 
+            if (!IsRunActive)
+            {
+                IsRunActive = true;
+                CurrentLevel = 1;
+                runSeed = unchecked((int)DateTime.UtcNow.Ticks);
+            }
+
             ship.CenterRootOnStructure();
             builtKingLocalPosition = ship.transform.InverseTransformPoint(
                 king.transform.position);
             builtKingLocalRotation = Quaternion.Inverse(ship.transform.rotation)
                 * king.transform.rotation;
             builtKingScale = king.transform.localScale;
+            builtShipScale = ship.transform.localScale;
             ship.transform.SetParent(null, true);
             UnityEngine.Object.DontDestroyOnLoad(ship.gameObject);
             king.transform.SetParent(null, true);
@@ -146,8 +183,13 @@ namespace RoyaltyBoat.Flow
 
             builtShip = ship;
             builtKing = king;
-            runSeed = unchecked((int)DateTime.UtcNow.Ticks);
+            if (runSeed == 0)
+            {
+                runSeed = unchecked((int)DateTime.UtcNow.Ticks);
+            }
+
             destinationSceneName = useDevMap ? DevMapSceneName : GameplaySceneName;
+            levelComplete = false;
             IsVoyageActive = true;
             SceneManager.LoadScene(destinationSceneName);
             return true;
@@ -201,6 +243,7 @@ namespace RoyaltyBoat.Flow
             {
                 buoyancy = builtShip.gameObject.AddComponent<OceanWaveBuoyancy>();
             }
+            buoyancy.enabled = true;
 
             if (body != null)
             {
@@ -209,8 +252,9 @@ namespace RoyaltyBoat.Flow
                 BoatMovementController movement = builtShip.GetComponent<BoatMovementController>();
                 if (movement == null)
                 {
-                    builtShip.gameObject.AddComponent<BoatMovementController>();
+                    movement = builtShip.gameObject.AddComponent<BoatMovementController>();
                 }
+                movement.enabled = true;
             }
 
             VoyageShipPresentation presentation =
@@ -220,7 +264,9 @@ namespace RoyaltyBoat.Flow
                 presentation = builtShip.gameObject.AddComponent<VoyageShipPresentation>();
             }
 
+            presentation.enabled = true;
             presentation.Configure(builtShip);
+            SubscribeToKingDeath();
 
             Camera gameplayCamera = Camera.main;
             if (gameplayCamera == null)
@@ -236,6 +282,99 @@ namespace RoyaltyBoat.Flow
             }
 
             cameraController.SetTarget(shipTransform);
+        }
+
+        private static void StartNewRun()
+        {
+            UnsubscribeFromKingDeath();
+
+            if (builtKing != null)
+            {
+                builtKing.gameObject.SetActive(false);
+                UnityEngine.Object.Destroy(builtKing.gameObject);
+            }
+
+            if (builtShip != null)
+            {
+                builtShip.gameObject.SetActive(false);
+                UnityEngine.Object.Destroy(builtShip.gameObject);
+            }
+
+            builtShip = null;
+            builtKing = null;
+            builtShipScale = Vector3.one;
+            builtKingScale = Vector3.one;
+            CurrentLevel = 1;
+            runSeed = unchecked((int)DateTime.UtcNow.Ticks);
+            destinationSceneName = GameplaySceneName;
+            returningToBuilder = false;
+            levelComplete = false;
+            IsVoyageActive = false;
+            IsRunActive = true;
+            EconomyAccess.Current.ResetBalance(StartingFunds);
+            SceneManager.LoadScene(ShipBuildingSceneName);
+        }
+
+        private static void PrepareBuiltShipForBuilding()
+        {
+            ShipBuildArea buildArea = UnityEngine.Object.FindAnyObjectByType<ShipBuildArea>();
+            if (buildArea == null || builtShip == null)
+            {
+                Debug.LogError("Could not return the completed ship to the shipyard.");
+                StartNewRun();
+                return;
+            }
+
+            builtKing = buildArea.AdoptReturningShip(
+                builtShip,
+                builtKing,
+                builtShipScale,
+                builtKingScale);
+
+            if (builtKing == null)
+            {
+                Debug.LogError("Could not restore the King after the completed voyage.");
+                StartNewRun();
+                return;
+            }
+
+            builtKingScale = builtKing.transform.localScale;
+        }
+
+        private static void SubscribeToKingDeath()
+        {
+            KingHealth health = builtKing == null
+                ? null
+                : builtKing.GetComponent<KingHealth>();
+            if (health == null)
+            {
+                return;
+            }
+
+            health.Died -= HandleKingDied;
+            health.Died += HandleKingDied;
+        }
+
+        private static void UnsubscribeFromKingDeath()
+        {
+            KingHealth health = builtKing == null
+                ? null
+                : builtKing.GetComponent<KingHealth>();
+            if (health != null)
+            {
+                health.Died -= HandleKingDied;
+            }
+        }
+
+        private static void HandleKingDied(KingDeathCause cause)
+        {
+            if (!IsVoyageActive || levelComplete)
+            {
+                return;
+            }
+
+            Debug.Log($"The King died during level {CurrentLevel}. Restarting the run.");
+            StartNewRun();
         }
 
         private static void DisableExtraRigidbodies(Ship ship, Rigidbody rootBody)

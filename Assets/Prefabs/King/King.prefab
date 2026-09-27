@@ -128,7 +128,7 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8418278448551573545}
   serializedVersion: 5
-  m_Mass: 5
+  m_Mass: 1
   m_LinearDamping: 0
   m_AngularDamping: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
@@ -157,7 +157,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7cf297ee0342206428ea5ece2573e121, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RoyaltyBoat.King.KingHealth
   maxHealth: 100
   currentHealth: 100
@@ -171,7 +171,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 45a34e2b55eb4074b8a30d6177d003ea, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RoyaltyBoat.King.KingBoatLink
   currentBoatBody: {fileID: 0}
   isSupported: 0
@@ -185,7 +185,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3c1b3ef39682f26489900f9c83fdc6e4, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RoyaltyBoat.King.KingCollisionDamage
   safeImpactSpeed: 5
   damagePerExcessSpeed: 8
@@ -200,9 +200,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c874a066c49104c45ae33faba244d671, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RoyaltyBoat.King.KingController
-  waterDeathHeight: -2
+  requiredSubmersionDepth: 0.9
+  drowningGracePeriod: 1.5
+  minimumUprightDot: 0.3
+  capsizeGracePeriod: 1.25
 --- !u!114 &7928213034838158057
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -213,7 +216,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c1f9fbc9346c96c4f96a07b6581b4d5e, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RoyaltyBoat.King.KingAnimationController
   animator: {fileID: 1472590238440664931}
 --- !u!114 &3327108795139848176
@@ -226,7 +229,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2a8c371588c447a19214250ee4a17792, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RoyaltyBoat.King.KingBuildPlacement
 --- !u!1001 &6898874289081729252
 PrefabInstance:

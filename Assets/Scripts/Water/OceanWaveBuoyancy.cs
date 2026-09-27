@@ -73,6 +73,26 @@ namespace RoyaltyBoat.Water
             }
         }
 
+        public float AverageSurfaceHeight
+        {
+            get
+            {
+                float oceanBaseHeight = ocean != null
+                    ? ocean.transform.position.y
+                    : 0f;
+                if (!hasOceanSamples)
+                {
+                    return oceanBaseHeight;
+                }
+
+                float waveOffset = Mathf.Clamp(
+                    AverageSampledHeight * physicsWaveHeightMultiplier,
+                    -maximumWaveDisplacement,
+                    maximumWaveDisplacement);
+                return oceanBaseHeight + waveOffset;
+            }
+        }
+
         private void Awake()
         {
             body = GetComponent<Rigidbody>();

@@ -14,8 +14,6 @@ namespace RoyaltyBoat.MapGeneration
 
         [Header("Length")]
         [SerializeField, Min(1)] private int baseHazardChunkCount = MapGenerationDefaults.BaseHazardChunkCount;
-        [SerializeField, Min(1)] private int levelsPerExtraChunk = MapGenerationDefaults.LevelsPerExtraChunk;
-        [SerializeField, Min(1)] private int maximumHazardChunkCount = MapGenerationDefaults.MaximumHazardChunkCount;
         [SerializeField, Min(0f)] private float hazardChunkGap = MapGenerationDefaults.HazardChunkGap;
 
         [Header("Difficulty")]
@@ -43,9 +41,8 @@ namespace RoyaltyBoat.MapGeneration
         public int GetHazardChunkCount(int levelNumber)
         {
             int safeLevel = Mathf.Max(1, levelNumber);
-            return Mathf.Min(
-                maximumHazardChunkCount,
-                baseHazardChunkCount + (safeLevel - 1) / levelsPerExtraChunk);
+            long count = (long)baseHazardChunkCount + safeLevel - 1L;
+            return (int)Math.Min(count, int.MaxValue);
         }
 
         private void Start()
@@ -86,6 +83,7 @@ namespace RoyaltyBoat.MapGeneration
             int combinedSeed = CombineSeed(runSeed, ActiveLevelNumber);
             var random = new System.Random(combinedSeed);
             int hazardCount = GetHazardChunkCount(ActiveLevelNumber);
+            int selectionLevel = GetCatalogSelectionLevel(ActiveLevelNumber);
             float remainingDifficulty = baseDifficultyBudget + (ActiveLevelNumber - 1) * difficultyPerLevel;
             float cursor = 0f;
             LaneMask availableLanes = LaneMask.All;
@@ -100,12 +98,13 @@ namespace RoyaltyBoat.MapGeneration
                 float desiredCost = remainingSlots <= 0 ? remainingDifficulty : remainingDifficulty / remainingSlots;
                 LevelChunkDefinition selected = SelectChunk(
                     random,
-                    ActiveLevelNumber,
+                    selectionLevel,
                     availableLanes,
                     desiredCost,
                     remainingDifficulty,
                     hazardIndex,
-                    lastUsedAt);
+                    lastUsedAt,
+                    true);
 
                 if (selected == null)
                 {
@@ -121,6 +120,7 @@ namespace RoyaltyBoat.MapGeneration
             }
 
             AppendChunk(catalog.CooldownChunk, generatedChunks.Count, ref cursor);
+            ApplyObstacleDensity(random);
             GeneratedLength = cursor;
 
             RavineCourseBoundary ravine =
@@ -201,12 +201,18 @@ namespace RoyaltyBoat.MapGeneration
             float desiredCost,
             float remainingDifficulty,
             int hazardIndex,
-            IReadOnlyDictionary<LevelChunkDefinition, int> lastUsedAt)
+            IReadOnlyDictionary<LevelChunkDefinition, int> lastUsedAt,
+            bool requireObstacle)
         {
             var candidates = new List<LevelChunkDefinition>();
             foreach (LevelChunkDefinition definition in catalog.HazardChunks)
             {
                 if (!IsCompatible(definition, levelNumber, availableLanes))
+                {
+                    continue;
+                }
+
+                if (requireObstacle && !ContainsObstacle(definition))
                 {
                     continue;
                 }
@@ -226,6 +232,11 @@ namespace RoyaltyBoat.MapGeneration
                 {
                     if (IsCompatible(definition, levelNumber, availableLanes))
                     {
+                        if (requireObstacle && !ContainsObstacle(definition))
+                        {
+                            continue;
+                        }
+
                         candidates.Add(definition);
                     }
                 }
@@ -270,6 +281,115 @@ namespace RoyaltyBoat.MapGeneration
             }
 
             return candidates[candidates.Count - 1];
+        }
+
+        private static bool ContainsObstacle(LevelChunkDefinition definition)
+        {
+            return definition != null
+                && definition.Prefab != null
+                && definition.Prefab.GetComponentInChildren<ObstacleDescriptor>(true) != null;
+        }
+
+        private void ApplyObstacleDensity(System.Random random)
+        {
+            if (generatedRoot == null)
+            {
+                return;
+            }
+
+            ObstacleDescriptor[] authoredObstacles =
+                generatedRoot.GetComponentsInChildren<ObstacleDescriptor>(true);
+            if (authoredObstacles.Length == 0)
+            {
+                Debug.LogWarning(
+                    $"Generated level {ActiveLevelNumber} without any obstacles.",
+                    this);
+                return;
+            }
+
+            int targetObstacleCount = Mathf.Max(1, ActiveLevelNumber);
+            var activeObstacles = new List<ObstacleDescriptor>(authoredObstacles);
+
+            while (activeObstacles.Count > targetObstacleCount)
+            {
+                int removeIndex = random.Next(activeObstacles.Count);
+                ObstacleDescriptor removed = activeObstacles[removeIndex];
+                activeObstacles.RemoveAt(removeIndex);
+                RemoveObstacle(removed);
+            }
+
+            while (activeObstacles.Count < targetObstacleCount)
+            {
+                ObstacleDescriptor source = activeObstacles[random.Next(activeObstacles.Count)];
+                if (source == null)
+                {
+                    continue;
+                }
+
+                float overlapChance = ActiveLevelNumber < 3
+                    ? 0f
+                    : Mathf.Clamp01(0.3f + (ActiveLevelNumber - 3) * 0.12f);
+                bool overlap = random.NextDouble() < overlapChance;
+                float distance = overlap
+                    ? Mathf.Lerp(0.75f, 2.5f, (float)random.NextDouble())
+                    : Mathf.Lerp(5f, 11f, (float)random.NextDouble());
+                float angle = (float)random.NextDouble() * Mathf.PI * 2f;
+
+                GameObject duplicate = Instantiate(
+                    source.gameObject,
+                    source.transform.parent);
+                duplicate.name = source.gameObject.name + (overlap
+                    ? " - Overlap"
+                    : " - Extra");
+                duplicate.transform.localPosition = source.transform.localPosition
+                    + new Vector3(
+                        Mathf.Cos(angle) * distance,
+                        0f,
+                        Mathf.Sin(angle) * distance);
+                duplicate.transform.localRotation = source.transform.localRotation;
+                ConfigureObstacleCollisions(duplicate);
+
+                ObstacleDescriptor duplicateDescriptor =
+                    duplicate.GetComponent<ObstacleDescriptor>();
+                if (duplicateDescriptor != null)
+                {
+                    activeObstacles.Add(duplicateDescriptor);
+                }
+            }
+        }
+
+        private int GetCatalogSelectionLevel(int levelNumber)
+        {
+            int highestAuthoredLevel = 1;
+            foreach (LevelChunkDefinition definition in catalog.HazardChunks)
+            {
+                if (definition != null)
+                {
+                    highestAuthoredLevel = Mathf.Max(
+                        highestAuthoredLevel,
+                        definition.MaximumLevel);
+                }
+            }
+
+            return Mathf.Min(Mathf.Max(1, levelNumber), highestAuthoredLevel);
+        }
+
+        private static void RemoveObstacle(ObstacleDescriptor obstacle)
+        {
+            if (obstacle == null)
+            {
+                return;
+            }
+
+            obstacle.gameObject.SetActive(false);
+            if (Application.isPlaying)
+            {
+                Destroy(obstacle.gameObject);
+            }
+            else
+            {
+                DestroyImmediate(obstacle.gameObject);
+            }
         }
 
         private static bool IsCompatible(LevelChunkDefinition definition, int levelNumber, LaneMask availableLanes)
@@ -348,8 +468,6 @@ namespace RoyaltyBoat.MapGeneration
         private void OnValidate()
         {
             baseHazardChunkCount = Mathf.Max(1, baseHazardChunkCount);
-            levelsPerExtraChunk = Mathf.Max(1, levelsPerExtraChunk);
-            maximumHazardChunkCount = Mathf.Max(baseHazardChunkCount, maximumHazardChunkCount);
             hazardChunkGap = Mathf.Max(0f, hazardChunkGap);
             baseDifficultyBudget = Mathf.Max(0f, baseDifficultyBudget);
             difficultyPerLevel = Mathf.Max(0f, difficultyPerLevel);

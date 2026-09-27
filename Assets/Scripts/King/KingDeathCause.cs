@@ -7,6 +7,7 @@ namespace RoyaltyBoat.King
         Projectile,
         EnvironmentalHazard,
         Lightning,
-        Water
+        Water,
+        Capsized
     }
 }
