@@ -568,7 +568,7 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
-  m_BackGroundColor: {r: 0.105, g: 0.165, b: 0.235, a: 1}
+  m_BackGroundColor: {r: 0.015686275, g: 0.45882353, b: 0.75686276, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -618,7 +618,7 @@ Transform:
   m_GameObject: {fileID: 335446414}
   serializedVersion: 2
   m_LocalRotation: {x: -0.10685517, y: 0.88471454, z: -0.24943197, w: -0.37900645}
-  m_LocalPosition: {x: 4.97, y: 4.84, z: 4.01}
+  m_LocalPosition: {x: 7.98, y: 7.38, z: 6.87}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -709,7 +709,7 @@ MonoBehaviour:
   topDownPitch: 31.49
   viewTransitionSpeed: 480
   zoomSensitivity: 0.01
-  minimumZoom: 7
+  minimumZoom: 10
   maximumZoom: 24
 --- !u!1001 &378805885
 PrefabInstance:
@@ -719,6 +719,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 155206573999365479, guid: 389a75c0d0e15bf4e9fe3b91b41d4316, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.26
+      objectReference: {fileID: 0}
     - target: {fileID: 1181272551493286942, guid: 389a75c0d0e15bf4e9fe3b91b41d4316, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -789,7 +793,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7167785343657855864, guid: 389a75c0d0e15bf4e9fe3b91b41d4316, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -811,7 +815,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &427338419
 Transform:
   m_ObjectHideFlags: 0

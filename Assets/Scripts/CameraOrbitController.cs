@@ -23,7 +23,7 @@ public class CameraOrbitController : MonoBehaviour
     [SerializeField, Min(1f)] private float viewTransitionSpeed = 480f;
 
     [Header("Zoom")]
-    [SerializeField, Min(0.01f)] private float zoomSensitivity = 0.01f;
+    [SerializeField, Min(0.01f)] private float zoomSensitivity = 0.05f;
     [SerializeField, Min(1f)] private float minimumZoom = 12f;
     [SerializeField, Min(1f)] private float maximumZoom = 42f;
 
