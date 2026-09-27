@@ -50,17 +50,17 @@ Material:
     - _Cascade6Blend: 1
     - _Cascade7Blend: 1
     - _CascadeCount: 0
-    - _CrestFoamStrength: 1.55
+    - _CrestFoamStrength: 1.85
     - _CrestTransparency: 0.18
     - _DisplacementFadeRate: 0.007
     - _DisplacementFadeStart: 150
-    - _DistantNormalStrength: 0.045
+    - _DistantNormalStrength: 0.055
     - _EnvironmentReflectionStrength: 1.28
-    - _FoamBrightness: 1.35
-    - _FoamFadeRate: 0.0045
-    - _FoamStrength: 1.15
-    - _NormalFadeRate: 0.01
-    - _NormalStrength: 1.45
+    - _FoamBrightness: 1.5
+    - _FoamFadeRate: 0.0035
+    - _FoamStrength: 1.6
+    - _NormalFadeRate: 0.0075
+    - _NormalStrength: 1.6
     - _Opacity: 0.82
     - _Reflectance: 0.04
     - _Roughness: 0.36
