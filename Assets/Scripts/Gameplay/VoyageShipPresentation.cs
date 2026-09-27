@@ -103,13 +103,26 @@ namespace RoyaltyBoat.Gameplay
             }
 
             BuildStyles();
-            DrawBalance();
-            DrawSteeringInstructions();
-            DrawHealthPanel();
+            float hudScale = Mathf.Clamp(Screen.height / 1080f, 1f, 2f);
+            float logicalScreenWidth = Screen.width / hudScale;
+            float logicalScreenHeight = Screen.height / hudScale;
+            Matrix4x4 previousMatrix = GUI.matrix;
+            GUI.matrix = Matrix4x4.Scale(new Vector3(hudScale, hudScale, 1f));
 
-            if (levelCompleteVisible)
+            try
             {
-                DrawCompletionPanel();
+                DrawBalance(logicalScreenWidth);
+                DrawSteeringInstructions(logicalScreenWidth);
+                DrawHealthPanel();
+
+                if (levelCompleteVisible)
+                {
+                    DrawCompletionPanel(logicalScreenWidth, logicalScreenHeight);
+                }
+            }
+            finally
+            {
+                GUI.matrix = previousMatrix;
             }
         }
 
@@ -153,17 +166,21 @@ namespace RoyaltyBoat.Gameplay
             };
         }
 
-        private void DrawBalance()
+        private void DrawBalance(float logicalScreenWidth)
         {
             const float width = 190f;
-            Rect balance = new Rect(Screen.width - width - 24f, 24f, width, 54f);
+            Rect balance = new Rect(logicalScreenWidth - width - 24f, 24f, width, 54f);
             GUI.Box(balance, $"COINS  {EconomyAccess.Balance}", balanceStyle);
         }
 
-        private void DrawSteeringInstructions()
+        private void DrawSteeringInstructions(float logicalScreenWidth)
         {
             const float width = 260f;
-            Rect instructions = new Rect((Screen.width - width) * 0.5f, 24f, width, 54f);
+            Rect instructions = new Rect(
+                (logicalScreenWidth - width) * 0.5f,
+                24f,
+                width,
+                54f);
             GUI.Box(instructions, "STEER  ↑  ↓", instructionStyle);
         }
 
@@ -204,14 +221,16 @@ namespace RoyaltyBoat.Gameplay
             }
         }
 
-        private void DrawCompletionPanel()
+        private void DrawCompletionPanel(
+            float logicalScreenWidth,
+            float logicalScreenHeight)
         {
             const float width = 430f;
             float bonusOffset = completionReward.DecreeBonus > 0 ? 33f : 0f;
             float height = 344f + bonusOffset;
             Rect panel = new Rect(
-                (Screen.width - width) * 0.5f,
-                (Screen.height - height) * 0.5f,
+                (logicalScreenWidth - width) * 0.5f,
+                (logicalScreenHeight - height) * 0.5f,
                 width,
                 height);
 

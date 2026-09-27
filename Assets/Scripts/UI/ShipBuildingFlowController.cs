@@ -367,7 +367,11 @@ namespace RoyaltyBoat.UI
             }
 
             statusLabel.text = message;
+            statusLabel.AddToClassList("shop-status-visible");
             statusLabel.AddToClassList("shop-status-error");
+            statusLabel.schedule.Execute(() =>
+                statusLabel.RemoveFromClassList("shop-status-visible"))
+                .StartingIn(3200);
         }
     }
 }
